@@ -32,6 +32,11 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Get SHA-1 Fingerprint
+        run: |
+          cd android
+          ./gradlew signingReport
+
       - name: Build APK
         run: flutter build apk --release
 
