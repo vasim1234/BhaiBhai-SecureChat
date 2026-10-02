@@ -314,7 +314,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ============ CHAT SCREEN (24-Hour Delete) ============
+// ============ CHAT SCREEN (Dono taraf message aayega) ============
 class ChatScreen extends StatefulWidget {
   final String receiverPhone;
   final String receiverName;
@@ -332,6 +332,14 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  final String currentUserPhone = FirebaseAuth.instance.currentUser!.phoneNumber ?? '';
+
+  // Chat ID banayein (dono users ke numbers ko sort karke)
+  String get chatId {
+    List<String> phones = [currentUserPhone, widget.receiverPhone];
+    phones.sort();
+    return phones.join('_');
+  }
 
   Future<void> _sendMessage() async {
     if (_msgController.text.trim().isEmpty) return;
@@ -339,7 +347,9 @@ class _ChatScreenState extends State<ChatScreen> {
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
     await FirebaseFirestore.instance.collection('chats').add({
+      'chatId': chatId,
       'senderId': currentUserId,
+      'senderPhone': currentUserPhone,
       'receiverPhone': widget.receiverPhone,
       'receiverName': widget.receiverName,
       'message': _msgController.text.trim(),
@@ -353,7 +363,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Stream<QuerySnapshot> _getMessages() {
     return FirebaseFirestore.instance
         .collection('chats')
-        .where('receiverPhone', isEqualTo: widget.receiverPhone)
+        .where('chatId', isEqualTo: chatId)
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
@@ -367,7 +377,6 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.call),
             onPressed: () {
-              // WebRTC calling feature yahan add karenge
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Calling feature jald aa raha hai!')),
               );
@@ -385,6 +394,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                // Filter: 24 ghante se purane messages hata dein
                 var docs = snapshot.data!.docs.where((doc) {
                   var data = doc.data() as Map<String, dynamic>;
                   Timestamp expiresAt = data['expiresAt'];
