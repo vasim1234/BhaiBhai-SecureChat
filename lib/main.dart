@@ -10,6 +10,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'friend_request.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -469,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ============ CHATS LIST SCREEN (With Pin Support) ============
+// ============ CHATS LIST SCREEN ============
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
 
@@ -1071,25 +1072,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     setState(() => _isUploading = false);
   }
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-    if (result == null) return;
-    setState(() => _isUploading = true);
-    try {
-      PlatformFile file = result.files.first;
-      String fileName =
-          'group_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      Reference ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(File(file.path!));
-      String downloadUrl = await ref.getDownloadURL();
-      await _sendMessage(fileUrl: downloadUrl, fileName: file.name);
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-    setState(() => _isUploading = false);
-  }
-
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
@@ -1120,17 +1102,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage();
-                },
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.red,
-                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
-                ),
-                title: const Text('PDF/File Bhejein'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickFile();
                 },
               ),
               const SizedBox(height: 20),
@@ -1195,8 +1166,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     var data = docs[index].data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
                     String? imageUrl = data['imageUrl'];
-                    String? fileUrl = data['fileUrl'];
-                    String? fileName = data['fileName'];
 
                     return FutureBuilder<DocumentSnapshot>(
                       future: FirebaseFirestore.instance
@@ -1254,28 +1223,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                     borderRadius: BorderRadius.circular(10),
                                     child: Image.network(imageUrl,
                                         width: 200, fit: BoxFit.cover),
-                                  ),
-                                if (fileUrl != null)
-                                  Row(
-                                    children: [
-                                      Icon(Icons.picture_as_pdf,
-                                          color: isMe
-                                              ? Colors.white
-                                              : Colors.red),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          fileName ?? 'File',
-                                          style: TextStyle(
-                                            color: isMe
-                                                ? Colors.white
-                                                : Colors.black87,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 if (data['message'] != null &&
                                     (data['message'] as String).isNotEmpty)
@@ -1393,7 +1340,7 @@ class CallsScreen extends StatelessWidget {
   }
 }
 
-// ============ SEARCH USER SCREEN ============
+// ============ SEARCH USER SCREEN (With Friend Request) ============
 class SearchUserScreen extends StatefulWidget {
   const SearchUserScreen({super.key});
   @override
@@ -1482,17 +1429,43 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold)),
                                   subtitle: Text(user['email'] ?? ''),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => ChatScreen(
-                                          receiverUid: user['uid'],
-                                          receiverName:
-                                              user['username'] ?? 'User',
-                                        ),
-                                      ),
+                                  trailing: const Icon(Icons.person_add,
+                                      color: Color(0xFF667EEA)),
+                                  onTap: () async {
+                                    bool isFriend = await areFriends(
+                                      FirebaseAuth.instance.currentUser!.uid,
+                                      user['uid'],
                                     );
+
+                                    if (!context.mounted) return;
+
+                                    if (isFriend) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ChatScreen(
+                                            receiverUid: user['uid'],
+                                            receiverName:
+                                                user['username'] ?? 'User',
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      String result = await sendFriendRequest(
+                                          user['uid']);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              result == 'success'
+                                                  ? 'Friend request bhej di!'
+                                                  : result,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
                                   },
                                 ),
                               );
@@ -1505,7 +1478,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN (With Working Stats) ============
+// ============ PROFILE SCREEN (With Friend Requests Button) ============
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -1536,7 +1509,6 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // === PROFILE CARD ===
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -1684,8 +1656,31 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
-
-                // === STATS ROW (Real Counts) ===
+                // Friend Requests Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FriendRequestsScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Friend Requests'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF667EEA),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
                 FutureBuilder<Map<String, int>>(
                   future: _loadStats(user.uid),
                   builder: (context, statsSnapshot) {
@@ -1710,7 +1705,7 @@ class ProfileScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ContactsListScreen(),
+                                builder: (context) => const FriendsListScreen(),
                               ),
                             );
                           },
@@ -1743,8 +1738,6 @@ class ProfileScreen extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 15),
-
-                // === ACCOUNT SETTINGS ===
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1797,14 +1790,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Load real counts
   Future<Map<String, int>> _loadStats(String uid) async {
     int contacts = 0;
     int chats = 0;
     int blocked = 0;
 
     try {
-      // Contacts: Kitne users se chat hui hai
       QuerySnapshot chatsSnap = await FirebaseFirestore.instance
           .collection('chats')
           .where('chatId', isGreaterThanOrEqualTo: '${uid}_')
@@ -1821,7 +1812,6 @@ class ProfileScreen extends StatelessWidget {
       contacts = contactIds.length;
       chats = chatsSnap.docs.length;
 
-      // Blocked count
       QuerySnapshot blockedSnap = await FirebaseFirestore.instance
           .collection('blocked')
           .where('blockerId', isEqualTo: uid)
@@ -2096,7 +2086,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN (With Delete, Edit, Block) ============
+// ============ CHAT SCREEN (With Friend Check) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2117,6 +2107,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isUploading = false;
   bool _isBlocked = false;
   bool _isBlockedByOther = false;
+  bool _areFriends = false;
+  bool _isLoadingFriends = true;
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -2128,6 +2120,15 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _checkBlockStatus();
+    _checkFriendStatus();
+  }
+
+  Future<void> _checkFriendStatus() async {
+    bool isFriend = await areFriends(currentUserId, widget.receiverUid);
+    setState(() {
+      _areFriends = isFriend;
+      _isLoadingFriends = false;
+    });
   }
 
   Future<void> _checkBlockStatus() async {
@@ -2169,17 +2170,20 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage(
-      {String? imageUrl, String? fileName, String? fileUrl}) async {
+  Future<void> _sendMessage({String? imageUrl}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aapne is user ko block kiya hai')),
       );
       return;
     }
-    if (_msgController.text.trim().isEmpty &&
-        imageUrl == null &&
-        fileUrl == null) return;
+    if (!_areFriends) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
+      );
+      return;
+    }
+    if (_msgController.text.trim().isEmpty && imageUrl == null) return;
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
@@ -2189,8 +2193,6 @@ class _ChatScreenState extends State<ChatScreen> {
       'receiverId': widget.receiverUid,
       'message': _msgController.text.trim(),
       'imageUrl': imageUrl,
-      'fileUrl': fileUrl,
-      'fileName': fileName,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
       'isEdited': false,
@@ -2205,8 +2207,6 @@ class _ChatScreenState extends State<ChatScreen> {
       'isDeleted': true,
       'message': 'Ye message delete kar diya gaya hai',
       'imageUrl': null,
-      'fileUrl': null,
-      'fileName': null,
     });
   }
 
@@ -2332,25 +2332,6 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isUploading = false);
   }
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-    if (result == null) return;
-    setState(() => _isUploading = true);
-    try {
-      PlatformFile file = result.files.first;
-      String fileName =
-          'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-      Reference ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(File(file.path!));
-      String downloadUrl = await ref.getDownloadURL();
-      await _sendMessage(fileUrl: downloadUrl, fileName: file.name);
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-    setState(() => _isUploading = false);
-  }
-
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
@@ -2382,17 +2363,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage();
-                },
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.red,
-                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
-                ),
-                title: const Text('PDF/File Bhejein'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickFile();
                 },
               ),
               const SizedBox(height: 20),
@@ -2495,6 +2465,21 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
+          if (!_areFriends && !_isLoadingFriends)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              color: Colors.blue.withOpacity(0.1),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info, color: Colors.blue, size: 18),
+                  SizedBox(width: 8),
+                  Text('Pehle friend request accept karwa lein',
+                      style: TextStyle(color: Colors.blue)),
+                ],
+              ),
+            ),
           if (_isUploading) const LinearProgressIndicator(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -2529,8 +2514,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     bool isDeleted = data['isDeleted'] ?? false;
                     bool isEdited = data['isEdited'] ?? false;
                     String? imageUrl = data['imageUrl'];
-                    String? fileUrl = data['fileUrl'];
-                    String? fileName = data['fileName'];
 
                     return GestureDetector(
                       onLongPress: isDeleted
@@ -2581,26 +2564,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                   child: Image.network(imageUrl,
                                       width: 200, fit: BoxFit.cover),
-                                ),
-                              if (fileUrl != null && !isDeleted)
-                                Row(
-                                  children: [
-                                    Icon(Icons.picture_as_pdf,
-                                        color: isMe ? Colors.white : Colors.red),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        fileName ?? 'File',
-                                        style: TextStyle(
-                                          color: isMe
-                                              ? Colors.white
-                                              : Colors.black87,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               if (data['message'] != null &&
                                   (data['message'] as String).isNotEmpty)
@@ -2663,18 +2626,19 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
-                  onPressed: (_isUploading || _isBlocked)
-                      ? null
-                      : _showAttachmentOptions,
+                  onPressed:
+                      (_isUploading || _isBlocked) ? null : _showAttachmentOptions,
                 ),
                 Expanded(
                   child: TextField(
                     controller: _msgController,
-                    enabled: !_isBlocked,
+                    enabled: !_isBlocked && _areFriends,
                     decoration: InputDecoration(
                       hintText: _isBlocked
                           ? 'Aapne is user ko block kiya hai'
-                          : 'Message likhein...',
+                          : (!_areFriends
+                              ? 'Pehle friend request accept karwa lein'
+                              : 'Message likhein...'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
@@ -2689,16 +2653,18 @@ class _ChatScreenState extends State<ChatScreen> {
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: _isBlocked
+                    gradient: (_isBlocked || !_areFriends)
                         ? null
                         : const LinearGradient(
                             colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                           ),
-                    color: _isBlocked ? Colors.grey : null,
+                    color: (_isBlocked || !_areFriends) ? Colors.grey : null,
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: _isBlocked ? null : () => _sendMessage(),
+                    onPressed: (_isBlocked || !_areFriends)
+                        ? null
+                        : () => _sendMessage(),
                   ),
                 ),
               ],
