@@ -4,9 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'friend_request.dart';
 
 // ============ USER PROFILE SCREEN ============
-// Ye screen kisi bhi user ke profile ko dikhati hai
-// Aur usse friend request bhejne / chat karne ka option deti hai
-
 class UserProfileScreen extends StatefulWidget {
   final String userId;
   final String username;
@@ -39,7 +36,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> _loadUserData() async {
     String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
-    // User data load karein
     DocumentSnapshot userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
@@ -49,14 +45,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _email = userDoc['email'] ?? '';
       if (userDoc['createdAt'] != null) {
         Timestamp ts = userDoc['createdAt'];
-        _memberSince = '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}';
+        _memberSince =
+            '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}';
       }
     }
 
-    // Check karein friend hai ya nahi
     bool isFriend = await areFriends(currentUid, widget.userId);
 
-    // Check karein request bheji hai ya nahi
     QuerySnapshot sentRequests = await FirebaseFirestore.instance
         .collection('friend_requests')
         .where('senderId', isEqualTo: currentUid)
@@ -64,7 +59,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         .where('status', isEqualTo: 'pending')
         .get();
 
-    // Check karein request aayi hai ya nahi
     QuerySnapshot receivedRequests = await FirebaseFirestore.instance
         .collection('friend_requests')
         .where('senderId', isEqualTo: widget.userId)
@@ -125,7 +119,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Avatar
                   Container(
                     padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
@@ -163,11 +156,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     style: const TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                   const SizedBox(height: 15),
-
-                  // Friend / Request Status
                   if (_isFriend)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -175,17 +167,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, color: Colors.green, size: 18),
+                          Icon(Icons.check_circle,
+                              color: Colors.green, size: 18),
                           SizedBox(width: 8),
                           Text('Aap dono friend hain',
                               style: TextStyle(
-                                  color: Colors.green, fontWeight: FontWeight.bold)),
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     )
                   else if (_requestSent)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.orange.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -193,17 +188,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.access_time, color: Colors.orange, size: 18),
+                          Icon(Icons.access_time,
+                              color: Colors.orange, size: 18),
                           SizedBox(width: 8),
                           Text('Friend request bhej di hai',
                               style: TextStyle(
-                                  color: Colors.orange, fontWeight: FontWeight.bold)),
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     )
                   else if (_requestReceived)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -211,32 +209,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.person_add, color: Colors.blue, size: 18),
+                          Icon(Icons.person_add,
+                              color: Colors.blue, size: 18),
                           SizedBox(width: 8),
                           Text('Isne aapko request bheji hai',
                               style: TextStyle(
-                                  color: Colors.blue, fontWeight: FontWeight.bold)),
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
-
                   const SizedBox(height: 30),
-
-                  // Action Buttons
                   if (_isFriend)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreenWrapper(
-                                receiverUid: widget.userId,
-                                receiverName: widget.username,
-                              ),
-                            ),
-                          );
+                          Navigator.pop(context, {
+                            'action': 'chat',
+                            'uid': widget.userId,
+                            'name': widget.username,
+                          });
                         },
                         icon: const Icon(Icons.chat),
                         label: const Text('Chat Karein'),
@@ -301,7 +294,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                       ),
                     ),
-
                   const SizedBox(height: 30),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -317,7 +309,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             const Text('Member Since',
                                 style: TextStyle(color: Colors.grey)),
                             Text(_memberSince,
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ],
@@ -326,27 +319,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ],
               ),
             ),
-    );
-  }
-}
-
-// Wrapper to avoid circular import issues
-class ChatScreenWrapper extends StatelessWidget {
-  final String receiverUid;
-  final String receiverName;
-
-  const ChatScreenWrapper({
-    super.key,
-    required this.receiverUid,
-    required this.receiverName,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Ye function main.dart ke ChatScreen ko call karega
-    return ChatScreen(
-      receiverUid: receiverUid,
-      receiverName: receiverName,
     );
   }
 }
