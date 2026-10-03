@@ -549,9 +549,14 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: _getMessages(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+  if (snapshot.hasError) {
+    return Center(
+      child: Text('Error: ${snapshot.error}'),
+    );
+  }
+  if (!snapshot.hasData) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
                 var docs = snapshot.data!.docs.where((doc) {
                   var data = doc.data() as Map<String, dynamic>;
