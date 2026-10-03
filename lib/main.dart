@@ -1,8 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -160,8 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.chat_bubble,
-                        size: 60, color: Colors.white),
+                    child: const Icon(Icons.chat_bubble, size: 60, color: Colors.white),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -410,7 +415,7 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   }
 }
 
-// ============ HOME SCREEN ============
+// ============ HOME SCREEN (Sirf 2 tabs) ============
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -422,7 +427,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const ChatsListScreen(),
-    const SearchUserScreen(),
     const ProfileScreen(),
   ];
 
@@ -445,12 +449,12 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: (index) => setState(() => _currentIndex = index),
           selectedItemColor: const Color(0xFF667EEA),
           unselectedItemColor: Colors.grey,
-          showUnselectedLabels: true,
           type: BottomNavigationBarType.fixed,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
         ),
       ),
@@ -458,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ============ CHATS LIST SCREEN ============
+// ============ CHATS LIST SCREEN (Search button AppBar mein) ============
 class ChatsListScreen extends StatelessWidget {
   const ChatsListScreen({super.key});
 
@@ -470,7 +474,17 @@ class ChatsListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Chats'),
         actions: [
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchUserScreen(),
+                ),
+              );
+            },
+          ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -524,7 +538,7 @@ class ChatsListScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   const Text(
-                    'Search tab se user dhundhein!',
+                    'Upar search icon se user dhundhein!',
                     style: TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -564,12 +578,14 @@ class ChatsListScreen extends StatelessWidget {
 
                   return Card(
                     elevation: 0,
-                    margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 5),
                       leading: CircleAvatar(
                         radius: 25,
                         backgroundColor: const Color(0xFF667EEA),
@@ -595,7 +611,8 @@ class ChatsListScreen extends StatelessWidget {
                       trailing: timestamp != null
                           ? Text(
                               DateFormat('hh:mm a').format(timestamp.toDate()),
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
                             )
                           : null,
                       onTap: () {
@@ -652,7 +669,8 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
     setState(() {
       _results = snapshot.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
-          .where((user) => user['uid'] != FirebaseAuth.instance.currentUser!.uid)
+          .where((user) =>
+              user['uid'] != FirebaseAuth.instance.currentUser!.uid)
           .toList();
       _isSearching = false;
     });
@@ -742,7 +760,8 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('My Profile')),
       body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
+        future:
+            FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
         builder: (context, snapshot) {
           String username = 'Loading...';
           if (snapshot.hasData && snapshot.data!.exists) {
@@ -754,9 +773,9 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                     ),
                   ),
@@ -806,7 +825,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ============ CHAT SCREEN ============
+// ============ CHAT SCREEN (With Photo/PDF Send) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -824,6 +843,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  bool _isUploading = false;
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -831,8 +851,8 @@ class _ChatScreenState extends State<ChatScreen> {
     return uids.join('_');
   }
 
-  Future<void> _sendMessage() async {
-    if (_msgController.text.trim().isEmpty) return;
+  Future<void> _sendMessage({String? imageUrl, String? fileName, String? fileUrl}) async {
+    if (_msgController.text.trim().isEmpty && imageUrl == null && fileUrl == null) return;
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
@@ -841,11 +861,134 @@ class _ChatScreenState extends State<ChatScreen> {
       'senderId': currentUserId,
       'receiverId': widget.receiverUid,
       'message': _msgController.text.trim(),
+      'imageUrl': imageUrl,
+      'fileUrl': fileUrl,
+      'fileName': fileName,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
     });
 
     _msgController.clear();
+  }
+
+  // Photo compress karke upload karein
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      // Compress image
+      final dir = await getTemporaryDirectory();
+      final targetPath = '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 40, // 40% quality - bahut chhota file size
+        minWidth: 800,
+        minHeight: 800,
+      );
+
+      if (compressedFile == null) {
+        setState(() => _isUploading = false);
+        return;
+      }
+
+      // Upload to Firebase Storage
+      String fileName = 'chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(File(compressedFile.path));
+      String downloadUrl = await ref.getDownloadURL();
+
+      await _sendMessage(imageUrl: downloadUrl);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+
+    setState(() => _isUploading = false);
+  }
+
+  // PDF/File upload karein
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      PlatformFile file = result.files.first;
+      String fileName = 'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(File(file.path!));
+      String downloadUrl = await ref.getDownloadURL();
+
+      await _sendMessage(fileUrl: downloadUrl, fileName: file.name);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+
+    setState(() => _isUploading = false);
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.green,
+                  child: Icon(Icons.photo, color: Colors.white),
+                ),
+                title: const Text('Photo Bhejein'),
+                subtitle: const Text('Auto compress hokar jayegi'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.red,
+                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
+                ),
+                title: const Text('PDF/File Bhejein'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFile();
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Stream<QuerySnapshot> _getMessages() {
@@ -891,6 +1034,8 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          if (_isUploading)
+            const LinearProgressIndicator(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _getMessages(),
@@ -909,7 +1054,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 }).toList();
 
                 if (docs.isEmpty) {
-                  return const Center(child: Text('Abhi koi message nahi hai. Hi bhejein!'));
+                  return const Center(
+                      child: Text('Abhi koi message nahi hai. Hi bhejein!'));
                 }
 
                 return ListView.builder(
@@ -919,6 +1065,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     var data = docs[index].data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
+                    String? imageUrl = data['imageUrl'];
+                    String? fileUrl = data['fileUrl'];
+                    String? fileName = data['fileName'];
+
                     return Align(
                       alignment:
                           isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -953,13 +1103,46 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              data['message'] ?? '',
-                              style: TextStyle(
-                                color: isMe ? Colors.white : Colors.black87,
-                                fontSize: 16,
+                            if (imageUrl != null)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  imageUrl,
+                                  width: 200,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                            ),
+                            if (fileUrl != null)
+                              Row(
+                                children: [
+                                  Icon(Icons.picture_as_pdf,
+                                      color: isMe ? Colors.white : Colors.red),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      fileName ?? 'File',
+                                      style: TextStyle(
+                                        color:
+                                            isMe ? Colors.white : Colors.black87,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            if (data['message'] != null &&
+                                (data['message'] as String).isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5),
+                                child: Text(
+                                  data['message'],
+                                  style: TextStyle(
+                                    color: isMe ? Colors.white : Colors.black87,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
                             const SizedBox(height: 4),
                             Text(
                               'Auto-delete in 24h',
@@ -982,6 +1165,10 @@ class _ChatScreenState extends State<ChatScreen> {
             color: Colors.white,
             child: Row(
               children: [
+                IconButton(
+                  icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
+                  onPressed: _isUploading ? null : _showAttachmentOptions,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _msgController,
@@ -1007,7 +1194,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: _sendMessage,
+                    onPressed: () => _sendMessage(),
                   ),
                 ),
               ],
