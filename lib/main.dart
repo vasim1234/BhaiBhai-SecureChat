@@ -468,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ============ CHATS LIST SCREEN ============
+// ============ CHATS LIST SCREEN (With Pin & Block Support) ============
 class ChatsListScreen extends StatelessWidget {
   const ChatsListScreen({super.key});
 
@@ -498,7 +498,6 @@ class ChatsListScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.person_outline),
             onPressed: () {
-              // Profile screen par bhejein
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1292,7 +1291,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ============ CHAT SCREEN ============
+// ============ CHAT SCREEN (With Delete, Edit, Block) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -1311,6 +1310,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   bool _isUploading = false;
+  bool _isBlocked = false;
+  bool _isBlockedByOther = false;
+  bool _isLoadingBlock = true;
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -1318,8 +1320,73 @@ class _ChatScreenState extends State<ChatScreen> {
     return uids.join('_');
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _checkBlockStatus();
+  }
+
+  Future<void> _checkBlockStatus() async {
+    try {
+      // Check if I blocked them
+      DocumentSnapshot myBlock = await FirebaseFirestore.instance
+          .collection('blocked')
+          .doc('${currentUserId}_${widget.receiverUid}')
+          .get();
+
+      // Check if they blocked me
+      DocumentSnapshot otherBlock = await FirebaseFirestore.instance
+          .collection('blocked')
+          .doc('${widget.receiverUid}_$currentUserId')
+          .get();
+
+      setState(() {
+        _isBlocked = myBlock.exists;
+        _isBlockedByOther = otherBlock.exists;
+        _isLoadingBlock = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingBlock = false);
+    }
+  }
+
+  Future<void> _toggleBlock() async {
+    if (_isBlocked) {
+      // Unblock
+      await FirebaseFirestore.instance
+          .collection('blocked')
+          .doc('${currentUserId}_${widget.receiverUid}')
+          .delete();
+      setState(() => _isBlocked = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User unblocked')),
+      );
+    } else {
+      // Block
+      await FirebaseFirestore.instance
+          .collection('blocked')
+          .doc('${currentUserId}_${widget.receiverUid}')
+          .set({
+        'blockerId': currentUserId,
+        'blockedId': widget.receiverUid,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      setState(() => _isBlocked = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User blocked')),
+      );
+    }
+  }
+
   Future<void> _sendMessage(
       {String? imageUrl, String? fileName, String? fileUrl}) async {
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aapne is user ko block kiya hai. Pehle unblock karein.')),
+      );
+      return;
+    }
+
     if (_msgController.text.trim().isEmpty &&
         imageUrl == null &&
         fileUrl == null) return;
@@ -1336,9 +1403,110 @@ class _ChatScreenState extends State<ChatScreen> {
       'fileName': fileName,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
+      'isEdited': false,
+      'isDeleted': false,
     });
 
     _msgController.clear();
+  }
+
+  Future<void> _deleteMessage(String docId) async {
+    await FirebaseFirestore.instance.collection('chats').doc(docId).update({
+      'isDeleted': true,
+      'message': 'Ye message delete kar diya gaya hai',
+      'imageUrl': null,
+      'fileUrl': null,
+      'fileName': null,
+    });
+  }
+
+  Future<void> _editMessage(String docId, String oldMessage) async {
+    TextEditingController editController =
+        TextEditingController(text: oldMessage);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Edit Message'),
+          content: TextField(
+            controller: editController,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Naya message',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (editController.text.trim().isNotEmpty) {
+                  await FirebaseFirestore.instance
+                      .collection('chats')
+                      .doc(docId)
+                      .update({
+                    'message': editController.text.trim(),
+                    'isEdited': true,
+                  });
+                }
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showMessageOptions(String docId, String message, bool isMe) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (isMe)
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.blue),
+                  title: const Text('Edit Message'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _editMessage(docId, message);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Message'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteMessage(docId);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickImage() async {
@@ -1499,10 +1667,61 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             },
           ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'block') {
+                _toggleBlock();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(_isBlocked ? Icons.lock_open : Icons.block,
+                        color: _isBlocked ? Colors.green : Colors.red),
+                    const SizedBox(width: 10),
+                    Text(_isBlocked ? 'Unblock User' : 'Block User'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: Column(
         children: [
+          if (_isBlocked)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              color: Colors.red.withOpacity(0.1),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.block, color: Colors.red, size: 18),
+                  SizedBox(width: 8),
+                  Text('Aapne is user ko block kiya hua hai',
+                      style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+          if (_isBlockedByOther)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              color: Colors.orange.withOpacity(0.1),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info, color: Colors.orange, size: 18),
+                  SizedBox(width: 8),
+                  Text('Is user ne aapko block kiya hua hai',
+                      style: TextStyle(color: Colors.orange)),
+                ],
+              ),
+            ),
           if (_isUploading) const LinearProgressIndicator(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -1531,95 +1750,134 @@ class _ChatScreenState extends State<ChatScreen> {
                   padding: const EdgeInsets.all(10),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    var data = docs[index].data() as Map<String, dynamic>;
+                    var doc = docs[index];
+                    var data = doc.data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
+                    bool isDeleted = data['isDeleted'] ?? false;
+                    bool isEdited = data['isEdited'] ?? false;
                     String? imageUrl = data['imageUrl'];
                     String? fileUrl = data['fileUrl'];
                     String? fileName = data['fileName'];
 
-                    return Align(
-                      alignment:
-                          isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 8),
-                        padding: const EdgeInsets.all(12),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: isMe
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                                )
-                              : null,
-                          color: isMe ? null : Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(15),
-                            topRight: const Radius.circular(15),
-                            bottomLeft: Radius.circular(isMe ? 15 : 0),
-                            bottomRight: Radius.circular(isMe ? 0 : 15),
+                    return GestureDetector(
+                      onLongPress: isDeleted
+                          ? null
+                          : () => _showMessageOptions(
+                              doc.id, data['message'] ?? '', isMe),
+                      child: Align(
+                        alignment:
+                            isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 8),
+                          padding: const EdgeInsets.all(12),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.75,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
+                          decoration: BoxDecoration(
+                            gradient: isMe && !isDeleted
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                  )
+                                : null,
+                            color: isDeleted
+                                ? Colors.grey[200]
+                                : (isMe ? null : Colors.white),
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(15),
+                              topRight: const Radius.circular(15),
+                              bottomLeft: Radius.circular(isMe ? 15 : 0),
+                              bottomRight: Radius.circular(isMe ? 0 : 15),
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (imageUrl != null)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  imageUrl,
-                                  width: 200,
-                                  fit: BoxFit.cover,
-                                ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
                               ),
-                            if (fileUrl != null)
-                              Row(
-                                children: [
-                                  Icon(Icons.picture_as_pdf,
-                                      color: isMe ? Colors.white : Colors.red),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      fileName ?? 'File',
-                                      style: TextStyle(
-                                        color:
-                                            isMe ? Colors.white : Colors.black87,
-                                        fontWeight: FontWeight.bold,
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (imageUrl != null && !isDeleted)
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    imageUrl,
+                                    width: 200,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              if (fileUrl != null && !isDeleted)
+                                Row(
+                                  children: [
+                                    Icon(Icons.picture_as_pdf,
+                                        color: isMe ? Colors.white : Colors.red),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        fileName ?? 'File',
+                                        style: TextStyle(
+                                          color: isMe
+                                              ? Colors.white
+                                              : Colors.black87,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              if (data['message'] != null &&
+                                  (data['message'] as String).isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Text(
+                                    data['message'],
+                                    style: TextStyle(
+                                      color: isDeleted
+                                          ? Colors.grey[600]
+                                          : (isMe
+                                              ? Colors.white
+                                              : Colors.black87),
+                                      fontSize: 16,
+                                      fontStyle: isDeleted
+                                          ? FontStyle.italic
+                                          : FontStyle.normal,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isEdited && !isDeleted)
+                                    Text(
+                                      'edited • ',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isMe
+                                            ? Colors.white70
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  Text(
+                                    'Auto-delete in 24h',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isMe && !isDeleted
+                                          ? Colors.white70
+                                          : Colors.grey,
                                     ),
                                   ),
                                 ],
                               ),
-                            if (data['message'] != null &&
-                                (data['message'] as String).isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 5),
-                                child: Text(
-                                  data['message'],
-                                  style: TextStyle(
-                                    color: isMe ? Colors.white : Colors.black87,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Auto-delete in 24h',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isMe ? Colors.white70 : Colors.grey,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -1635,13 +1893,17 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
-                  onPressed: _isUploading ? null : _showAttachmentOptions,
+                  onPressed:
+                      (_isUploading || _isBlocked) ? null : _showAttachmentOptions,
                 ),
                 Expanded(
                   child: TextField(
                     controller: _msgController,
+                    enabled: !_isBlocked,
                     decoration: InputDecoration(
-                      hintText: 'Message likhein...',
+                      hintText: _isBlocked
+                          ? 'Aapne is user ko block kiya hai'
+                          : 'Message likhein...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
@@ -1654,15 +1916,18 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                    ),
+                    gradient: _isBlocked
+                        ? null
+                        : const LinearGradient(
+                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                          ),
+                    color: _isBlocked ? Colors.grey : null,
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: () => _sendMessage(),
+                    onPressed: _isBlocked ? null : () => _sendMessage(),
                   ),
                 ),
               ],
