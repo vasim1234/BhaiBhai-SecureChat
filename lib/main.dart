@@ -1504,7 +1504,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN ============
+// ============ PROFILE SCREEN (With Working Stats) ============
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -1535,6 +1535,7 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                // === PROFILE CARD ===
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -1646,7 +1647,7 @@ class ProfileScreen extends StatelessWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                _showQRDialog(context, username);
+                                _showQRDialog(context, username, user.uid);
                               },
                               icon: const Icon(Icons.qr_code, color: Color(0xFF667EEA)),
                               label: const Text('My QR',
@@ -1682,16 +1683,67 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
-                Row(
-                  children: [
-                    _buildStatCard(Icons.people, '0', 'Contacts', Colors.blue),
-                    const SizedBox(width: 10),
-                    _buildStatCard(Icons.chat_bubble, '0', 'Chats', Colors.purple),
-                    const SizedBox(width: 10),
-                    _buildStatCard(Icons.lock, '0', 'Blocked', Colors.red),
-                  ],
+
+                // === STATS ROW (Real Counts) ===
+                FutureBuilder<Map<String, int>>(
+                  future: _loadStats(user.uid),
+                  builder: (context, statsSnapshot) {
+                    int contacts = 0;
+                    int chats = 0;
+                    int blocked = 0;
+
+                    if (statsSnapshot.hasData) {
+                      contacts = statsSnapshot.data!['contacts'] ?? 0;
+                      chats = statsSnapshot.data!['chats'] ?? 0;
+                      blocked = statsSnapshot.data!['blocked'] ?? 0;
+                    }
+
+                    return Row(
+                      children: [
+                        _buildStatCard(
+                          Icons.people,
+                          '$contacts',
+                          'Contacts',
+                          Colors.blue,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ContactsListScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        _buildStatCard(
+                          Icons.chat_bubble,
+                          '$chats',
+                          'Chats',
+                          Colors.purple,
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 10),
+                        _buildStatCard(
+                          Icons.lock,
+                          '$blocked',
+                          'Blocked',
+                          Colors.red,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BlockedUsersScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 15),
+
+                // === ACCOUNT SETTINGS ===
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1730,60 +1782,6 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 15),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.shield, color: Colors.green),
-                          SizedBox(width: 10),
-                          Text(
-                            'Privacy & Security',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-                      _buildSettingRowWithIcon(
-                        Icons.lock_outline,
-                        'End-to-end Encryption',
-                        'Active',
-                        Colors.green,
-                      ),
-                      const Divider(),
-                      _buildSettingRowWithIcon(
-                        Icons.qr_code,
-                        'QR Code',
-                        'Active',
-                        Colors.green,
-                      ),
-                      const Divider(),
-                      _buildSettingRowWithIcon(
-                        Icons.security,
-                        'Two-Factor Auth',
-                        'Enable',
-                        const Color(0xFF667EEA),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 20),
                 const Text(
                   'Bhai Bhai App v1.0.0 • Secure Community',
@@ -1798,38 +1796,79 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(IconData icon, String count, String label, Color color) {
+  // Load real counts
+  Future<Map<String, int>> _loadStats(String uid) async {
+    int contacts = 0;
+    int chats = 0;
+    int blocked = 0;
+
+    try {
+      // Contacts: Kitne users se chat hui hai
+      QuerySnapshot chatsSnap = await FirebaseFirestore.instance
+          .collection('chats')
+          .where('chatId', isGreaterThanOrEqualTo: '${uid}_')
+          .where('chatId', isLessThanOrEqualTo: '${uid}_\uf8ff')
+          .get();
+
+      Set<String> contactIds = {};
+      for (var doc in chatsSnap.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+        String otherId =
+            data['senderId'] == uid ? data['receiverId'] : data['senderId'];
+        contactIds.add(otherId);
+      }
+      contacts = contactIds.length;
+      chats = chatsSnap.docs.length;
+
+      // Blocked count
+      QuerySnapshot blockedSnap = await FirebaseFirestore.instance
+          .collection('blocked')
+          .where('blockerId', isEqualTo: uid)
+          .get();
+      blocked = blockedSnap.docs.length;
+    } catch (e) {
+      // Ignore
+    }
+
+    return {'contacts': contacts, 'chats': chats, 'blocked': blocked};
+  }
+
+  Widget _buildStatCard(IconData icon, String count, String label, Color color,
+      {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              count,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                count,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1855,32 +1894,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingRowWithIcon(
-      IconData icon, String label, String value, Color valueColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.grey),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(label,
-                style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showQRDialog(BuildContext context, String username) {
+  void _showQRDialog(BuildContext context, String username, String uid) {
     showDialog(
       context: context,
       builder: (context) {
@@ -1897,7 +1911,12 @@ class ProfileScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(color: Colors.grey[300]!),
                 ),
-                child: const Icon(Icons.qr_code_2, size: 150, color: Color(0xFF667EEA)),
+                child: QrImageView(
+                  data: uid,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                  backgroundColor: Colors.white,
+                ),
               ),
               const SizedBox(height: 15),
               Text('@$username',
@@ -1915,6 +1934,163 @@ class ProfileScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+// ============ CONTACTS LIST SCREEN ============
+class ContactsListScreen extends StatelessWidget {
+  const ContactsListScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('My Contacts')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('chats')
+            .where('chatId', isGreaterThanOrEqualTo: '${currentUserId}_')
+            .where('chatId', isLessThanOrEqualTo: '${currentUserId}_\uf8ff')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          Set<String> contactIds = {};
+          for (var doc in snapshot.data!.docs) {
+            var data = doc.data() as Map<String, dynamic>;
+            String otherId =
+                data['senderId'] == currentUserId ? data['receiverId'] : data['senderId'];
+            contactIds.add(otherId);
+          }
+
+          if (contactIds.isEmpty) {
+            return const Center(
+              child: Text('Abhi koi contact nahi hai.\nSearch karke chat shuru karein!'),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: contactIds.length,
+            itemBuilder: (context, index) {
+              String uid = contactIds.elementAt(index);
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+                builder: (context, userSnap) {
+                  String username = 'User';
+                  if (userSnap.hasData && userSnap.data!.exists) {
+                    username = userSnap.data!['username'] ?? 'User';
+                  }
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFF667EEA),
+                      child: Text(
+                        username[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(username,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            receiverUid: uid,
+                            receiverName: username,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ============ BLOCKED USERS SCREEN ============
+class BlockedUsersScreen extends StatefulWidget {
+  const BlockedUsersScreen({super.key});
+
+  @override
+  State<BlockedUsersScreen> createState() => _BlockedUsersScreenState();
+}
+
+class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
+  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+  Future<void> _unblock(String blockedId) async {
+    await FirebaseFirestore.instance
+        .collection('blocked')
+        .doc('${currentUserId}_$blockedId')
+        .delete();
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('User unblocked')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Blocked Users')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('blocked')
+            .where('blockerId', isEqualTo: currentUserId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Koi user blocked nahi hai'));
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              var data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+              String blockedId = data['blockedId'];
+
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('users').doc(blockedId).get(),
+                builder: (context, userSnap) {
+                  String username = 'User';
+                  if (userSnap.hasData && userSnap.data!.exists) {
+                    username = userSnap.data!['username'] ?? 'User';
+                  }
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red,
+                      child: Text(
+                        username[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(username,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: TextButton(
+                      onPressed: () => _unblock(blockedId),
+                      child: const Text('Unblock',
+                          style: TextStyle(color: Color(0xFF667EEA))),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
