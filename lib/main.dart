@@ -415,7 +415,7 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   }
 }
 
-// ============ HOME SCREEN (4 Tabs - WhatsApp Style) ============
+// ============ HOME SCREEN (4 Tabs) ============
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -449,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
-          selectedItemColor: const Color(0xFF25D366),
+          selectedItemColor: const Color(0xFF667EEA),
           unselectedItemColor: Colors.grey,
           type: BottomNavigationBarType.fixed,
           items: const [
@@ -497,7 +497,15 @@ class ChatsListScreen extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
-            onPressed: () {},
+            onPressed: () {
+              // Profile screen par bhejein
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfileScreen(),
+                ),
+              );
+            },
           ),
         ],
         bottom: PreferredSize(
@@ -520,7 +528,6 @@ class ChatsListScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              // Filter chips
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -686,7 +693,7 @@ class ChatsListScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF25D366),
+        backgroundColor: const Color(0xFF667EEA),
         onPressed: () {
           Navigator.push(
             context,
@@ -703,16 +710,18 @@ class ChatsListScreen extends StatelessWidget {
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF25D366).withOpacity(0.2) : Colors.white,
+        color: isSelected
+            ? const Color(0xFF667EEA).withOpacity(0.2)
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isSelected ? const Color(0xFF25D366) : Colors.grey[300]!,
+          color: isSelected ? const Color(0xFF667EEA) : Colors.grey[300]!,
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: isSelected ? const Color(0xFF25D366) : Colors.grey[700],
+          color: isSelected ? const Color(0xFF667EEA) : Colors.grey[700],
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -720,7 +729,7 @@ class ChatsListScreen extends StatelessWidget {
   }
 }
 
-// ============ UPDATES SCREEN (Placeholder) ============
+// ============ UPDATES SCREEN ============
 class UpdatesScreen extends StatelessWidget {
   const UpdatesScreen({super.key});
   @override
@@ -732,7 +741,7 @@ class UpdatesScreen extends StatelessWidget {
   }
 }
 
-// ============ COMMUNITIES SCREEN (Placeholder) ============
+// ============ COMMUNITIES SCREEN ============
 class CommunitiesScreen extends StatelessWidget {
   const CommunitiesScreen({super.key});
   @override
@@ -744,7 +753,7 @@ class CommunitiesScreen extends StatelessWidget {
   }
 }
 
-// ============ CALLS SCREEN (Placeholder) ============
+// ============ CALLS SCREEN ============
 class CallsScreen extends StatelessWidget {
   const CallsScreen({super.key});
   @override
@@ -868,7 +877,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN (Professional Design) ============
+// ============ PROFILE SCREEN ============
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -899,7 +908,6 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // === PROFILE CARD ===
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -915,7 +923,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      // Avatar with green tick
                       Stack(
                         children: [
                           Container(
@@ -978,7 +985,6 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 15),
-                      // Online badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                         decoration: BoxDecoration(
@@ -1008,7 +1014,6 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      // My QR + Logout Buttons
                       Row(
                         children: [
                           Expanded(
@@ -1050,8 +1055,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
-
-                // === STATS ROW ===
                 Row(
                   children: [
                     _buildStatCard(Icons.people, '0', 'Contacts', Colors.blue),
@@ -1062,8 +1065,6 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 15),
-
-                // === ACCOUNT SETTINGS ===
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1094,7 +1095,6 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 15),
-                      // Ab User ID ki jagah Username dikhega
                       _buildSettingRow('Username', '@$username', Colors.grey),
                       const Divider(),
                       _buildSettingRow('Account Status', 'Active', Colors.green),
@@ -1104,8 +1104,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
-
-                // === PRIVACY & SECURITY ===
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1160,8 +1158,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // === FOOTER ===
                 const Text(
                   'Bhai Bhai App v1.0.0 • Secure Community',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
@@ -1476,7 +1472,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF25D366),
+        backgroundColor: const Color(0xFF667EEA),
         iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           children: [
@@ -1486,7 +1482,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 widget.receiverName.isNotEmpty
                     ? widget.receiverName[0].toUpperCase()
                     : '?',
-                style: const TextStyle(color: Color(0xFF25D366)),
+                style: const TextStyle(color: Color(0xFF667EEA)),
               ),
             ),
             const SizedBox(width: 10),
