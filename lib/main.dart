@@ -415,7 +415,7 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   }
 }
 
-// ============ HOME SCREEN (Sirf 2 tabs) ============
+// ============ HOME SCREEN ============
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -462,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ============ CHATS LIST SCREEN (Search button AppBar mein) ============
+// ============ CHATS LIST SCREEN ============
 class ChatsListScreen extends StatelessWidget {
   const ChatsListScreen({super.key});
 
@@ -825,7 +825,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ============ CHAT SCREEN (With Photo/PDF Send) ============
+// ============ CHAT SCREEN (With Photo/PDF) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -851,8 +851,11 @@ class _ChatScreenState extends State<ChatScreen> {
     return uids.join('_');
   }
 
-  Future<void> _sendMessage({String? imageUrl, String? fileName, String? fileUrl}) async {
-    if (_msgController.text.trim().isEmpty && imageUrl == null && fileUrl == null) return;
+  Future<void> _sendMessage(
+      {String? imageUrl, String? fileName, String? fileUrl}) async {
+    if (_msgController.text.trim().isEmpty &&
+        imageUrl == null &&
+        fileUrl == null) return;
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
@@ -871,7 +874,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _msgController.clear();
   }
 
-  // Photo compress karke upload karein
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -881,14 +883,14 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isUploading = true);
 
     try {
-      // Compress image
       final dir = await getTemporaryDirectory();
-      final targetPath = '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final targetPath =
+          '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
-        quality: 40, // 40% quality - bahut chhota file size
+        quality: 40,
         minWidth: 800,
         minHeight: 800,
       );
@@ -898,8 +900,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      // Upload to Firebase Storage
-      String fileName = 'chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String fileName =
+          'chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = FirebaseStorage.instance.ref().child(fileName);
       await ref.putFile(File(compressedFile.path));
       String downloadUrl = await ref.getDownloadURL();
@@ -914,7 +916,6 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isUploading = false);
   }
 
-  // PDF/File upload karein
   Future<void> _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
 
@@ -924,7 +925,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       PlatformFile file = result.files.first;
-      String fileName = 'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      String fileName =
+          'chat_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       Reference ref = FirebaseStorage.instance.ref().child(fileName);
       await ref.putFile(File(file.path!));
       String downloadUrl = await ref.getDownloadURL();
@@ -1034,8 +1036,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (_isUploading)
-            const LinearProgressIndicator(),
+          if (_isUploading) const LinearProgressIndicator(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _getMessages(),
