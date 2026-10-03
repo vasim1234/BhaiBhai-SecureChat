@@ -32,7 +32,31 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return const HomeScreen();
+          // Check karein ki user ka username set hai ya nahi
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(snapshot.data!.uid)
+                .get(),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (userSnapshot.hasData &&
+                  userSnapshot.data!.exists &&
+                  userSnapshot.data!['username'] != null) {
+                // Username set hai, HomeScreen par bhejein
+                return const HomeScreen();
+              }
+              // Username set nahi hai, SetUsernameScreen par bhejein
+              return SetUsernameScreen(
+                uid: snapshot.data!.uid,
+                email: snapshot.data!.email ?? '',
+              );
+            },
+          );
         }
         return const LoginScreen();
       },
