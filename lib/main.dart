@@ -17,7 +17,22 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Bhai Bhai Secure Chat',
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+        scaffoldBackgroundColor: const Color(0xFFF5F7FB),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.black87),
+          titleTextStyle: TextStyle(
+            color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        useMaterial3: true,
+      ),
       home: const AuthWrapper(),
     );
   }
@@ -124,63 +139,124 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.chat_bubble, size: 80, color: Colors.blue),
-              const SizedBox(height: 20),
-              const Text(
-                'Bhai Bhai Secure Chat',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '24-hour ephemeral chat & calling app',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      child: Text(_isLogin ? 'Login' : 'Sign Up'),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () => setState(() => _isLogin = !_isLogin),
-                child: Text(
-                  _isLogin
-                      ? 'Naya account banayein? Sign Up'
-                      : 'Pehle se account hai? Login',
-                ),
+                    child: const Icon(Icons.chat_bubble,
+                        size: 60, color: Colors.white),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Bhai Bhai',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Secure Community',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 40),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _isLoading
+                            ? const CircularProgressIndicator()
+                            : SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _submit,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF667EEA),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _isLogin ? 'Login' : 'Sign Up',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                        const SizedBox(height: 10),
+                        TextButton(
+                          onPressed: () => setState(() => _isLogin = !_isLogin),
+                          child: Text(
+                            _isLogin
+                                ? 'Naya account banayein? Sign Up'
+                                : 'Pehle se account hai? Login',
+                            style: const TextStyle(color: Color(0xFF667EEA)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -252,39 +328,82 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Set Username')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 80),
-            const Text(
-              'Apna unique username set karein',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Is username se dusre log aapko dhundh sakte hain',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _usernameController,
-              decoration: const InputDecoration(
-                labelText: 'Username (jaise: vasim123)',
-                prefixIcon: Icon(Icons.alternate_email),
-                border: OutlineInputBorder(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.alternate_email, size: 80, color: Colors.white),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Apna Username Set Karein',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Is username se dusre log aapko dhundh sakte hain',
+                    style: TextStyle(color: Colors.white70),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 30),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _usernameController,
+                          decoration: InputDecoration(
+                            labelText: 'Username (jaise: vasim123)',
+                            prefixIcon: const Icon(Icons.alternate_email),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _isLoading
+                            ? const CircularProgressIndicator()
+                            : SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _saveUsername,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF667EEA),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text('Save Username',
+                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _saveUsername,
-                    child: const Text('Save Username'),
-                  ),
-          ],
+          ),
         ),
       ),
     );
@@ -311,20 +430,35 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chats'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          selectedItemColor: const Color(0xFF667EEA),
+          unselectedItemColor: Colors.grey,
+          showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
+            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ============ CHATS LIST SCREEN (NEW!) ============
+// ============ CHATS LIST SCREEN ============
 class ChatsListScreen extends StatelessWidget {
   const ChatsListScreen({super.key});
 
@@ -333,7 +467,12 @@ class ChatsListScreen extends StatelessWidget {
     final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Bhai Bhai Chats')),
+      appBar: AppBar(
+        title: const Text('Chats'),
+        actions: [
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+        ],
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('chats')
@@ -349,7 +488,6 @@ class ChatsListScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Get unique chat IDs (last message per chat)
           Map<String, Map<String, dynamic>> chats = {};
           for (var doc in snapshot.data!.docs) {
             var data = doc.data() as Map<String, dynamic>;
@@ -366,8 +504,31 @@ class ChatsListScreen extends StatelessWidget {
           }
 
           if (chats.isEmpty) {
-            return const Center(
-              child: Text('Abhi koi chat nahi hai.\nSearch tab se user dhundhein!'),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(30),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF667EEA).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.chat_bubble_outline,
+                        size: 60, color: Color(0xFF667EEA)),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Abhi koi chat nahi hai',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Search tab se user dhundhein!',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -380,6 +541,7 @@ class ChatsListScreen extends StatelessWidget {
           });
 
           return ListView.builder(
+            padding: const EdgeInsets.all(8),
             itemCount: chatList.length,
             itemBuilder: (context, index) {
               var chat = chatList[index];
@@ -400,36 +562,54 @@ class ChatsListScreen extends StatelessWidget {
                     username = userSnapshot.data!['username'] ?? 'User';
                   }
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: Text(username.isNotEmpty
-                          ? username[0].toUpperCase()
-                          : '?'),
+                  return Card(
+                    elevation: 0,
+                    margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    title: Text(username),
-                    subtitle: Text(
-                      lastMessage,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: timestamp != null
-                        ? Text(
-                            DateFormat('hh:mm a')
-                                .format(timestamp.toDate()),
-                            style: const TextStyle(fontSize: 12),
-                          )
-                        : null,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
-                            receiverUid: otherUserId,
-                            receiverName: username,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                      leading: CircleAvatar(
+                        radius: 25,
+                        backgroundColor: const Color(0xFF667EEA),
+                        child: Text(
+                          username.isNotEmpty ? username[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      );
-                    },
+                      ),
+                      title: Text(
+                        username,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        lastMessage,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                      trailing: timestamp != null
+                          ? Text(
+                              DateFormat('hh:mm a').format(timestamp.toDate()),
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              receiverUid: otherUserId,
+                              receiverName: username,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               );
@@ -485,22 +665,19 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Username se search karein...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _searchUser(),
-                  ),
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Username se search karein...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                IconButton(icon: const Icon(Icons.search), onPressed: _searchUser),
-              ],
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onSubmitted: (_) => _searchUser(),
             ),
           ),
           Expanded(
@@ -514,21 +691,37 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                             itemCount: _results.length,
                             itemBuilder: (context, index) {
                               final user = _results[index];
-                              return ListTile(
-                                leading: const CircleAvatar(child: Icon(Icons.person)),
-                                title: Text(user['username'] ?? 'Unknown'),
-                                subtitle: Text(user['email'] ?? ''),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ChatScreen(
-                                        receiverUid: user['uid'],
-                                        receiverName: user['username'] ?? 'User',
-                                      ),
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: const Color(0xFF667EEA),
+                                    child: Text(
+                                      (user['username'] ?? 'U')[0].toUpperCase(),
+                                      style: const TextStyle(color: Colors.white),
                                     ),
-                                  );
-                                },
+                                  ),
+                                  title: Text(user['username'] ?? 'Unknown',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  subtitle: Text(user['email'] ?? ''),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ChatScreen(
+                                          receiverUid: user['uid'],
+                                          receiverName:
+                                              user['username'] ?? 'User',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               );
                             },
                           ),
@@ -559,18 +752,50 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircleAvatar(radius: 50, child: Icon(Icons.person, size: 50)),
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 55,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      username.isNotEmpty ? username[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF667EEA),
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Text('@$username',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
                 Text(user.email ?? 'No Email',
                     style: const TextStyle(fontSize: 14, color: Colors.grey)),
                 const SizedBox(height: 30),
-                ElevatedButton.icon(
-                  onPressed: () => FirebaseAuth.instance.signOut(),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Logout'),
+                SizedBox(
+                  width: 200,
+                  child: ElevatedButton.icon(
+                    onPressed: () => FirebaseAuth.instance.signOut(),
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Logout'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -635,7 +860,24 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.receiverName),
+        backgroundColor: const Color(0xFF667EEA),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Text(
+                widget.receiverName.isNotEmpty
+                    ? widget.receiverName[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(color: Color(0xFF667EEA)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(widget.receiverName,
+                style: const TextStyle(color: Colors.white)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.call),
@@ -672,26 +914,60 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 return ListView.builder(
                   reverse: true,
+                  padding: const EdgeInsets.all(10),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     var data = docs[index].data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
                     return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment:
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 8),
                         padding: const EdgeInsets.all(12),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
                         decoration: BoxDecoration(
-                          color: isMe ? Colors.blue[100] : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
+                          gradient: isMe
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                                )
+                              : null,
+                          color: isMe ? null : Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(15),
+                            topRight: const Radius.circular(15),
+                            bottomLeft: Radius.circular(isMe ? 15 : 0),
+                            bottomRight: Radius.circular(isMe ? 0 : 15),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(data['message'] ?? ''),
+                            Text(
+                              data['message'] ?? '',
+                              style: TextStyle(
+                                color: isMe ? Colors.white : Colors.black87,
+                                fontSize: 16,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            const Text('Auto-delete in 24h',
-                                style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            Text(
+                              'Auto-delete in 24h',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isMe ? Colors.white70 : Colors.grey,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -701,20 +977,39 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          Padding(
+          Container(
             padding: const EdgeInsets.all(8.0),
+            color: Colors.white,
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _msgController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Message likhein...',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      filled: true,
+                      fillColor: const Color(0xFFF5F7FB),
                     ),
                   ),
                 ),
-                IconButton(icon: const Icon(Icons.send), onPressed: _sendMessage),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                    ),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white),
+                    onPressed: _sendMessage,
+                  ),
+                ),
               ],
             ),
           ),
