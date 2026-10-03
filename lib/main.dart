@@ -1432,42 +1432,17 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                   subtitle: Text(user['email'] ?? ''),
                                   trailing: const Icon(Icons.person_add,
                                       color: Color(0xFF667EEA)),
-                                  onTap: () async {
-                                    bool isFriend = await areFriends(
-                                      FirebaseAuth.instance.currentUser!.uid,
-                                      user['uid'],
-                                    );
-
-                                    if (!context.mounted) return;
-
-                                    if (isFriend) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ChatScreen(
-                                            receiverUid: user['uid'],
-                                            receiverName:
-                                                user['username'] ?? 'User',
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      String result = await sendFriendRequest(
-                                          user['uid']);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              result == 'success'
-                                                  ? 'Friend request bhej di!'
-                                                  : result,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
+                                  onTap: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => UserProfileScreen(
+        userId: user['uid'],
+        username: user['username'] ?? 'User',
+      ),
+    ),
+  );
+},
                                 ),
                               );
                             },
