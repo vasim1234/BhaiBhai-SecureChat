@@ -1432,8 +1432,8 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                   subtitle: Text(user['email'] ?? ''),
                                   trailing: const Icon(Icons.person_add,
                                       color: Color(0xFF667EEA)),
-                                  onTap: () {
-  Navigator.push(
+  onTap: () async {
+  final result = await Navigator.push(
     context,
     MaterialPageRoute(
       builder: (context) => UserProfileScreen(
@@ -1442,6 +1442,21 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       ),
     ),
   );
+
+  // Agar UserProfileScreen se "Chat" action aaya
+  if (result != null && result is Map && result['action'] == 'chat') {
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            receiverUid: result['uid'],
+            receiverName: result['name'],
+          ),
+        ),
+      );
+    }
+  }
 },
                                 ),
                               );
