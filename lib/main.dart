@@ -415,7 +415,7 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   }
 }
 
-// ============ HOME SCREEN ============
+// ============ HOME SCREEN (4 Tabs - WhatsApp Style) ============
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -427,7 +427,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const ChatsListScreen(),
-    const ProfileScreen(),
+    const UpdatesScreen(),
+    const CommunitiesScreen(),
+    const CallsScreen(),
   ];
 
   @override
@@ -447,14 +449,18 @@ class _HomeScreenState extends State<HomeScreen> {
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
-          selectedItemColor: const Color(0xFF667EEA),
+          selectedItemColor: const Color(0xFF25D366),
           unselectedItemColor: Colors.grey,
           type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(
                 icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline), label: 'Profile'),
+                icon: Icon(Icons.update), label: 'Updates'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.groups_outlined), label: 'Communities'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.call_outlined), label: 'Calls'),
           ],
         ),
       ),
@@ -472,20 +478,65 @@ class ChatsListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chats'),
+        title: const Text(
+          'BHAI BHAI',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF667EEA),
+            letterSpacing: 1,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SearchUserScreen(),
-                ),
-              );
-            },
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.camera_alt_outlined),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {},
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(120),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search chats...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF0F2F5),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                ),
+              ),
+              // Filter chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    _buildFilterChip('All', true),
+                    _buildFilterChip('Unread', false),
+                    _buildFilterChip('Favourites', false),
+                    _buildFilterChip('Groups', false),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 5),
+            ],
+          ),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -538,7 +589,7 @@ class ChatsListScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   const Text(
-                    'Upar search icon se user dhundhein!',
+                    'Search icon se user dhundhein!',
                     style: TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -634,6 +685,73 @@ class ChatsListScreen extends StatelessWidget {
           );
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF25D366),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SearchUserScreen()),
+          );
+        },
+        child: const Icon(Icons.add_comment, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF25D366).withOpacity(0.2) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF25D366) : Colors.grey[300]!,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? const Color(0xFF25D366) : Colors.grey[700],
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+}
+
+// ============ UPDATES SCREEN (Placeholder) ============
+class UpdatesScreen extends StatelessWidget {
+  const UpdatesScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Updates')),
+      body: const Center(child: Text('Status updates jald aa rahe hain!')),
+    );
+  }
+}
+
+// ============ COMMUNITIES SCREEN (Placeholder) ============
+class CommunitiesScreen extends StatelessWidget {
+  const CommunitiesScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Communities')),
+      body: const Center(child: Text('Communities feature jald aa raha hai!')),
+    );
+  }
+}
+
+// ============ CALLS SCREEN (Placeholder) ============
+class CallsScreen extends StatelessWidget {
+  const CallsScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Calls')),
+      body: const Center(child: Text('Call history jald aa rahi hai!')),
     );
   }
 }
@@ -976,8 +1094,8 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 15),
-                      _buildSettingRow('User ID',
-                          '${user.uid.substring(0, 12)}...', Colors.grey),
+                      // Ab User ID ki jagah Username dikhega
+                      _buildSettingRow('Username', '@$username', Colors.grey),
                       const Divider(),
                       _buildSettingRow('Account Status', 'Active', Colors.green),
                       const Divider(),
@@ -1057,7 +1175,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget - Stat card
   Widget _buildStatCard(IconData icon, String count, String label, Color color) {
     return Expanded(
       child: Container(
@@ -1095,7 +1212,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget - Setting row
   Widget _buildSettingRow(String label, String value, Color valueColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1116,7 +1232,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget - Setting row with icon
   Widget _buildSettingRowWithIcon(
       IconData icon, String label, String value, Color valueColor) {
     return Padding(
@@ -1142,7 +1257,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // QR Code Dialog
   void _showQRDialog(BuildContext context, String username) {
     showDialog(
       context: context,
@@ -1182,7 +1296,7 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// ============ CHAT SCREEN (With Photo/PDF) ============
+// ============ CHAT SCREEN ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -1362,7 +1476,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF667EEA),
+        backgroundColor: const Color(0xFF25D366),
         iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           children: [
@@ -1372,7 +1486,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 widget.receiverName.isNotEmpty
                     ? widget.receiverName[0].toUpperCase()
                     : '?',
-                style: const TextStyle(color: Color(0xFF667EEA)),
+                style: const TextStyle(color: Color(0xFF25D366)),
               ),
             ),
             const SizedBox(width: 10),
