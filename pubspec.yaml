@@ -17,7 +17,6 @@ dependencies:
   flutter_webrtc: ^1.6.2+hotfix.3
   intl: ^0.20.3
   uuid: ^4.6.0
-  flutter_contacts: ^1.1.9+2
 
 dev_dependencies:
   flutter_test:
