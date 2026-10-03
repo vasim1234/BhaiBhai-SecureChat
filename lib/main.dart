@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +33,6 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          // Check karein ki user ka username set hai ya nahi
           return FutureBuilder<DocumentSnapshot>(
             future: FirebaseFirestore.instance
                 .collection('users')
@@ -47,10 +47,8 @@ class AuthWrapper extends StatelessWidget {
               if (userSnapshot.hasData &&
                   userSnapshot.data!.exists &&
                   userSnapshot.data!['username'] != null) {
-                // Username set hai, HomeScreen par bhejein
                 return const HomeScreen();
               }
-              // Username set nahi hai, SetUsernameScreen par bhejein
               return SetUsernameScreen(
                 uid: snapshot.data!.uid,
                 email: snapshot.data!.email ?? '',
@@ -64,7 +62,7 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
-// ============ LOGIN / SIGNUP SCREEN ============
+// ============ LOGIN SCREEN ============
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -89,37 +87,36 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       if (_isLogin) {
-        // Login
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
       } else {
-        // Signup
         UserCredential credential =
             await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        // Signup ke baad username set karne ki screen par bhejein
         if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  SetUsernameScreen(uid: credential.user!.uid, email: credential.user!.email!),
+              builder: (context) => SetUsernameScreen(
+                uid: credential.user!.uid,
+                email: credential.user!.email!,
+              ),
             ),
           );
         }
       }
     } on FirebaseAuthException catch (e) {
-      String message = 'Error aaya';
-      if (e.code == 'user-not-found') message = 'Ye email registered nahi hai';
-      if (e.code == 'wrong-password') message = 'Password galat hai';
-      if (e.code == 'email-already-in-use') message = 'Ye email pehle se registered hai';
-      if (e.code == 'weak-password') message = 'Password kam se kam 6 characters ka hona chahiye';
-      if (e.code == 'invalid-email') message = 'Email sahi nahi hai';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.code} - ${e.message}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unexpected Error: $e')),
+      );
     }
     setState(() => _isLoading = false);
   }
@@ -217,46 +214,51 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
 
     setState(() => _isLoading = true);
 
-    // Check karein ki username pehle se exist karta hai ya nahi
-    QuerySnapshot existing = await FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isEqualTo: username)
-        .get();
+    try {
+      QuerySnapshot existing = await FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
 
-    if (existing.docs.isNotEmpty) {
+      if (existing.docs.isNotEmpty) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ye username pehle se le liya gaya hai')),
+        );
+        return;
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
+        'uid': widget.uid,
+        'email': widget.email,
+        'username': username,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ye username pehle se le liya gaya hai')),
-      );
-      return;
-    }
-
-    // User data save karein
-    await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
-      'uid': widget.uid,
-      'email': widget.email,
-      'username': username,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        SnackBar(content: Text('Error: $e')),
       );
     }
-    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Set Username')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 80),
             const Text(
               'Apna unique username set karein',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -322,22 +324,124 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ============ CHATS LIST ============
+// ============ CHATS LIST SCREEN (NEW!) ============
 class ChatsListScreen extends StatelessWidget {
   const ChatsListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Bhai Bhai Chats')),
-      body: const Center(
-        child: Text('Abhi koi chat nahi hai.\nSearch tab se user dhundhein!'),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('chats')
+            .where('chatId', isGreaterThanOrEqualTo: '${currentUserId}_')
+            .where('chatId', isLessThanOrEqualTo: '${currentUserId}_\uf8ff')
+            .orderBy('chatId')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // Get unique chat IDs (last message per chat)
+          Map<String, Map<String, dynamic>> chats = {};
+          for (var doc in snapshot.data!.docs) {
+            var data = doc.data() as Map<String, dynamic>;
+            String chatId = data['chatId'] ?? '';
+            if (chatId.contains(currentUserId)) {
+              if (!chats.containsKey(chatId) ||
+                  (data['timestamp'] != null &&
+                      (chats[chatId]!['timestamp'] == null ||
+                          data['timestamp']
+                              .compareTo(chats[chatId]!['timestamp']) > 0))) {
+                chats[chatId] = data;
+              }
+            }
+          }
+
+          if (chats.isEmpty) {
+            return const Center(
+              child: Text('Abhi koi chat nahi hai.\nSearch tab se user dhundhein!'),
+            );
+          }
+
+          List<Map<String, dynamic>> chatList = chats.values.toList();
+          chatList.sort((a, b) {
+            Timestamp? ta = a['timestamp'];
+            Timestamp? tb = b['timestamp'];
+            if (ta == null || tb == null) return 0;
+            return tb.compareTo(ta);
+          });
+
+          return ListView.builder(
+            itemCount: chatList.length,
+            itemBuilder: (context, index) {
+              var chat = chatList[index];
+              String otherUserId = chat['senderId'] == currentUserId
+                  ? chat['receiverId']
+                  : chat['senderId'];
+              String lastMessage = chat['message'] ?? '';
+              Timestamp? timestamp = chat['timestamp'];
+
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(otherUserId)
+                    .get(),
+                builder: (context, userSnapshot) {
+                  String username = 'User';
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    username = userSnapshot.data!['username'] ?? 'User';
+                  }
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      child: Text(username.isNotEmpty
+                          ? username[0].toUpperCase()
+                          : '?'),
+                    ),
+                    title: Text(username),
+                    subtitle: Text(
+                      lastMessage,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: timestamp != null
+                        ? Text(
+                            DateFormat('hh:mm a')
+                                .format(timestamp.toDate()),
+                            style: const TextStyle(fontSize: 12),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            receiverUid: otherUserId,
+                            receiverName: username,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
 
-// ============ SEARCH USER ============
+// ============ SEARCH USER SCREEN ============
 class SearchUserScreen extends StatefulWidget {
   const SearchUserScreen({super.key});
   @override
@@ -435,7 +539,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE ============
+// ============ PROFILE SCREEN ============
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -549,14 +653,12 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: _getMessages(),
               builder: (context, snapshot) {
-  if (snapshot.hasError) {
-    return Center(
-      child: Text('Error: ${snapshot.error}'),
-    );
-  }
-  if (!snapshot.hasData) {
-    return const Center(child: CircularProgressIndicator());
-  }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
                 var docs = snapshot.data!.docs.where((doc) {
                   var data = doc.data() as Map<String, dynamic>;
