@@ -468,14 +468,90 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ============ CHATS LIST SCREEN (With Pin & Block Support) ============
-class ChatsListScreen extends StatelessWidget {
+// ============ CHATS LIST SCREEN (With Pin Support) ============
+class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  State<ChatsListScreen> createState() => _ChatsListScreenState();
+}
 
+class _ChatsListScreenState extends State<ChatsListScreen> {
+  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  List<String> _pinnedChats = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPinnedChats();
+  }
+
+  Future<void> _loadPinnedChats() async {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .get();
+    if (userDoc.exists && userDoc['pinnedChats'] != null) {
+      setState(() {
+        _pinnedChats = List<String>.from(userDoc['pinnedChats']);
+      });
+    }
+  }
+
+  Future<void> _togglePin(String chatId) async {
+    if (_pinnedChats.contains(chatId)) {
+      _pinnedChats.remove(chatId);
+    } else {
+      _pinnedChats.add(chatId);
+    }
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .update({'pinnedChats': _pinnedChats});
+    setState(() {});
+  }
+
+  void _showChatOptions(String chatId, String otherUserId, String username) {
+    bool isPinned = _pinnedChats.contains(chatId);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                    color: const Color(0xFF667EEA)),
+                title: Text(isPinned ? 'Unpin Chat' : 'Pin Chat'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _togglePin(chatId);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -488,12 +564,15 @@ class ChatsListScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.camera_alt_outlined),
-            onPressed: () {},
+            icon: const Icon(Icons.group_add),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateGroupScreen(),
+                ),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
@@ -605,6 +684,12 @@ class ChatsListScreen extends StatelessWidget {
 
           List<Map<String, dynamic>> chatList = chats.values.toList();
           chatList.sort((a, b) {
+            String aId = a['chatId'];
+            String bId = b['chatId'];
+            bool aPin = _pinnedChats.contains(aId);
+            bool bPin = _pinnedChats.contains(bId);
+            if (aPin && !bPin) return -1;
+            if (!aPin && bPin) return 1;
             Timestamp? ta = a['timestamp'];
             Timestamp? tb = b['timestamp'];
             if (ta == null || tb == null) return 0;
@@ -616,11 +701,13 @@ class ChatsListScreen extends StatelessWidget {
             itemCount: chatList.length,
             itemBuilder: (context, index) {
               var chat = chatList[index];
+              String chatId = chat['chatId'];
               String otherUserId = chat['senderId'] == currentUserId
                   ? chat['receiverId']
                   : chat['senderId'];
               String lastMessage = chat['message'] ?? '';
               Timestamp? timestamp = chat['timestamp'];
+              bool isPinned = _pinnedChats.contains(chatId);
 
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
@@ -633,56 +720,69 @@ class ChatsListScreen extends StatelessWidget {
                     username = userSnapshot.data!['username'] ?? 'User';
                   }
 
-                  return Card(
-                    elevation: 0,
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 15, vertical: 5),
-                      leading: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: const Color(0xFF667EEA),
-                        child: Text(
-                          username.isNotEmpty ? username[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  return GestureDetector(
+                    onLongPress: () =>
+                        _showChatOptions(chatId, otherUserId, username),
+                    child: Card(
+                      elevation: 0,
+                      margin:
+                          const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
                       ),
-                      title: Text(
-                        username,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        lastMessage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      trailing: timestamp != null
-                          ? Text(
-                              DateFormat('hh:mm a').format(timestamp.toDate()),
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
-                            )
-                          : null,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                              receiverUid: otherUserId,
-                              receiverName: username,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 15, vertical: 5),
+                        leading: CircleAvatar(
+                          radius: 25,
+                          backgroundColor: const Color(0xFF667EEA),
+                          child: Text(
+                            username.isNotEmpty ? username[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                username,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            if (isPinned)
+                              const Icon(Icons.push_pin,
+                                  size: 16, color: Color(0xFF667EEA)),
+                          ],
+                        ),
+                        subtitle: Text(
+                          lastMessage,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        trailing: timestamp != null
+                            ? Text(
+                                DateFormat('hh:mm a').format(timestamp.toDate()),
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.grey),
+                              )
+                            : null,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(
+                                receiverUid: otherUserId,
+                                receiverName: username,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   );
                 },
@@ -723,6 +823,534 @@ class ChatsListScreen extends StatelessWidget {
           color: isSelected ? const Color(0xFF667EEA) : Colors.grey[700],
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
+      ),
+    );
+  }
+}
+
+// ============ CREATE GROUP SCREEN ============
+class CreateGroupScreen extends StatefulWidget {
+  const CreateGroupScreen({super.key});
+
+  @override
+  State<CreateGroupScreen> createState() => _CreateGroupScreenState();
+}
+
+class _CreateGroupScreenState extends State<CreateGroupScreen> {
+  final TextEditingController _groupNameController = TextEditingController();
+  List<Map<String, dynamic>> _allUsers = [];
+  List<String> _selectedUsers = [];
+  bool _isLoading = true;
+  bool _isCreating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('users').get();
+    setState(() {
+      _allUsers = snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .where((user) =>
+              user['uid'] != FirebaseAuth.instance.currentUser!.uid)
+          .toList();
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _createGroup() async {
+    if (_groupNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Group ka naam likhein')),
+      );
+      return;
+    }
+    if (_selectedUsers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kam se kam ek member select karein')),
+      );
+      return;
+    }
+
+    setState(() => _isCreating = true);
+
+    try {
+      String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+      List<String> members = [currentUserId, ..._selectedUsers];
+
+      DocumentReference groupRef =
+          await FirebaseFirestore.instance.collection('groups').add({
+        'name': _groupNameController.text.trim(),
+        'members': members,
+        'createdBy': currentUserId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group ban gaya!')),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GroupChatScreen(
+              groupId: groupRef.id,
+              groupName: _groupNameController.text.trim(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+
+    setState(() => _isCreating = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Group'),
+        actions: [
+          TextButton(
+            onPressed: _isCreating ? null : _createGroup,
+            child: _isCreating
+                ? const CircularProgressIndicator()
+                : const Text('Create',
+                    style: TextStyle(
+                        color: Color(0xFF667EEA), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    controller: _groupNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Group ka naam',
+                      prefixIcon: const Icon(Icons.group),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Members select karein:',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _allUsers.length,
+                    itemBuilder: (context, index) {
+                      final user = _allUsers[index];
+                      String uid = user['uid'];
+                      bool isSelected = _selectedUsers.contains(uid);
+                      return CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _selectedUsers.add(uid);
+                            } else {
+                              _selectedUsers.remove(uid);
+                            }
+                          });
+                        },
+                        secondary: CircleAvatar(
+                          backgroundColor: const Color(0xFF667EEA),
+                          child: Text(
+                            (user['username'] ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        title: Text(user['username'] ?? 'Unknown',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(user['email'] ?? ''),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+// ============ GROUP CHAT SCREEN ============
+class GroupChatScreen extends StatefulWidget {
+  final String groupId;
+  final String groupName;
+
+  const GroupChatScreen({
+    super.key,
+    required this.groupId,
+    required this.groupName,
+  });
+
+  @override
+  State<GroupChatScreen> createState() => _GroupChatScreenState();
+}
+
+class _GroupChatScreenState extends State<GroupChatScreen> {
+  final TextEditingController _msgController = TextEditingController();
+  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  bool _isUploading = false;
+
+  Future<void> _sendMessage({String? imageUrl, String? fileName, String? fileUrl}) async {
+    if (_msgController.text.trim().isEmpty &&
+        imageUrl == null &&
+        fileUrl == null) return;
+
+    DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+
+    await FirebaseFirestore.instance.collection('group_messages').add({
+      'groupId': widget.groupId,
+      'senderId': currentUserId,
+      'message': _msgController.text.trim(),
+      'imageUrl': imageUrl,
+      'fileUrl': fileUrl,
+      'fileName': fileName,
+      'timestamp': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(expiryTime),
+    });
+
+    _msgController.clear();
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+    setState(() => _isUploading = true);
+    try {
+      final dir = await getTemporaryDirectory();
+      final targetPath =
+          '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 40,
+        minWidth: 800,
+        minHeight: 800,
+      );
+      if (compressedFile == null) {
+        setState(() => _isUploading = false);
+        return;
+      }
+      String fileName =
+          'group_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(File(compressedFile.path));
+      String downloadUrl = await ref.getDownloadURL();
+      await _sendMessage(imageUrl: downloadUrl);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _isUploading = false);
+  }
+
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result == null) return;
+    setState(() => _isUploading = true);
+    try {
+      PlatformFile file = result.files.first;
+      String fileName =
+          'group_files/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      Reference ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(File(file.path!));
+      String downloadUrl = await ref.getDownloadURL();
+      await _sendMessage(fileUrl: downloadUrl, fileName: file.name);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    setState(() => _isUploading = false);
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.green,
+                  child: Icon(Icons.photo, color: Colors.white),
+                ),
+                title: const Text('Photo Bhejein'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.red,
+                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
+                ),
+                title: const Text('PDF/File Bhejein'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFile();
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF667EEA),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.group, color: Color(0xFF667EEA)),
+            ),
+            const SizedBox(width: 10),
+            Text(widget.groupName,
+                style: const TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          if (_isUploading) const LinearProgressIndicator(),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('group_messages')
+                  .where('groupId', isEqualTo: widget.groupId)
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                var docs = snapshot.data!.docs.where((doc) {
+                  var data = doc.data() as Map<String, dynamic>;
+                  Timestamp expiresAt = data['expiresAt'];
+                  return expiresAt.toDate().isAfter(DateTime.now());
+                }).toList();
+
+                if (docs.isEmpty) {
+                  return const Center(child: Text('Group mein message bhejein!'));
+                }
+
+                return ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.all(10),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    var data = docs[index].data() as Map<String, dynamic>;
+                    bool isMe = data['senderId'] == currentUserId;
+                    String? imageUrl = data['imageUrl'];
+                    String? fileUrl = data['fileUrl'];
+                    String? fileName = data['fileName'];
+
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(data['senderId'])
+                          .get(),
+                      builder: (context, userSnap) {
+                        String senderName = 'User';
+                        if (userSnap.hasData && userSnap.data!.exists) {
+                          senderName = userSnap.data!['username'] ?? 'User';
+                        }
+                        return Align(
+                          alignment: isMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 4, horizontal: 8),
+                            padding: const EdgeInsets.all(12),
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: isMe
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFF667EEA),
+                                        Color(0xFF764BA2)
+                                      ],
+                                    )
+                                  : null,
+                              color: isMe ? null : Colors.white,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(15),
+                                topRight: const Radius.circular(15),
+                                bottomLeft: Radius.circular(isMe ? 15 : 0),
+                                bottomRight: Radius.circular(isMe ? 0 : 15),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (!isMe)
+                                  Text(
+                                    senderName,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF667EEA),
+                                    ),
+                                  ),
+                                if (imageUrl != null)
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(imageUrl,
+                                        width: 200, fit: BoxFit.cover),
+                                  ),
+                                if (fileUrl != null)
+                                  Row(
+                                    children: [
+                                      Icon(Icons.picture_as_pdf,
+                                          color: isMe
+                                              ? Colors.white
+                                              : Colors.red),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          fileName ?? 'File',
+                                          style: TextStyle(
+                                            color: isMe
+                                                ? Colors.white
+                                                : Colors.black87,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                if (data['message'] != null &&
+                                    (data['message'] as String).isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 5),
+                                    child: Text(
+                                      data['message'],
+                                      style: TextStyle(
+                                        color: isMe
+                                            ? Colors.white
+                                            : Colors.black87,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Auto-delete in 24h',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color:
+                                        isMe ? Colors.white70 : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            color: Colors.white,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
+                  onPressed: _isUploading ? null : _showAttachmentOptions,
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _msgController,
+                    decoration: InputDecoration(
+                      hintText: 'Message likhein...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      filled: true,
+                      fillColor: const Color(0xFFF5F7FB),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                    ),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white),
+                    onPressed: () => _sendMessage(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1312,7 +1940,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isUploading = false;
   bool _isBlocked = false;
   bool _isBlockedByOther = false;
-  bool _isLoadingBlock = true;
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -1327,42 +1954,30 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _checkBlockStatus() async {
-    try {
-      // Check if I blocked them
-      DocumentSnapshot myBlock = await FirebaseFirestore.instance
-          .collection('blocked')
-          .doc('${currentUserId}_${widget.receiverUid}')
-          .get();
-
-      // Check if they blocked me
-      DocumentSnapshot otherBlock = await FirebaseFirestore.instance
-          .collection('blocked')
-          .doc('${widget.receiverUid}_$currentUserId')
-          .get();
-
-      setState(() {
-        _isBlocked = myBlock.exists;
-        _isBlockedByOther = otherBlock.exists;
-        _isLoadingBlock = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingBlock = false);
-    }
+    DocumentSnapshot myBlock = await FirebaseFirestore.instance
+        .collection('blocked')
+        .doc('${currentUserId}_${widget.receiverUid}')
+        .get();
+    DocumentSnapshot otherBlock = await FirebaseFirestore.instance
+        .collection('blocked')
+        .doc('${widget.receiverUid}_$currentUserId')
+        .get();
+    setState(() {
+      _isBlocked = myBlock.exists;
+      _isBlockedByOther = otherBlock.exists;
+    });
   }
 
   Future<void> _toggleBlock() async {
     if (_isBlocked) {
-      // Unblock
       await FirebaseFirestore.instance
           .collection('blocked')
           .doc('${currentUserId}_${widget.receiverUid}')
           .delete();
       setState(() => _isBlocked = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User unblocked')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('User unblocked')));
     } else {
-      // Block
       await FirebaseFirestore.instance
           .collection('blocked')
           .doc('${currentUserId}_${widget.receiverUid}')
@@ -1372,9 +1987,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'timestamp': FieldValue.serverTimestamp(),
       });
       setState(() => _isBlocked = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User blocked')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('User blocked')));
     }
   }
 
@@ -1382,11 +1996,10 @@ class _ChatScreenState extends State<ChatScreen> {
       {String? imageUrl, String? fileName, String? fileUrl}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aapne is user ko block kiya hai. Pehle unblock karein.')),
+        const SnackBar(content: Text('Aapne is user ko block kiya hai')),
       );
       return;
     }
-
     if (_msgController.text.trim().isEmpty &&
         imageUrl == null &&
         fileUrl == null) return;
@@ -1423,12 +2036,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _editMessage(String docId, String oldMessage) async {
     TextEditingController editController =
         TextEditingController(text: oldMessage);
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Edit Message'),
           content: TextField(
             controller: editController,
@@ -1512,16 +2125,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
     if (image == null) return;
-
     setState(() => _isUploading = true);
-
     try {
       final dir = await getTemporaryDirectory();
       final targetPath =
           '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
@@ -1529,35 +2138,27 @@ class _ChatScreenState extends State<ChatScreen> {
         minWidth: 800,
         minHeight: 800,
       );
-
       if (compressedFile == null) {
         setState(() => _isUploading = false);
         return;
       }
-
       String fileName =
           'chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference ref = FirebaseStorage.instance.ref().child(fileName);
       await ref.putFile(File(compressedFile.path));
       String downloadUrl = await ref.getDownloadURL();
-
       await _sendMessage(imageUrl: downloadUrl);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
-
     setState(() => _isUploading = false);
   }
 
   Future<void> _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
-
     if (result == null) return;
-
     setState(() => _isUploading = true);
-
     try {
       PlatformFile file = result.files.first;
       String fileName =
@@ -1565,14 +2166,11 @@ class _ChatScreenState extends State<ChatScreen> {
       Reference ref = FirebaseStorage.instance.ref().child(fileName);
       await ref.putFile(File(file.path!));
       String downloadUrl = await ref.getDownloadURL();
-
       await _sendMessage(fileUrl: downloadUrl, fileName: file.name);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
-
     setState(() => _isUploading = false);
   }
 
@@ -1670,9 +2268,7 @@ class _ChatScreenState extends State<ChatScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
-              if (value == 'block') {
-                _toggleBlock();
-              }
+              if (value == 'block') _toggleBlock();
             },
             itemBuilder: (context) => [
               PopupMenuItem(
@@ -1806,11 +2402,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               if (imageUrl != null && !isDeleted)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
-                                    imageUrl,
-                                    width: 200,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: Image.network(imageUrl,
+                                      width: 200, fit: BoxFit.cover),
                                 ),
                               if (fileUrl != null && !isDeleted)
                                 Row(
@@ -1893,8 +2486,9 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
-                  onPressed:
-                      (_isUploading || _isBlocked) ? null : _showAttachmentOptions,
+                  onPressed: (_isUploading || _isBlocked)
+                      ? null
+                      : _showAttachmentOptions,
                 ),
                 Expanded(
                   child: TextField(
