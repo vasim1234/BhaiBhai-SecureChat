@@ -750,7 +750,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN ============
+// ============ PROFILE SCREEN (Professional Design) ============
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -758,69 +758,426 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+      backgroundColor: const Color(0xFFF5F7FB),
+      appBar: AppBar(
+        title: const Text('My Profile'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: FutureBuilder<DocumentSnapshot>(
-        future:
-            FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
+        future: FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
         builder: (context, snapshot) {
           String username = 'Loading...';
+          String memberSince = 'Oct 2026';
           if (snapshot.hasData && snapshot.data!.exists) {
             username = snapshot.data!['username'] ?? 'Not set';
+            if (snapshot.data!['createdAt'] != null) {
+              Timestamp ts = snapshot.data!['createdAt'];
+              memberSince = DateFormat('MMM yyyy').format(ts.toDate());
+            }
           }
-          return Center(
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // === PROFILE CARD ===
                 Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 55,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      username.isNotEmpty ? username[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF667EEA),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
                       ),
-                    ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Avatar with green tick
+                      Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              radius: 45,
+                              backgroundColor: Colors.white,
+                              child: Text(
+                                username.isNotEmpty ? username[0].toUpperCase() : '?',
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF667EEA),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      Text(
+                        username,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.email_outlined, size: 16, color: Colors.grey),
+                          const SizedBox(width: 5),
+                          Text(
+                            user.email ?? 'No Email',
+                            style: const TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      // Online badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Online',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      // My QR + Logout Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                _showQRDialog(context, username);
+                              },
+                              icon: const Icon(Icons.qr_code, color: Color(0xFF667EEA)),
+                              label: const Text('My QR',
+                                  style: TextStyle(color: Color(0xFF667EEA))),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                side: const BorderSide(color: Color(0xFF667EEA)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => FirebaseAuth.instance.signOut(),
+                              icon: const Icon(Icons.logout, color: Colors.white),
+                              label: const Text('Logout',
+                                  style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                // === STATS ROW ===
+                Row(
+                  children: [
+                    _buildStatCard(Icons.people, '0', 'Contacts', Colors.blue),
+                    const SizedBox(width: 10),
+                    _buildStatCard(Icons.chat_bubble, '0', 'Chats', Colors.purple),
+                    const SizedBox(width: 10),
+                    _buildStatCard(Icons.lock, '0', 'Blocked', Colors.red),
+                  ],
+                ),
+                const SizedBox(height: 15),
+
+                // === ACCOUNT SETTINGS ===
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.settings, color: Colors.grey),
+                          SizedBox(width: 10),
+                          Text(
+                            'Account Settings',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      _buildSettingRow('User ID',
+                          '${user.uid.substring(0, 12)}...', Colors.grey),
+                      const Divider(),
+                      _buildSettingRow('Account Status', 'Active', Colors.green),
+                      const Divider(),
+                      _buildSettingRow('Member Since', memberSince, Colors.grey),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                // === PRIVACY & SECURITY ===
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.shield, color: Colors.green),
+                          SizedBox(width: 10),
+                          Text(
+                            'Privacy & Security',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      _buildSettingRowWithIcon(
+                        Icons.lock_outline,
+                        'End-to-end Encryption',
+                        'Active',
+                        Colors.green,
+                      ),
+                      const Divider(),
+                      _buildSettingRowWithIcon(
+                        Icons.qr_code,
+                        'QR Code',
+                        'Active',
+                        Colors.green,
+                      ),
+                      const Divider(),
+                      _buildSettingRowWithIcon(
+                        Icons.security,
+                        'Two-Factor Auth',
+                        'Enable',
+                        const Color(0xFF667EEA),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text('@$username',
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 5),
-                Text(user.email ?? 'No Email',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: 200,
-                  child: ElevatedButton.icon(
-                    onPressed: () => FirebaseAuth.instance.signOut(),
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Logout'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+
+                // === FOOTER ===
+                const Text(
+                  'Bhai Bhai App v1.0.0 • Secure Community',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  // Helper widget - Stat card
+  Widget _buildStatCard(IconData icon, String count, String label, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              count,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper widget - Setting row
+  Widget _buildSettingRow(String label, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper widget - Setting row with icon
+  Widget _buildSettingRowWithIcon(
+      IconData icon, String label, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label,
+                style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // QR Code Dialog
+  void _showQRDialog(BuildContext context, String username) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Your QR Code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: const Icon(Icons.qr_code_2, size: 150, color: Color(0xFF667EEA)),
+              ),
+              const SizedBox(height: 15),
+              Text('@$username',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 5),
+              const Text('Scan to connect',
+                  style: TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
