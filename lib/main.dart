@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'friend_request.dart';
+import 'user_profile.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
