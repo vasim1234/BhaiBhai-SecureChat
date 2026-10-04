@@ -2378,22 +2378,37 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF667EEA),
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-                widget.receiverName.isNotEmpty
-                    ? widget.receiverName[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(color: Color(0xFF667EEA)),
+        // ============ NAYA CODE YAHAN HAI ============
+        title: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfileScreen(
+                  userId: widget.receiverUid,
+                  username: widget.receiverName,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(widget.receiverName,
-                style: const TextStyle(color: Colors.white)),
-          ],
+            );
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Text(
+                  widget.receiverName.isNotEmpty
+                      ? widget.receiverName[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(color: Color(0xFF667EEA)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(widget.receiverName,
+                  style: const TextStyle(color: Colors.white)),
+            ],
+          ),
         ),
+        // ============ NAYA CODE KHATAM ============
         actions: [
           IconButton(
             icon: const Icon(Icons.call),
