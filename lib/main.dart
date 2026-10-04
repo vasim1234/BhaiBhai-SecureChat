@@ -419,14 +419,15 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   }
 }
 
-// ============ HOME SCREEN (4 Tabs) ============
+// ============ HOME SCREEN (With Online Status) ============
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
@@ -435,6 +436,37 @@ class _HomeScreenState extends State<HomeScreen> {
     const CommunitiesScreen(),
     const CallsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _setOnlineStatus(true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _setOnlineStatus(false);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _setOnlineStatus(true);
+    } else {
+      _setOnlineStatus(false);
+    }
+  }
+
+  Future<void> _setOnlineStatus(bool isOnline) async {
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'isOnline': isOnline,
+      'lastSeen': FieldValue.serverTimestamp(),
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2201,7 +2233,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN (With Read Receipts + Reply + Image Cache) ============
+// ============ CHAT SCREEN (With Typing Indicator) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2226,8 +2258,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingFriends = true;
   String? _receiverAvatarUrl;
   Map<String, dynamic>? _replyToData;
-  
-  // Image cache (flicker fix)
+  bool _isReceiverTyping = false;
+  bool _isReceiverOnline = false;
+
   final Map<String, Uint8List> _imageCache = {};
 
   String get chatId {
@@ -2243,8 +2276,57 @@ class _ChatScreenState extends State<ChatScreen> {
     _checkFriendStatus();
     _loadReceiverAvatar();
     _markMessagesAsRead();
+    _listenToTypingStatus();
+    _listenToOnlineStatus();
   }
 
+  @override
+  void dispose() {
+    _setTypingStatus(false);
+    super.dispose();
+  }
+
+  // ============ TYPING INDICATOR ============
+  void _listenToTypingStatus() {
+    FirebaseFirestore.instance
+        .collection('typing')
+        .doc(chatId)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        bool isTyping = data[widget.receiverUid] ?? false;
+        if (mounted) {
+          setState(() => _isReceiverTyping = isTyping);
+        }
+      }
+    });
+  }
+
+  Future<void> _setTypingStatus(bool isTyping) async {
+    await FirebaseFirestore.instance
+        .collection('typing')
+        .doc(chatId)
+        .set({currentUserId: isTyping}, SetOptions(merge: true));
+  }
+
+  // ============ ONLINE STATUS ============
+  void _listenToOnlineStatus() {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.receiverUid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        bool isOnline = snapshot.data()!['isOnline'] ?? false;
+        if (mounted) {
+          setState(() => _isReceiverOnline = isOnline);
+        }
+      }
+    });
+  }
+
+  // ============ BAQI FUNCTIONS ============
   Future<void> _markMessagesAsRead() async {
     await Future.delayed(const Duration(seconds: 1));
 
@@ -2320,7 +2402,8 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage({String? imageBase64, Map<String, dynamic>? replyTo}) async {
+  Future<void> _sendMessage(
+      {String? imageBase64, Map<String, dynamic>? replyTo}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aapne is user ko block kiya hai')),
@@ -2356,6 +2439,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _msgController.clear();
+    _setTypingStatus(false);
   }
 
   Future<void> _deleteMessage(String docId) async {
@@ -2563,7 +2647,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // Image cache widget
   Widget _buildCachedImage(String base64String) {
     if (_imageCache.containsKey(base64String)) {
       return Image.memory(
@@ -2620,14 +2703,56 @@ class _ChatScreenState extends State<ChatScreen> {
           },
           child: Row(
             children: [
-              AvatarWidget(
-                avatarUrl: _receiverAvatarUrl,
-                username: widget.receiverName,
-                size: 40,
+              Stack(
+                children: [
+                  AvatarWidget(
+                    avatarUrl: _receiverAvatarUrl,
+                    username: widget.receiverName,
+                    size: 40,
+                  ),
+                  // Online status dot
+                  if (_isReceiverOnline)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 10),
-              Text(widget.receiverName,
-                  style: const TextStyle(color: Colors.white)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(widget.receiverName,
+                      style: const TextStyle(color: Colors.white, fontSize: 16)),
+                  if (_isReceiverTyping)
+                    const Text(
+                      'typing...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
+                  else if (_isReceiverOnline)
+                    const Text(
+                      'Online',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -2789,7 +2914,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Reply Preview
                               if (replyTo != null)
                                 Container(
                                   padding: const EdgeInsets.all(8),
@@ -2836,13 +2960,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ],
                                   ),
                                 ),
-                              // Image (cached)
                               if (imageBase64 != null && !isDeleted)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: _buildCachedImage(imageBase64),
                                 ),
-                              // Message
                               if (data['message'] != null &&
                                   (data['message'] as String).isNotEmpty)
                                 Padding(
@@ -2863,7 +2985,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                 ),
                               const SizedBox(height: 4),
-                              // Time + Edited + Read Receipt
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -2914,7 +3035,6 @@ class _ChatScreenState extends State<ChatScreen> {
             color: Colors.white,
             child: Column(
               children: [
-                // Reply Preview Input
                 if (_replyToData != null)
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -2975,6 +3095,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: TextField(
                         controller: _msgController,
                         enabled: !_isBlocked && _areFriends,
+                        onChanged: (value) {
+                          _setTypingStatus(value.isNotEmpty);
+                        },
                         decoration: InputDecoration(
                           hintText: _isBlocked
                               ? 'Aapne is user ko block kiya hai'
