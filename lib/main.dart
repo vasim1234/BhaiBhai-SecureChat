@@ -12,6 +12,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'friend_request.dart';
 import 'user_profile.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'avatar_builder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1485,9 +1487,51 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN (With Friend Requests Button) ============
-class ProfileScreen extends StatelessWidget {
+// ============ PROFILE SCREEN (With Avatar Builder) ============
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _avatarUrl;
+  bool _isLoadingAvatar = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    if (doc.exists && doc['avatarUrl'] != null) {
+      setState(() {
+        _avatarUrl = doc['avatarUrl'];
+        _isLoadingAvatar = false;
+      });
+    } else {
+      setState(() => _isLoadingAvatar = false);
+    }
+  }
+
+  Future<void> _openAvatarBuilder() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AvatarBuilderScreen(),
+      ),
+    );
+    if (result != null) {
+      setState(() => _avatarUrl = result);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1500,7 +1544,10 @@ class ProfileScreen extends StatelessWidget {
         elevation: 0,
       ),
       body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('users').doc(user!.uid).get(),
+        future: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .get(),
         builder: (context, snapshot) {
           String username = 'Loading...';
           String memberSince = 'Oct 2026';
@@ -1516,6 +1563,7 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                // === PROFILE CARD ===
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -1531,46 +1579,61 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                      // Avatar with camera icon
+                      GestureDetector(
+                        onTap: _openAvatarBuilder,
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2)
+                                  ],
+                                ),
                               ),
+                              child: _isLoadingAvatar
+                                  ? const CircleAvatar(
+                                      radius: 45,
+                                      backgroundColor: Colors.white,
+                                      child: CircularProgressIndicator(),
+                                    )
+                                  : _avatarUrl != null
+                                      ? ClipOval(
+                                          child: SizedBox(
+                                            width: 90,
+                                            height: 90,
+                                            child: SvgPicture.network(
+                                              _avatarUrl!,
+                                              fit: BoxFit.cover,
+                                              placeholderBuilder: (context) =>
+                                                  _defaultAvatar(username),
+                                            ),
+                                          ),
+                                        )
+                                      : _defaultAvatar(username),
                             ),
-                            child: CircleAvatar(
-                              radius: 45,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                username.isNotEmpty ? username[0].toUpperCase() : '?',
-                                style: const TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: const BoxDecoration(
                                   color: Color(0xFF667EEA),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 16,
                                 ),
                               ),
                             ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 15),
                       Text(
@@ -1584,17 +1647,20 @@ class ProfileScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.email_outlined, size: 16, color: Colors.grey),
+                          const Icon(Icons.email_outlined,
+                              size: 16, color: Colors.grey),
                           const SizedBox(width: 5),
                           Text(
                             user.email ?? 'No Email',
-                            style: const TextStyle(color: Colors.grey, fontSize: 14),
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 14),
                           ),
                         ],
                       ),
                       const SizedBox(height: 15),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15, vertical: 5),
                         decoration: BoxDecoration(
                           color: Colors.green.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -1629,12 +1695,16 @@ class ProfileScreen extends StatelessWidget {
                               onPressed: () {
                                 _showQRDialog(context, username, user.uid);
                               },
-                              icon: const Icon(Icons.qr_code, color: Color(0xFF667EEA)),
+                              icon: const Icon(Icons.qr_code,
+                                  color: Color(0xFF667EEA)),
                               label: const Text('My QR',
-                                  style: TextStyle(color: Color(0xFF667EEA))),
+                                  style:
+                                      TextStyle(color: Color(0xFF667EEA))),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                side: const BorderSide(color: Color(0xFF667EEA)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                side: const BorderSide(
+                                    color: Color(0xFF667EEA)),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1644,13 +1714,16 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: () => FirebaseAuth.instance.signOut(),
-                              icon: const Icon(Icons.logout, color: Colors.white),
+                              onPressed: () =>
+                                  FirebaseAuth.instance.signOut(),
+                              icon: const Icon(Icons.logout,
+                                  color: Colors.white),
                               label: const Text('Logout',
                                   style: TextStyle(color: Colors.white)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1663,69 +1736,74 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
-                // Friend Requests Button ke saath badge
-StreamBuilder<QuerySnapshot>(
-  stream: FirebaseFirestore.instance
-      .collection('friend_requests')
-      .where('receiverId', isEqualTo: user.uid)
-      .where('status', isEqualTo: 'pending')
-      .snapshots(),
-  builder: (context, reqSnap) {
-    int count = reqSnap.hasData ? reqSnap.data!.docs.length : 0;
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const FriendRequestsScreen(),
-            ),
-          );
-        },
-        icon: Stack(
-          children: [
-            const Icon(Icons.person_add),
-            if (count > 0)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    '$count',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+
+                // === FRIEND REQUESTS BUTTON WITH BADGE ===
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('friend_requests')
+                      .where('receiverId', isEqualTo: user.uid)
+                      .where('status', isEqualTo: 'pending')
+                      .snapshots(),
+                  builder: (context, reqSnap) {
+                    int count = reqSnap.hasData ? reqSnap.data!.docs.length : 0;
+                    return SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const FriendRequestsScreen(),
+                            ),
+                          );
+                        },
+                        icon: Stack(
+                          children: [
+                            const Icon(Icons.person_add),
+                            if (count > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    '$count',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        label: Text(
+                            'Friend Requests${count > 0 ? ' ($count)' : ''}'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF667EEA),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-          ],
-        ),
-        label: Text('Friend Requests${count > 0 ? ' ($count)' : ''}'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF667EEA),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  },
-),
                 const SizedBox(height: 15),
+
+                // === STATS ROW ===
                 FutureBuilder<Map<String, int>>(
                   future: _loadStats(user.uid),
                   builder: (context, statsSnapshot) {
@@ -1750,7 +1828,8 @@ StreamBuilder<QuerySnapshot>(
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const FriendsListScreen(),
+                                builder: (context) =>
+                                    const FriendsListScreen(),
                               ),
                             );
                           },
@@ -1773,7 +1852,8 @@ StreamBuilder<QuerySnapshot>(
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const BlockedUsersScreen(),
+                                builder: (context) =>
+                                    const BlockedUsersScreen(),
                               ),
                             );
                           },
@@ -1783,6 +1863,8 @@ StreamBuilder<QuerySnapshot>(
                   },
                 ),
                 const SizedBox(height: 15),
+
+                // === ACCOUNT SETTINGS ===
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1815,9 +1897,11 @@ StreamBuilder<QuerySnapshot>(
                       const SizedBox(height: 15),
                       _buildSettingRow('Username', '@$username', Colors.grey),
                       const Divider(),
-                      _buildSettingRow('Account Status', 'Active', Colors.green),
+                      _buildSettingRow(
+                          'Account Status', 'Active', Colors.green),
                       const Divider(),
-                      _buildSettingRow('Member Since', memberSince, Colors.grey),
+                      _buildSettingRow(
+                          'Member Since', memberSince, Colors.grey),
                     ],
                   ),
                 ),
@@ -1835,6 +1919,21 @@ StreamBuilder<QuerySnapshot>(
     );
   }
 
+  Widget _defaultAvatar(String username) {
+    return CircleAvatar(
+      radius: 45,
+      backgroundColor: Colors.white,
+      child: Text(
+        username.isNotEmpty ? username[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontSize: 40,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF667EEA),
+        ),
+      ),
+    );
+  }
+
   Future<Map<String, int>> _loadStats(String uid) async {
     int contacts = 0;
     int chats = 0;
@@ -1843,16 +1942,19 @@ StreamBuilder<QuerySnapshot>(
     try {
       QuerySnapshot chatsSnap = await FirebaseFirestore.instance
           .collection('chats')
-          .where('chatId', isGreaterThanOrEqualTo: '${uid}_')
-          .where('chatId', isLessThanOrEqualTo: '${uid}_\uf8ff')
+          .where('members', arrayContains: uid)
           .get();
 
       Set<String> contactIds = {};
       for (var doc in chatsSnap.docs) {
         var data = doc.data() as Map<String, dynamic>;
-        String otherId =
-            data['senderId'] == uid ? data['receiverId'] : data['senderId'];
-        contactIds.add(otherId);
+        String? chatId = data['chatId'];
+        if (chatId != null) {
+          List<String> uids = chatId.split('_');
+          for (String id in uids) {
+            if (id != uid) contactIds.add(id);
+          }
+        }
       }
       contacts = contactIds.length;
       chats = chatsSnap.docs.length;
@@ -1916,7 +2018,8 @@ StreamBuilder<QuerySnapshot>(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          Text(label,
+              style: const TextStyle(color: Colors.grey, fontSize: 14)),
           Text(
             value,
             style: TextStyle(
@@ -1935,7 +2038,8 @@ StreamBuilder<QuerySnapshot>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Your QR Code'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1956,7 +2060,8 @@ StreamBuilder<QuerySnapshot>(
               ),
               const SizedBox(height: 15),
               Text('@$username',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 5),
               const Text('Scan to connect',
                   style: TextStyle(color: Colors.grey, fontSize: 12)),
