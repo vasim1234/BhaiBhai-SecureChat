@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'friend_request.dart';
+import 'avatar_builder.dart';
 
 // ============ USER PROFILE SCREEN ============
 class UserProfileScreen extends StatefulWidget {
@@ -27,6 +28,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String _requestId = '';
   String _email = '';
   String _memberSince = 'Oct 2026';
+  String? _avatarUrl;
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (userDoc.exists) {
       _email = userDoc['email'] ?? '';
+      _avatarUrl = userDoc['avatarUrl'];
       if (userDoc['createdAt'] != null) {
         Timestamp ts = userDoc['createdAt'];
         _memberSince =
@@ -67,7 +70,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         .where('status', isEqualTo: 'pending')
         .get();
 
-    // Block status check karein
     DocumentSnapshot blockDoc = await FirebaseFirestore.instance
         .collection('blocked')
         .doc('${currentUid}_${widget.userId}')
@@ -78,6 +80,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _requestSent = sentRequests.docs.isNotEmpty;
       _requestReceived = receivedRequests.docs.isNotEmpty;
       _isBlocked = blockDoc.exists;
+      _avatarUrl = userDoc['avatarUrl'];
       if (receivedRequests.docs.isNotEmpty) {
         _requestId = receivedRequests.docs.first.id;
       }
@@ -177,19 +180,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                       ),
                     ),
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.white,
-                      child: Text(
-                        widget.username.isNotEmpty
-                            ? widget.username[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          fontSize: 45,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF667EEA),
-                        ),
-                      ),
+                    child: AvatarWidget(
+                      avatarUrl: _avatarUrl,
+                      username: widget.username,
+                      size: 100,
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -242,7 +236,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                     )
                   else ...[
-                    // Agar friend hai toh Message aur Unfriend
                     if (_isFriend) ...[
                       SizedBox(
                         width: double.infinity,
@@ -338,7 +331,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Block Button
                     SizedBox(
                       width: double.infinity,
                       child: TextButton.icon(
