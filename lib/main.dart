@@ -12,7 +12,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'friend_request.dart';
 import 'user_profile.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'avatar_builder.dart';
 
 void main() async {
