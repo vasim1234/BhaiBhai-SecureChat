@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 // ============ AVATAR BUILDER SCREEN ============
 class AvatarBuilderScreen extends StatefulWidget {
@@ -40,7 +39,7 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   }
 
   String get avatarUrl {
-    return 'https://api.dicebear.com/7.x/$_selectedStyle/svg?seed=$_selectedSeed';
+    return 'https://api.dicebear.com/7.x/$_selectedStyle/png?seed=$_selectedSeed';
   }
 
   Future<void> _saveAvatar() async {
@@ -112,14 +111,22 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: ClipOval(
-                      child: SvgPicture.network(
+                      child: Image.network(
                         avatarUrl,
                         width: 150,
                         height: 150,
                         fit: BoxFit.cover,
-                        placeholderBuilder: (context) => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(Icons.error, color: Colors.grey),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -205,11 +212,17 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                               SizedBox(
                                 width: 50,
                                 height: 50,
-                                child: SvgPicture.network(
-                                  'https://api.dicebear.com/7.x/$style/svg?seed=preview',
-                                  placeholderBuilder: (context) => const Icon(
-                                      Icons.image,
-                                      color: Colors.grey),
+                                child: Image.network(
+                                  'https://api.dicebear.com/7.x/$style/png?seed=preview',
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return const Icon(Icons.image,
+                                        color: Colors.grey);
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(Icons.image,
+                                        color: Colors.grey);
+                                  },
                                 ),
                               ),
                               const SizedBox(height: 5),
@@ -288,12 +301,18 @@ class AvatarWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       return ClipOval(
-        child: SvgPicture.network(
+        child: Image.network(
           avatarUrl!,
           width: size,
           height: size,
           fit: BoxFit.cover,
-          placeholderBuilder: (context) => _defaultAvatar(),
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return _defaultAvatar();
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return _defaultAvatar();
+          },
         ),
       );
     }
@@ -304,9 +323,9 @@ class AvatarWidget extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
         ),
       ),
