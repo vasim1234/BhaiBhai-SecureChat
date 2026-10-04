@@ -1405,7 +1405,8 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator())
                 : !_hasSearched
-                    ? const Center(child: Text('Username daal kar search karein'))
+                    ? const Center(
+                        child: Text('Username daal kar search karein'))
                     : _results.isEmpty
                         ? const Center(child: Text('Koi user nahi mila'))
                         : ListView.builder(
@@ -1423,41 +1424,49 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                     backgroundColor: const Color(0xFF667EEA),
                                     child: Text(
                                       (user['username'] ?? 'U')[0].toUpperCase(),
-                                      style: const TextStyle(color: Colors.white),
+                                      style: const TextStyle(
+                                          color: Colors.white),
                                     ),
                                   ),
-                                  title: Text(user['username'] ?? 'Unknown',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold)),
+                                  title: Text(
+                                    user['username'] ?? 'Unknown',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
                                   subtitle: Text(user['email'] ?? ''),
-                                  trailing: const Icon(Icons.person_add,
-                                      color: Color(0xFF667EEA)),
-  onTap: () async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => UserProfileScreen(
-        userId: user['uid'],
-        username: user['username'] ?? 'User',
-      ),
-    ),
-  );
+                                  trailing: const Icon(
+                                    Icons.person_add,
+                                    color: Color(0xFF667EEA),
+                                  ),
+                                  onTap: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => UserProfileScreen(
+                                          userId: user['uid'],
+                                          username:
+                                              user['username'] ?? 'User',
+                                        ),
+                                      ),
+                                    );
 
-  // Agar UserProfileScreen se "Chat" action aaya
-  if (result != null && result is Map && result['action'] == 'chat') {
-    if (context.mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChatScreen(
-            receiverUid: result['uid'],
-            receiverName: result['name'],
-          ),
-        ),
-      );
-    }
-  }
-},
+                                    // Agar UserProfileScreen se "Chat" action aaya
+                                    if (result != null &&
+                                        result is Map &&
+                                        result['action'] == 'chat') {
+                                      if (context.mounted) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ChatScreen(
+                                              receiverUid: result['uid'],
+                                              receiverName: result['name'],
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
                                 ),
                               );
                             },
