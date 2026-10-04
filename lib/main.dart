@@ -2200,7 +2200,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN ============
+// ============ CHAT SCREEN (With Read Receipts + Reply) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2224,6 +2224,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _areFriends = false;
   bool _isLoadingFriends = true;
   String? _receiverAvatarUrl;
+  Map<String, dynamic>? _replyToData;
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -2237,6 +2238,25 @@ class _ChatScreenState extends State<ChatScreen> {
     _checkBlockStatus();
     _checkFriendStatus();
     _loadReceiverAvatar();
+    _markMessagesAsRead();
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    await Future.delayed(const Duration(seconds: 1));
+
+    QuerySnapshot messages = await FirebaseFirestore.instance
+        .collection('chats')
+        .where('chatId', isEqualTo: chatId)
+        .where('receiverId', isEqualTo: currentUserId)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    for (var doc in messages.docs) {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(doc.id)
+          .update({'isRead': true});
+    }
   }
 
   Future<void> _loadReceiverAvatar() async {
@@ -2296,7 +2316,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage({String? imageBase64}) async {
+  Future<void> _sendMessage({String? imageBase64, Map<String, dynamic>? replyTo}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aapne is user ko block kiya hai')),
@@ -2323,10 +2343,12 @@ class _ChatScreenState extends State<ChatScreen> {
       'receiverId': widget.receiverUid,
       'message': _msgController.text.trim(),
       'imageBase64': imageBase64,
+      'replyTo': replyTo,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
       'isEdited': false,
       'isDeleted': false,
+      'isRead': false,
     });
 
     _msgController.clear();
@@ -2383,7 +2405,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _showMessageOptions(String docId, String message, bool isMe) {
+  void _showMessageOptions(
+      String docId, String message, bool isMe, Map<String, dynamic> data) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -2404,6 +2427,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.reply, color: Color(0xFF667EEA)),
+                title: const Text('Reply'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _replyToData = {
+                      'message': message,
+                      'senderName': isMe ? 'Aap' : widget.receiverName,
+                      'senderId': data['senderId'],
+                    };
+                  });
+                },
+              ),
               if (isMe)
                 ListTile(
                   leading: const Icon(Icons.edit, color: Colors.blue),
@@ -2471,7 +2508,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      await _sendMessage(imageBase64: base64Image);
+      await _sendMessage(imageBase64: base64Image, replyTo: _replyToData);
+      setState(() => _replyToData = null);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -2670,13 +2708,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     bool isMe = data['senderId'] == currentUserId;
                     bool isDeleted = data['isDeleted'] ?? false;
                     bool isEdited = data['isEdited'] ?? false;
+                    bool isRead = data['isRead'] ?? false;
                     String? imageBase64 = data['imageBase64'];
+                    Map<String, dynamic>? replyTo = data['replyTo'];
 
                     return GestureDetector(
                       onLongPress: isDeleted
                           ? null
                           : () => _showMessageOptions(
-                              doc.id, data['message'] ?? '', isMe),
+                              doc.id, data['message'] ?? '', isMe, data),
                       child: Align(
                         alignment:
                             isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -2716,6 +2756,54 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Reply Preview
+                              if (replyTo != null)
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  margin: const EdgeInsets.only(bottom: 5),
+                                  decoration: BoxDecoration(
+                                    color: isMe
+                                        ? Colors.white.withOpacity(0.2)
+                                        : Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: isMe
+                                            ? Colors.white
+                                            : const Color(0xFF667EEA),
+                                        width: 3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        replyTo['senderName'] ?? 'User',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isMe
+                                              ? Colors.white
+                                              : const Color(0xFF667EEA),
+                                        ),
+                                      ),
+                                      Text(
+                                        replyTo['message'] ?? '',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isMe
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              // Image
                               if (imageBase64 != null && !isDeleted)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
@@ -2725,6 +2813,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     fit: BoxFit.cover,
                                   ),
                                 ),
+                              // Message
                               if (data['message'] != null &&
                                   (data['message'] as String).isNotEmpty)
                                 Padding(
@@ -2745,6 +2834,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                 ),
                               const SizedBox(height: 4),
+                              // Time + Edited + Read Receipt
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -2767,6 +2857,17 @@ class _ChatScreenState extends State<ChatScreen> {
                                           : Colors.grey,
                                     ),
                                   ),
+                                  if (isMe && !isDeleted)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 5),
+                                      child: Icon(
+                                        isRead ? Icons.done_all : Icons.done,
+                                        size: 14,
+                                        color: isRead
+                                            ? Colors.lightBlue
+                                            : Colors.white70,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ],
@@ -2782,50 +2883,111 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             padding: const EdgeInsets.all(8.0),
             color: Colors.white,
-            child: Row(
+            child: Column(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
-                  onPressed:
-                      (_isUploading || _isBlocked) ? null : _showAttachmentOptions,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _msgController,
-                    enabled: !_isBlocked && _areFriends,
-                    decoration: InputDecoration(
-                      hintText: _isBlocked
-                          ? 'Aapne is user ko block kiya hai'
-                          : (!_areFriends
-                              ? 'Pehle friend request accept karwa lein'
-                              : 'Message likhein...'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
+                // Reply Preview Input
+                if (_replyToData != null)
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(10),
+                      border: const Border(
+                        left: BorderSide(
+                          color: Color(0xFF667EEA),
+                          width: 3,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      filled: true,
-                      fillColor: const Color(0xFFF5F7FB),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _replyToData!['senderName'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF667EEA),
+                                ),
+                              ),
+                              Text(
+                                _replyToData!['message'] ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.black54),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () {
+                            setState(() => _replyToData = null);
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: (_isBlocked || !_areFriends)
-                        ? null
-                        : const LinearGradient(
-                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.attach_file,
+                          color: Color(0xFF667EEA)),
+                      onPressed: (_isUploading || _isBlocked)
+                          ? null
+                          : _showAttachmentOptions,
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _msgController,
+                        enabled: !_isBlocked && _areFriends,
+                        decoration: InputDecoration(
+                          hintText: _isBlocked
+                              ? 'Aapne is user ko block kiya hai'
+                              : (!_areFriends
+                                  ? 'Pehle friend request accept karwa lein'
+                                  : 'Message likhein...'),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25),
                           ),
-                    color: (_isBlocked || !_areFriends) ? Colors.grey : null,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: (_isBlocked || !_areFriends)
-                        ? null
-                        : () => _sendMessage(),
-                  ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F7FB),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: (_isBlocked || !_areFriends)
+                            ? null
+                            : const LinearGradient(
+                                colors: [
+                                  Color(0xFF667EEA),
+                                  Color(0xFF764BA2)
+                                ],
+                              ),
+                        color:
+                            (_isBlocked || !_areFriends) ? Colors.grey : null,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.send, color: Colors.white),
+                        onPressed: (_isBlocked || !_areFriends)
+                            ? null
+                            : () async {
+                                await _sendMessage(replyTo: _replyToData);
+                                setState(() => _replyToData = null);
+                              },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
