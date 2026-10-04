@@ -2200,7 +2200,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN (With Read Receipts + Reply) ============
+// ============ CHAT SCREEN (With Read Receipts + Reply + Image Cache) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2225,6 +2225,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingFriends = true;
   String? _receiverAvatarUrl;
   Map<String, dynamic>? _replyToData;
+  
+  // Image cache (flicker fix)
+  final Map<String, Uint8List> _imageCache = {};
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -2559,12 +2562,41 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // Image cache widget
+  Widget _buildCachedImage(String base64String) {
+    if (_imageCache.containsKey(base64String)) {
+      return Image.memory(
+        _imageCache[base64String]!,
+        width: 200,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      );
+    }
+
+    try {
+      final bytes = base64Decode(base64String);
+      _imageCache[base64String] = bytes;
+      return Image.memory(
+        bytes,
+        width: 200,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      );
+    } catch (e) {
+      return const SizedBox(
+        width: 200,
+        height: 150,
+        child: Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+      );
+    }
+  }
+
   Stream<QuerySnapshot> _getMessages() {
     return FirebaseFirestore.instance
         .collection('chats')
         .where('chatId', isEqualTo: chatId)
         .orderBy('timestamp', descending: true)
-        .snapshots();
+        .snapshots(includeMetadataChanges: true);
   }
 
   @override
@@ -2803,15 +2835,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ],
                                   ),
                                 ),
-                              // Image
+                              // Image (cached)
                               if (imageBase64 != null && !isDeleted)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.memory(
-                                    base64Decode(imageBase64),
-                                    width: 200,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  child: _buildCachedImage(imageBase64),
                                 ),
                               // Message
                               if (data['message'] != null &&
