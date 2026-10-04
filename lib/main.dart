@@ -627,11 +627,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
+        // *** NAYA CODE: members array se query ***
         stream: FirebaseFirestore.instance
             .collection('chats')
-            .where('chatId', isGreaterThanOrEqualTo: '${currentUserId}_')
-            .where('chatId', isLessThanOrEqualTo: '${currentUserId}_\uf8ff')
-            .orderBy('chatId')
+            .where('members', arrayContains: currentUserId)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -645,7 +644,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           for (var doc in snapshot.data!.docs) {
             var data = doc.data() as Map<String, dynamic>;
             String chatId = data['chatId'] ?? '';
-            if (chatId.contains(currentUserId)) {
+            if (chatId.isNotEmpty) {
               if (!chats.containsKey(chatId) ||
                   (data['timestamp'] != null &&
                       (chats[chatId]!['timestamp'] == null ||
@@ -705,9 +704,17 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             itemBuilder: (context, index) {
               var chat = chatList[index];
               String chatId = chat['chatId'];
-              String otherUserId = chat['senderId'] == currentUserId
-                  ? chat['receiverId']
-                  : chat['senderId'];
+
+              // *** NAYA CODE: otherUserId nikaalein chatId se ***
+              List<String> uids = chatId.split('_');
+              String otherUserId = '';
+              for (String uid in uids) {
+                if (uid != currentUserId) {
+                  otherUserId = uid;
+                  break;
+                }
+              }
+
               String lastMessage = chat['message'] ?? '';
               Timestamp? timestamp = chat['timestamp'];
               bool isPinned = _pinnedChats.contains(chatId);
@@ -2209,35 +2216,40 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage({String? imageUrl}) async {
-    if (_isBlocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aapne is user ko block kiya hai')),
-      );
-      return;
-    }
-    if (!_areFriends) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
-      );
-      return;
-    }
-    if (_msgController.text.trim().isEmpty && imageUrl == null) return;
+  if (_isBlocked) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Aapne is user ko block kiya hai')),
+    );
+    return;
+  }
+  if (!_areFriends) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
+    );
+    return;
+  }
+  if (_msgController.text.trim().isEmpty && imageUrl == null) return;
 
-    DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+  DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
-    await FirebaseFirestore.instance.collection('chats').add({
-      'chatId': chatId,
-      'senderId': currentUserId,
-      'receiverId': widget.receiverUid,
-      'message': _msgController.text.trim(),
-      'imageUrl': imageUrl,
-      'timestamp': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(expiryTime),
-      'isEdited': false,
-      'isDeleted': false,
-    });
+  // *** NAYA CODE: members array add karein ***
+  List<String> members = [currentUserId, widget.receiverUid];
+  members.sort();
 
-    _msgController.clear();
+  await FirebaseFirestore.instance.collection('chats').add({
+    'chatId': chatId,
+    'members': members, // <-- Ye add karein
+    'senderId': currentUserId,
+    'receiverId': widget.receiverUid,
+    'message': _msgController.text.trim(),
+    'imageUrl': imageUrl,
+    'timestamp': FieldValue.serverTimestamp(),
+    'expiresAt': Timestamp.fromDate(expiryTime),
+    'isEdited': false,
+    'isDeleted': false,
+  });
+
+  _msgController.clear();
   }
 
   Future<void> _deleteMessage(String docId) async {
