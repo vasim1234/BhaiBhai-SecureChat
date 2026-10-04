@@ -628,7 +628,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // *** NAYA CODE: members array se query ***
         stream: FirebaseFirestore.instance
             .collection('chats')
             .where('members', arrayContains: currentUserId)
@@ -706,7 +705,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               var chat = chatList[index];
               String chatId = chat['chatId'];
 
-              // *** NAYA CODE: otherUserId nikaalein chatId se ***
               List<String> uids = chatId.split('_');
               String otherUserId = '';
               for (String uid in uids) {
@@ -727,8 +725,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     .get(),
                 builder: (context, userSnapshot) {
                   String username = 'User';
+                  String? avatarUrl;
                   if (userSnapshot.hasData && userSnapshot.data!.exists) {
                     username = userSnapshot.data!['username'] ?? 'User';
+                    avatarUrl = userSnapshot.data!['avatarUrl'];
                   }
 
                   return GestureDetector(
@@ -744,17 +744,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 15, vertical: 5),
-                        leading: CircleAvatar(
-                          radius: 25,
-                          backgroundColor: const Color(0xFF667EEA),
-                          child: Text(
-                            username.isNotEmpty ? username[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        leading: AvatarWidget(
+                          avatarUrl: avatarUrl,
+                          username: username,
+                          size: 50,
                         ),
                         title: Row(
                           children: [
@@ -986,12 +979,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             }
                           });
                         },
-                        secondary: CircleAvatar(
-                          backgroundColor: const Color(0xFF667EEA),
-                          child: Text(
-                            (user['username'] ?? 'U')[0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                        secondary: AvatarWidget(
+                          avatarUrl: user['avatarUrl'],
+                          username: user['username'] ?? 'User',
+                          size: 45,
                         ),
                         title: Text(user['username'] ?? 'Unknown',
                             style:
@@ -1027,10 +1018,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   bool _isUploading = false;
 
-  Future<void> _sendMessage({String? imageUrl, String? fileName, String? fileUrl}) async {
-    if (_msgController.text.trim().isEmpty &&
-        imageUrl == null &&
-        fileUrl == null) return;
+  Future<void> _sendMessage({String? imageUrl}) async {
+    if (_msgController.text.trim().isEmpty && imageUrl == null) return;
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
@@ -1039,8 +1028,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'senderId': currentUserId,
       'message': _msgController.text.trim(),
       'imageUrl': imageUrl,
-      'fileUrl': fileUrl,
-      'fileName': fileName,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
     });
@@ -1349,7 +1336,7 @@ class CallsScreen extends StatelessWidget {
   }
 }
 
-// ============ SEARCH USER SCREEN (With Friend Request) ============
+// ============ SEARCH USER SCREEN ============
 class SearchUserScreen extends StatefulWidget {
   const SearchUserScreen({super.key});
   @override
@@ -1428,13 +1415,10 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                                 child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFF667EEA),
-                                    child: Text(
-                                      (user['username'] ?? 'U')[0].toUpperCase(),
-                                      style: const TextStyle(
-                                          color: Colors.white),
-                                    ),
+                                  leading: AvatarWidget(
+                                    avatarUrl: user['avatarUrl'],
+                                    username: user['username'] ?? 'User',
+                                    size: 45,
                                   ),
                                   title: Text(
                                     user['username'] ?? 'Unknown',
@@ -1458,7 +1442,6 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                       ),
                                     );
 
-                                    // Agar UserProfileScreen se "Chat" action aaya
                                     if (result != null &&
                                         result is Map &&
                                         result['action'] == 'chat') {
@@ -1562,7 +1545,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // === PROFILE CARD ===
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -1578,12 +1560,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Avatar with camera icon
                       GestureDetector(
                         onTap: _openAvatarBuilder,
                         child: Stack(
                           children: [
-                            // Avatar
                             Container(
                               padding: const EdgeInsets.all(3),
                               decoration: const BoxDecoration(
@@ -1601,32 +1581,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       backgroundColor: Colors.white,
                                       child: CircularProgressIndicator(),
                                     )
-                                  : _avatarUrl != null
-                                      ? ClipOval(
-                                          child: SizedBox(
-                                            width: 90,
-                                            height: 90,
-                                            child: Image.network(
-                                              _avatarUrl!,
-                                              fit: BoxFit.cover,
-                                              loadingBuilder: (context, child,
-                                                  progress) {
-                                                if (progress == null)
-                                                  return child;
-                                                return _defaultAvatar(
-                                                    username);
-                                              },
-                                              errorBuilder: (context, error,
-                                                  stackTrace) {
-                                                return _defaultAvatar(
-                                                    username);
-                                              },
-                                            ),
-                                          ),
-                                        )
-                                      : _defaultAvatar(username),
+                                  : AvatarWidget(
+                                      avatarUrl: _avatarUrl,
+                                      username: username,
+                                      size: 90,
+                                    ),
                             ),
-                            // Camera icon
                             Positioned(
                               bottom: 0,
                               right: 0,
@@ -1747,8 +1707,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 15),
-
-                // === FRIEND REQUESTS BUTTON WITH BADGE ===
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('friend_requests')
@@ -1813,8 +1771,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 15),
-
-                // === STATS ROW ===
                 FutureBuilder<Map<String, int>>(
                   future: _loadStats(user.uid),
                   builder: (context, statsSnapshot) {
@@ -1874,8 +1830,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 15),
-
-                // === ACCOUNT SETTINGS ===
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -1926,21 +1880,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _defaultAvatar(String username) {
-    return CircleAvatar(
-      radius: 45,
-      backgroundColor: Colors.white,
-      child: Text(
-        username.isNotEmpty ? username[0].toUpperCase() : '?',
-        style: const TextStyle(
-          fontSize: 40,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF667EEA),
-        ),
       ),
     );
   }
@@ -2103,8 +2042,7 @@ class ContactsListScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('chats')
-            .where('chatId', isGreaterThanOrEqualTo: '${currentUserId}_')
-            .where('chatId', isLessThanOrEqualTo: '${currentUserId}_\uf8ff')
+            .where('members', arrayContains: currentUserId)
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -2114,9 +2052,13 @@ class ContactsListScreen extends StatelessWidget {
           Set<String> contactIds = {};
           for (var doc in snapshot.data!.docs) {
             var data = doc.data() as Map<String, dynamic>;
-            String otherId =
-                data['senderId'] == currentUserId ? data['receiverId'] : data['senderId'];
-            contactIds.add(otherId);
+            String? chatId = data['chatId'];
+            if (chatId != null) {
+              List<String> uids = chatId.split('_');
+              for (String id in uids) {
+                if (id != currentUserId) contactIds.add(id);
+              }
+            }
           }
 
           if (contactIds.isEmpty) {
@@ -2133,16 +2075,16 @@ class ContactsListScreen extends StatelessWidget {
                 future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
                 builder: (context, userSnap) {
                   String username = 'User';
+                  String? avatarUrl;
                   if (userSnap.hasData && userSnap.data!.exists) {
                     username = userSnap.data!['username'] ?? 'User';
+                    avatarUrl = userSnap.data!['avatarUrl'];
                   }
                   return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFF667EEA),
-                      child: Text(
-                        username[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                    leading: AvatarWidget(
+                      avatarUrl: avatarUrl,
+                      username: username,
+                      size: 50,
                     ),
                     title: Text(username,
                         style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -2218,16 +2160,16 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
                 future: FirebaseFirestore.instance.collection('users').doc(blockedId).get(),
                 builder: (context, userSnap) {
                   String username = 'User';
+                  String? avatarUrl;
                   if (userSnap.hasData && userSnap.data!.exists) {
                     username = userSnap.data!['username'] ?? 'User';
+                    avatarUrl = userSnap.data!['avatarUrl'];
                   }
                   return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.red,
-                      child: Text(
-                        username[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                    leading: AvatarWidget(
+                      avatarUrl: avatarUrl,
+                      username: username,
+                      size: 50,
                     ),
                     title: Text(username,
                         style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -2247,7 +2189,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN (With Friend Check) ============
+// ============ CHAT SCREEN ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2270,6 +2212,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isBlockedByOther = false;
   bool _areFriends = false;
   bool _isLoadingFriends = true;
+  String? _receiverAvatarUrl;
 
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
@@ -2282,6 +2225,17 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _checkBlockStatus();
     _checkFriendStatus();
+    _loadReceiverAvatar();
+  }
+
+  Future<void> _loadReceiverAvatar() async {
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.receiverUid)
+        .get();
+    if (doc.exists && doc['avatarUrl'] != null) {
+      setState(() => _receiverAvatarUrl = doc['avatarUrl']);
+    }
   }
 
   Future<void> _checkFriendStatus() async {
@@ -2332,40 +2286,39 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage({String? imageUrl}) async {
-  if (_isBlocked) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Aapne is user ko block kiya hai')),
-    );
-    return;
-  }
-  if (!_areFriends) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
-    );
-    return;
-  }
-  if (_msgController.text.trim().isEmpty && imageUrl == null) return;
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aapne is user ko block kiya hai')),
+      );
+      return;
+    }
+    if (!_areFriends) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
+      );
+      return;
+    }
+    if (_msgController.text.trim().isEmpty && imageUrl == null) return;
 
-  DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+    DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
-  // *** NAYA CODE: members array add karein ***
-  List<String> members = [currentUserId, widget.receiverUid];
-  members.sort();
+    List<String> members = [currentUserId, widget.receiverUid];
+    members.sort();
 
-  await FirebaseFirestore.instance.collection('chats').add({
-    'chatId': chatId,
-    'members': members, // <-- Ye add karein
-    'senderId': currentUserId,
-    'receiverId': widget.receiverUid,
-    'message': _msgController.text.trim(),
-    'imageUrl': imageUrl,
-    'timestamp': FieldValue.serverTimestamp(),
-    'expiresAt': Timestamp.fromDate(expiryTime),
-    'isEdited': false,
-    'isDeleted': false,
-  });
+    await FirebaseFirestore.instance.collection('chats').add({
+      'chatId': chatId,
+      'members': members,
+      'senderId': currentUserId,
+      'receiverId': widget.receiverUid,
+      'message': _msgController.text.trim(),
+      'imageUrl': imageUrl,
+      'timestamp': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(expiryTime),
+      'isEdited': false,
+      'isDeleted': false,
+    });
 
-  _msgController.clear();
+    _msgController.clear();
   }
 
   Future<void> _deleteMessage(String docId) async {
@@ -2553,7 +2506,6 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF667EEA),
         iconTheme: const IconThemeData(color: Colors.white),
-        // ============ NAYA CODE YAHAN HAI ============
         title: InkWell(
           onTap: () {
             Navigator.push(
@@ -2568,14 +2520,10 @@ class _ChatScreenState extends State<ChatScreen> {
           },
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  widget.receiverName.isNotEmpty
-                      ? widget.receiverName[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(color: Color(0xFF667EEA)),
-                ),
+              AvatarWidget(
+                avatarUrl: _receiverAvatarUrl,
+                username: widget.receiverName,
+                size: 40,
               ),
               const SizedBox(width: 10),
               Text(widget.receiverName,
@@ -2583,7 +2531,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
-        // ============ NAYA CODE KHATAM ============
         actions: [
           IconButton(
             icon: const Icon(Icons.call),
