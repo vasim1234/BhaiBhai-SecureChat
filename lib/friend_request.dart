@@ -211,7 +211,8 @@ class FriendRequestsScreen extends StatelessWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content: Text('Friend request accept ho gayi!')),
+                                      content: Text(
+                                          'Friend request accept ho gayi!')),
                                 );
                               }
                             },
@@ -223,7 +224,8 @@ class FriendRequestsScreen extends StatelessWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content: Text('Friend request reject kar di')),
+                                      content:
+                                          Text('Friend request reject kar di')),
                                 );
                               }
                             },
