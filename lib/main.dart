@@ -1583,6 +1583,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onTap: _openAvatarBuilder,
                         child: Stack(
                           children: [
+                            // Avatar
                             Container(
                               padding: const EdgeInsets.all(3),
                               decoration: const BoxDecoration(
@@ -1602,24 +1603,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     )
                                   : _avatarUrl != null
                                       ? ClipOval(
-  child: SizedBox(
-    width: 90,
-    height: 90,
-    child: Image.network(
-      _avatarUrl!,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return _defaultAvatar(username);
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return _defaultAvatar(username);
-      },
-    ),
-  ),
-),
+                                          child: SizedBox(
+                                            width: 90,
+                                            height: 90,
+                                            child: Image.network(
+                                              _avatarUrl!,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (context, child,
+                                                  progress) {
+                                                if (progress == null)
+                                                  return child;
+                                                return _defaultAvatar(
+                                                    username);
+                                              },
+                                              errorBuilder: (context, error,
+                                                  stackTrace) {
+                                                return _defaultAvatar(
+                                                    username);
+                                              },
+                                            ),
+                                          ),
+                                        )
                                       : _defaultAvatar(username),
                             ),
+                            // Camera icon
                             Positioned(
                               bottom: 0,
                               right: 0,
