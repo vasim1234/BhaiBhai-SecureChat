@@ -1,11 +1,10 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -1018,8 +1017,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   bool _isUploading = false;
 
-  Future<void> _sendMessage({String? imageUrl}) async {
-    if (_msgController.text.trim().isEmpty && imageUrl == null) return;
+  Future<void> _sendMessage({String? imageBase64}) async {
+    if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
@@ -1027,7 +1026,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'groupId': widget.groupId,
       'senderId': currentUserId,
       'message': _msgController.text.trim(),
-      'imageUrl': imageUrl,
+      'imageBase64': imageBase64,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
     });
@@ -1037,7 +1036,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 20,
+      maxWidth: 500,
+      maxHeight: 500,
+    );
     if (image == null) return;
     setState(() => _isUploading = true);
     try {
@@ -1047,20 +1051,24 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
-        quality: 40,
-        minWidth: 800,
-        minHeight: 800,
+        quality: 20,
+        minWidth: 400,
+        minHeight: 400,
       );
       if (compressedFile == null) {
         setState(() => _isUploading = false);
         return;
       }
-      String fileName =
-          'group_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(File(compressedFile.path));
-      String downloadUrl = await ref.getDownloadURL();
-      await _sendMessage(imageUrl: downloadUrl);
+      final compressedBytes = await compressedFile.readAsBytes();
+      String base64Image = base64Encode(compressedBytes);
+      if (base64Image.length > 900000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo bahut badi hai')),
+        );
+        setState(() => _isUploading = false);
+        return;
+      }
+      await _sendMessage(imageBase64: base64Image);
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -1161,7 +1169,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   itemBuilder: (context, index) {
                     var data = docs[index].data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
-                    String? imageUrl = data['imageUrl'];
+                    String? imageBase64 = data['imageBase64'];
 
                     return FutureBuilder<DocumentSnapshot>(
                       future: FirebaseFirestore.instance
@@ -1214,11 +1222,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       color: Color(0xFF667EEA),
                                     ),
                                   ),
-                                if (imageUrl != null)
+                                if (imageBase64 != null)
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(imageUrl,
-                                        width: 200, fit: BoxFit.cover),
+                                    child: Image.memory(
+                                      base64Decode(imageBase64),
+                                      width: 200,
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 if (data['message'] != null &&
                                     (data['message'] as String).isNotEmpty)
@@ -2285,7 +2296,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage({String? imageUrl}) async {
+  Future<void> _sendMessage({String? imageBase64}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aapne is user ko block kiya hai')),
@@ -2298,7 +2309,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       return;
     }
-    if (_msgController.text.trim().isEmpty && imageUrl == null) return;
+    if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
@@ -2311,7 +2322,7 @@ class _ChatScreenState extends State<ChatScreen> {
       'senderId': currentUserId,
       'receiverId': widget.receiverUid,
       'message': _msgController.text.trim(),
-      'imageUrl': imageUrl,
+      'imageBase64': imageBase64,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
       'isEdited': false,
@@ -2325,7 +2336,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await FirebaseFirestore.instance.collection('chats').doc(docId).update({
       'isDeleted': true,
       'message': 'Ye message delete kar diya gaya hai',
-      'imageUrl': null,
+      'imageBase64': null,
     });
   }
 
@@ -2420,33 +2431,51 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 20,
+      maxWidth: 500,
+      maxHeight: 500,
+    );
+
     if (image == null) return;
     setState(() => _isUploading = true);
+
     try {
       final dir = await getTemporaryDirectory();
       final targetPath =
           '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
-        quality: 40,
-        minWidth: 800,
-        minHeight: 800,
+        quality: 20,
+        minWidth: 400,
+        minHeight: 400,
       );
+
       if (compressedFile == null) {
         setState(() => _isUploading = false);
         return;
       }
-      String fileName =
-          'chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(File(compressedFile.path));
-      String downloadUrl = await ref.getDownloadURL();
-      await _sendMessage(imageUrl: downloadUrl);
+
+      final compressedBytes = await compressedFile.readAsBytes();
+      String base64Image = base64Encode(compressedBytes);
+
+      if (base64Image.length > 900000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Photo bahut badi hai, chhoti photo try karein')),
+        );
+        setState(() => _isUploading = false);
+        return;
+      }
+
+      await _sendMessage(imageBase64: base64Image);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
     setState(() => _isUploading = false);
   }
@@ -2641,7 +2670,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     bool isMe = data['senderId'] == currentUserId;
                     bool isDeleted = data['isDeleted'] ?? false;
                     bool isEdited = data['isEdited'] ?? false;
-                    String? imageUrl = data['imageUrl'];
+                    String? imageBase64 = data['imageBase64'];
 
                     return GestureDetector(
                       onLongPress: isDeleted
@@ -2687,11 +2716,14 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (imageUrl != null && !isDeleted)
+                              if (imageBase64 != null && !isDeleted)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(imageUrl,
-                                      width: 200, fit: BoxFit.cover),
+                                  child: Image.memory(
+                                    base64Decode(imageBase64),
+                                    width: 200,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               if (data['message'] != null &&
                                   (data['message'] as String).isNotEmpty)
