@@ -25,7 +25,6 @@ dependencies:
   qr_flutter: ^4.1.0
 mobile_scanner: ^5.1.0
 flutter_svg: ^2.0.10
-firebase_storage: ^13.6.0
 
 dev_dependencies:
   flutter_test:
