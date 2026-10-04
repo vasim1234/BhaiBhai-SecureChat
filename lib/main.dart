@@ -12,6 +12,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'friend_request.dart';
 import 'user_profile.dart';
 import 'avatar_builder.dart';
+import 'dart:typed_data';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
