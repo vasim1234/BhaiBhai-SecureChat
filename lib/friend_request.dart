@@ -352,3 +352,30 @@ class FriendsListScreen extends StatelessWidget {
     );
   }
 }
+// ============ UNFRIEND ============
+Future<void> unFriend(String otherUid) async {
+  String currentUid = FirebaseAuth.instance.currentUser!.uid;
+
+  // Friends collection se dono documents delete karein
+  await FirebaseFirestore.instance
+      .collection('friends')
+      .doc('${currentUid}_$otherUid')
+      .delete();
+  await FirebaseFirestore.instance
+      .collection('friends')
+      .doc('${otherUid}_$currentUid')
+      .delete();
+
+  // Friend requests bhi clean kar dein
+  QuerySnapshot requests = await FirebaseFirestore.instance
+      .collection('friend_requests')
+      .where('senderId', whereIn: [currentUid, otherUid])
+      .where('receiverId', whereIn: [currentUid, otherUid])
+      .get();
+  for (var doc in requests.docs) {
+    await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .doc(doc.id)
+        .delete();
+  }
+}
