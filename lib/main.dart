@@ -19,7 +19,7 @@ import 'package:http/http.dart' as http;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  OneSignal.initialize("YOUR_ONESIGNAL_APP_ID");
+  OneSignal.initialize("05bee600-4a45-44e5-b35e-5328544c25c1");
   OneSignal.Notifications.requestPermission(true);
   runApp(const MyApp());
 }
@@ -2274,9 +2274,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final Map<String, Uint8List> _imageCache = {};
 
   // ============ OneSignal Config ============
-  static const String ONESIGNAL_APP_ID = 'YOUR_ONESIGNAL_APP_ID';
-  static const String ONESIGNAL_REST_API_KEY = 'YOUR_REST_API_KEY';
-
+static const String ONESIGNAL_APP_ID = '05bee600-4a45-44e5-b35e-5328544c25c1';
+static const String ONESIGNAL_REST_API_KEY = 'os_v2_app_aw7omackivcolm26kmufitbfye1hlbjftyfeb1vqj6gqjda4sndvhlk3l1xk6fatdepixgb5kimytrq3w4n6ejbmevswh7vsuygykeq';
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
     uids.sort();
