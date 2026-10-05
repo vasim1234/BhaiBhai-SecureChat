@@ -13,10 +13,13 @@ import 'friend_request.dart';
 import 'user_profile.dart';
 import 'avatar_builder.dart';
 import 'dart:typed_data';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  OneSignal.initialize("YOUR_ONESIGNAL_APP_ID");
+  OneSignal.Notifications.requestPermission(true);
   runApp(const MyApp());
 }
 
@@ -134,6 +137,9 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       }
+
+      // *** OneSignal Login (Notification ke liye) ***
+      await OneSignal.login(FirebaseAuth.instance.currentUser!.uid);
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.code} - ${e.message}')),
@@ -170,7 +176,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.chat_bubble, size: 60, color: Colors.white),
+                    child: const Icon(Icons.chat_bubble,
+                        size: 60, color: Colors.white),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -236,7 +243,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF667EEA),
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 15),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -252,7 +260,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                         const SizedBox(height: 10),
                         TextButton(
-                          onPressed: () => setState(() => _isLogin = !_isLogin),
+                          onPressed: () =>
+                              setState(() => _isLogin = !_isLogin),
                           child: Text(
                             _isLogin
                                 ? 'Naya account banayein? Sign Up'
@@ -2233,7 +2242,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN (With Typing Indicator) ============
+// ============ CHAT SCREEN (With Notification + Typing + Reply + Read Receipts) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2263,6 +2272,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final Map<String, Uint8List> _imageCache = {};
 
+  // ============ OneSignal Config ============
+  static const String ONESIGNAL_APP_ID = 'YOUR_ONESIGNAL_APP_ID';
+  static const String ONESIGNAL_REST_API_KEY = 'YOUR_REST_API_KEY';
+
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
     uids.sort();
@@ -2284,6 +2297,32 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _setTypingStatus(false);
     super.dispose();
+  }
+
+  // ============ NOTIFICATION BHEJEIN ============
+  Future<void> _sendNotification(String message) async {
+    try {
+      await http.post(
+        Uri.parse('https://onesignal.com/api/v1/notifications'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': 'Basic $ONESIGNAL_REST_API_KEY',
+        },
+        body: jsonEncode({
+          'app_id': ONESIGNAL_APP_ID,
+          'include_aliases': {
+            'external_id': [widget.receiverUid],
+          },
+          'target_channel': 'push',
+          'headings': {'en': 'Bhai Bhai'},
+          'contents': {
+            'en': message.isNotEmpty ? message : 'Photo bheji',
+          },
+        }),
+      );
+    } catch (e) {
+      // Notification fail ho gayi toh kuch nahi karein
+    }
   }
 
   // ============ TYPING INDICATOR ============
@@ -2418,6 +2457,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
 
+    String messageText = _msgController.text.trim();
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
     List<String> members = [currentUserId, widget.receiverUid];
@@ -2428,7 +2468,7 @@ class _ChatScreenState extends State<ChatScreen> {
       'members': members,
       'senderId': currentUserId,
       'receiverId': widget.receiverUid,
-      'message': _msgController.text.trim(),
+      'message': messageText,
       'imageBase64': imageBase64,
       'replyTo': replyTo,
       'timestamp': FieldValue.serverTimestamp(),
@@ -2437,6 +2477,9 @@ class _ChatScreenState extends State<ChatScreen> {
       'isDeleted': false,
       'isRead': false,
     });
+
+    // *** Notification bhejein ***
+    await _sendNotification(messageText);
 
     _msgController.clear();
     _setTypingStatus(false);
@@ -2710,7 +2753,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     username: widget.receiverName,
                     size: 40,
                   ),
-                  // Online status dot
                   if (_isReceiverOnline)
                     Positioned(
                       bottom: 0,
@@ -2733,7 +2775,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(widget.receiverName,
-                      style: const TextStyle(color: Colors.white, fontSize: 16)),
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 16)),
                   if (_isReceiverTyping)
                     const Text(
                       'typing...',
@@ -2876,8 +2919,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           : () => _showMessageOptions(
                               doc.id, data['message'] ?? '', isMe, data),
                       child: Align(
-                        alignment:
-                            isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        alignment: isMe
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: Container(
                           margin: const EdgeInsets.symmetric(
                               vertical: 4, horizontal: 8),
