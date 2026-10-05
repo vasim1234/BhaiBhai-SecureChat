@@ -106,3 +106,19 @@ lib/
 ├── user_profile.dart      (User profile screen)
 └── avatar_builder.dart    (2D avatar builder + AvatarWidget)
 
+## 📲 OneSignal Notifications
+
+- **OneSignal App ID:** `05bee600-4a45-44e5-b35e-5328544c25c1`
+- **REST API Key:** (GitHub par **mat** daalein — secret hai)
+- **Firebase Service Account JSON:** OneSignal mein upload hai
+
+### Notification Kaise Kaam Karti Hai:
+1. User login karta hai → `OneSignal.login(uid)` call hota hai
+2. Message bhejta hai → `_sendNotification()` function HTTP request bhejta hai
+3. OneSignal receiver ke device par notification bhejta hai
+
+### Important Files:
+- `main.dart` line 22 — OneSignal initialize
+- `ChatScreen` line 2277-2278 — App ID + REST API Key
+- `LoginScreen` — OneSignal.login()
+- `ProfileScreen` — OneSignal.logout()
