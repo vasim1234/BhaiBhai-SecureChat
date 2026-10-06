@@ -441,13 +441,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const ChatsListScreen(),
-    const UpdatesScreen(),
-    const CommunitiesScreen(),
-    const CallsScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -482,7 +475,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      // *** IndexedStack use karein taaki state maintain rahe ***
+      body: IndexedStack(
+        index: _currentIndex,
+        children: const [
+          ChatsListScreen(),
+          UpdatesScreen(),
+          CommunitiesScreen(),
+          CallsScreen(),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
