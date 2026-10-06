@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // ============ AVATAR BUILDER SCREEN ============
 class AvatarBuilderScreen extends StatefulWidget {
@@ -13,22 +14,69 @@ class AvatarBuilderScreen extends StatefulWidget {
 class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   // Avatar options
   String _selectedSeed = '';
-  String _selectedStyle = 'avataaars';
+  String _skinColor = 'light';
+  String _top = 'shortHairShortFlat';
+  String _hairColor = 'black';
+  String _eyes = 'default';
+  String _eyebrows = 'default';
+  String _mouth = 'smile';
+  String _facialHair = 'blank';
+  String _accessories = 'blank';
+  String _clothing = 'shirtCrewNeck';
+  String _clothesColor = 'blue';
   bool _isSaving = false;
 
-  final List<String> _styles = [
-    'avataaars',
-    'bottts',
-    'fun-emoji',
-    'adventurer',
-    'big-ears',
-    'croodles',
+  // Dropdown options
+  final List<String> _skinColors = [
+    'light', 'mediumLight', 'medium', 'mediumDark', 'dark', 'brown'
+  ];
+  final List<String> _tops = [
+    'shortHairShortFlat', 'shortHairShortRound', 'shortHairShortWaved',
+    'shortHairSides', 'shortHairTheCaesar', 'shortHairTheCaesarSidePart',
+    'longHairBigHair', 'longHairBob', 'longHairBun', 'longHairCurly',
+    'longHairCurvy', 'longHairDreads', 'longHairFrida', 'longHairFro',
+    'longHairFroBand', 'longHairNotTooLong', 'longHairShavedSides',
+    'longHairMiaWallace', 'longHairStraight', 'longHairStraight2',
+    'longHairStraightStrand', 'hat', 'hijab', 'turban', 'winterHat1',
+    'winterHat2', 'winterHat3', 'winterHat4', 'eyepatch', 'bald', 'baldSides'
+  ];
+  final List<String> _hairColors = [
+    'auburn', 'black', 'blonde', 'blondeGolden', 'brown', 'brownDark',
+    'pastelPink', 'blue', 'platinum', 'red', 'silverGray'
+  ];
+  final List<String> _eyesOptions = [
+    'default', 'closed', 'cry', 'eyeRoll', 'happy', 'hearts', 'side',
+    'squint', 'surprised', 'wink', 'winkWacky'
+  ];
+  final List<String> _eyebrowsOptions = [
+    'default', 'angry', 'angryNatural', 'defaultNatural', 'flatNatural',
+    'frownNatural', 'raisedExcited', 'raisedExcitedNatural', 'sadConcerned',
+    'sadConcernedNatural', 'unibrowNatural', 'upDown', 'upDownNatural'
+  ];
+  final List<String> _mouthOptions = [
+    'default', 'concerned', 'disbelief', 'eating', 'grimace', 'sad',
+    'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit'
+  ];
+  final List<String> _facialHairOptions = [
+    'blank', 'beardMedium', 'beardLight', 'beardMajestic', 'moustacheFancy',
+    'moustacheMagnum'
+  ];
+  final List<String> _accessoriesOptions = [
+    'blank', 'kurt', 'prescription01', 'prescription02', 'round', 'sunglasses', 'wayfarers'
+  ];
+  final List<String> _clothingOptions = [
+    'blazerShirt', 'blazerSweater', 'collarSweater', 'graphicShirt', 'hoodie',
+    'overall', 'shirtCrewNeck', 'shirtScoopNeck', 'shirtVNeck'
+  ];
+  final List<String> _clothesColors = [
+    'black', 'blue01', 'blue02', 'blue03', 'gray01', 'gray02', 'heather',
+    'pastelBlue', 'pastelGreen', 'pastelOrange', 'pastelRed', 'pastelYellow',
+    'pink', 'red', 'white'
   ];
 
   @override
   void initState() {
     super.initState();
-    // Random seed generate karein
     _generateRandomSeed();
   }
 
@@ -39,7 +87,17 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   }
 
   String get avatarUrl {
-    return 'https://api.dicebear.com/7.x/$_selectedStyle/png?seed=$_selectedSeed';
+    return 'https://api.dicebear.com/7.x/avataaars/svg?seed=$_selectedSeed'
+        '&skinColor=$_skinColor'
+        '&top=$_top'
+        '&hairColor=$_hairColor'
+        '&eyes=$_eyes'
+        '&eyebrows=$_eyebrows'
+        '&mouth=$_mouth'
+        '&facialHair=$_facialHair'
+        '&accessories=$_accessories'
+        '&clothing=$_clothing'
+        '&clothesColor=$_clothesColor';
   }
 
   Future<void> _saveAvatar() async {
@@ -48,7 +106,6 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
       String uid = FirebaseAuth.instance.currentUser!.uid;
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'avatarUrl': avatarUrl,
-        'avatarStyle': _selectedStyle,
       });
 
       if (mounted) {
@@ -58,11 +115,51 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
         Navigator.pop(context, avatarUrl);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
     setState(() => _isSaving = false);
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> items, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            flex: 3,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                underline: const SizedBox(),
+                items: items.map((String item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(item, style: const TextStyle(fontSize: 13)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) onChanged(val);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -74,211 +171,173 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Preview
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Live Preview',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF667EEA).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: ClipOval(
-                      child: Image.network(
-                        avatarUrl,
-                        width: 150,
-                        height: 150,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(Icons.error, color: Colors.grey),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: _generateRandomSeed,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Naya Avatar Banayein'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF667EEA),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      body: Column(
+        children: [
+          // Preview
+          Container(
+            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-
-            // Style selection
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Avatar Style Chunein',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 1,
-                    ),
-                    itemCount: _styles.length,
-                    itemBuilder: (context, index) {
-                      String style = _styles[index];
-                      bool isSelected = _selectedStyle == style;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _selectedStyle = style);
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF667EEA).withOpacity(0.1)
-                                : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF667EEA)
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 50,
-                                height: 50,
-                                child: Image.network(
-                                  'https://api.dicebear.com/7.x/$style/png?seed=preview',
-                                  loadingBuilder: (context, child, progress) {
-                                    if (progress == null) return child;
-                                    return const Icon(Icons.image,
-                                        color: Colors.grey);
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.image,
-                                        color: Colors.grey);
-                                  },
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                style,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  color: isSelected
-                                      ? const Color(0xFF667EEA)
-                                      : Colors.grey[700],
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveAvatar,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check),
-                label: Text(_isSaving ? 'Saving...' : 'Avatar Save Karein'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF667EEA),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                const Text(
+                  'Live Preview',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
                   ),
                 ),
+                const SizedBox(height: 15),
+                Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF667EEA).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: SvgPicture.network(
+                      avatarUrl,
+                      width: 130,
+                      height: 130,
+                      fit: BoxFit.cover,
+                      placeholderBuilder: (context) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                ElevatedButton.icon(
+                  onPressed: _generateRandomSeed,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Naya Avatar Banayein'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF667EEA),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Options
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: ListView(
+                children: [
+                  const SizedBox(height: 15),
+                  const Text(
+                    'Apna Avatar Customize Karein',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Skin Color
+                  _buildDropdown('Skin Color', _skinColor, _skinColors, (val) {
+                    setState(() => _skinColor = val);
+                  }),
+
+                  // Hair Style
+                  _buildDropdown('Hair Style', _top, _tops, (val) {
+                    setState(() => _top = val);
+                  }),
+
+                  // Hair Color
+                  _buildDropdown('Hair Color', _hairColor, _hairColors, (val) {
+                    setState(() => _hairColor = val);
+                  }),
+
+                  // Eyes
+                  _buildDropdown('Eyes', _eyes, _eyesOptions, (val) {
+                    setState(() => _eyes = val);
+                  }),
+
+                  // Eyebrows
+                  _buildDropdown('Eyebrows', _eyebrows, _eyebrowsOptions, (val) {
+                    setState(() => _eyebrows = val);
+                  }),
+
+                  // Mouth
+                  _buildDropdown('Mouth', _mouth, _mouthOptions, (val) {
+                    setState(() => _mouth = val);
+                  }),
+
+                  // Facial Hair
+                  _buildDropdown('Facial Hair', _facialHair, _facialHairOptions, (val) {
+                    setState(() => _facialHair = val);
+                  }),
+
+                  // Accessories
+                  _buildDropdown('Accessories', _accessories, _accessoriesOptions, (val) {
+                    setState(() => _accessories = val);
+                  }),
+
+                  // Clothes
+                  _buildDropdown('Clothes', _clothing, _clothingOptions, (val) {
+                    setState(() => _clothing = val);
+                  }),
+
+                  // Clothes Color
+                  _buildDropdown('Clothes Color', _clothesColor, _clothesColors, (val) {
+                    setState(() => _clothesColor = val);
+                  }),
+
+                  const SizedBox(height: 20),
+
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSaving ? null : _saveAvatar,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check),
+                      label: Text(_isSaving ? 'Saving...' : 'Avatar Save Karein'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF667EEA),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -301,18 +360,12 @@ class AvatarWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       return ClipOval(
-        child: Image.network(
+        child: SvgPicture.network(
           avatarUrl!,
           width: size,
           height: size,
           fit: BoxFit.cover,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return _defaultAvatar();
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return _defaultAvatar();
-          },
+          placeholderBuilder: (context) => _defaultAvatar(),
         ),
       );
     }
