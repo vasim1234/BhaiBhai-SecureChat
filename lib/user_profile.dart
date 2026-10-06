@@ -29,6 +29,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String _email = '';
   String _memberSince = 'Oct 2026';
   String? _avatarUrl;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -37,73 +38,72 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-  String currentUid = FirebaseAuth.instance.currentUser!.uid;
+    String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
-  try {
-    // 1. User data fetch
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.userId)
-        .get();
+    try {
+      // 1. User data fetch
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
 
-    if (userDoc.exists) {
-      _email = userDoc['email'] ?? '';
-      _avatarUrl = userDoc['avatarUrl'];
-      if (userDoc['createdAt'] != null) {
-        Timestamp ts = userDoc['createdAt'];
-        _memberSince =
-            '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}';
+      if (userDoc.exists) {
+        _email = userDoc['email'] ?? '';
+        _avatarUrl = userDoc['avatarUrl'];
+        if (userDoc['createdAt'] != null) {
+          Timestamp ts = userDoc['createdAt'];
+          _memberSince =
+              '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}';
+        }
+      }
+
+      // 2. Friends check
+      bool isFriend = await areFriends(currentUid, widget.userId);
+
+      // 3. Sent requests check
+      QuerySnapshot sentRequests = await FirebaseFirestore.instance
+          .collection('friend_requests')
+          .where('senderId', isEqualTo: currentUid)
+          .where('receiverId', isEqualTo: widget.userId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      // 4. Received requests check
+      QuerySnapshot receivedRequests = await FirebaseFirestore.instance
+          .collection('friend_requests')
+          .where('senderId', isEqualTo: widget.userId)
+          .where('receiverId', isEqualTo: currentUid)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      // 5. Block check
+      DocumentSnapshot blockDoc = await FirebaseFirestore.instance
+          .collection('blocked')
+          .doc('${currentUid}_${widget.userId}')
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _isFriend = isFriend;
+          _requestSent = sentRequests.docs.isNotEmpty;
+          _requestReceived = receivedRequests.docs.isNotEmpty;
+          _isBlocked = blockDoc.exists;
+          _avatarUrl = userDoc['avatarUrl'];
+          if (receivedRequests.docs.isNotEmpty) {
+            _requestId = receivedRequests.docs.first.id;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      // *** AGAR KOI ERROR AATA HAI ***
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
       }
     }
-
-    // 2. Friends check
-    bool isFriend = await areFriends(currentUid, widget.userId);
-
-    // 3. Sent requests check
-    QuerySnapshot sentRequests = await FirebaseFirestore.instance
-        .collection('friend_requests')
-        .where('senderId', isEqualTo: currentUid)
-        .where('receiverId', isEqualTo: widget.userId)
-        .where('status', isEqualTo: 'pending')
-        .get();
-
-    // 4. Received requests check
-    QuerySnapshot receivedRequests = await FirebaseFirestore.instance
-        .collection('friend_requests')
-        .where('senderId', isEqualTo: widget.userId)
-        .where('receiverId', isEqualTo: currentUid)
-        .where('status', isEqualTo: 'pending')
-        .get();
-
-    // 5. Block check
-    DocumentSnapshot blockDoc = await FirebaseFirestore.instance
-        .collection('blocked')
-        .doc('${currentUid}_${widget.userId}')
-        .get();
-
-    if (mounted) {
-      setState(() {
-        _isFriend = isFriend;
-        _requestSent = sentRequests.docs.isNotEmpty;
-        _requestReceived = receivedRequests.docs.isNotEmpty;
-        _isBlocked = blockDoc.exists;
-        if (receivedRequests.docs.isNotEmpty) {
-          _requestId = receivedRequests.docs.first.id;
-        }
-        _isLoading = false;
-      });
-    }
-  } catch (e) {
-    // Agar koi error aata hai, toh bhi spinner nahi ghumega
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
   }
 
   Future<void> _sendRequest() async {
@@ -185,206 +185,230 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Avatar
-                  Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                      ),
-                    ),
-                    child: AvatarWidget(
-                      avatarUrl: _avatarUrl,
-                      username: widget.username,
-                      size: 100,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    widget.username,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _email,
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
-                  ),
-                  const SizedBox(height: 15),
-
-                  // Status Badge
-                  if (_isFriend)
-                    _buildStatusBadge('Aap dono friend hain', Colors.green,
-                        Icons.check_circle)
-                  else if (_requestSent)
-                    _buildStatusBadge('Friend request bhej di hai', Colors.orange,
-                        Icons.access_time)
-                  else if (_requestReceived)
-                    _buildStatusBadge('Isne aapko request bheji hai', Colors.blue,
-                        Icons.person_add)
-                  else if (_isBlocked)
-                    _buildStatusBadge('Aapne is user ko block kiya hai',
-                        Colors.red, Icons.block),
-
-                  const SizedBox(height: 30),
-
-                  // === ACTION BUTTONS ===
-                  if (_isBlocked)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _toggleBlock,
-                        icon: const Icon(Icons.lock_open),
-                        label: const Text('Unblock User'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    )
-                  else ...[
-                    if (_isFriend) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context, {
-                              'action': 'chat',
-                              'uid': widget.userId,
-                              'name': widget.username,
-                            });
-                          },
-                          icon: const Icon(Icons.chat),
-                          label: const Text('Message'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF667EEA),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _unFriend,
-                          icon: const Icon(Icons.person_remove),
-                          label: const Text('Unfriend'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else if (_requestSent) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.access_time),
-                          label: const Text('Request Pending'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else if (_requestReceived) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _acceptRequest,
-                          icon: const Icon(Icons.check_circle),
-                          label: const Text('Accept Friend Request'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _sendRequest,
-                          icon: const Icon(Icons.person_add),
-                          label: const Text('Add Friend'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF667EEA),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 20),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: _toggleBlock,
-                        icon: const Icon(Icons.block, color: Colors.red),
-                        label: const Text('Block User',
-                            style: TextStyle(color: Colors.red)),
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 30),
-                  Container(
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Member Since',
-                                style: TextStyle(color: Colors.grey)),
-                            Text(_memberSince,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                          ],
+                        const Icon(Icons.error, color: Colors.red, size: 50),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Error: $_errorMessage',
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Avatar
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                          ),
+                        ),
+                        child: AvatarWidget(
+                          avatarUrl: _avatarUrl,
+                          username: widget.username,
+                          size: 100,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      Text(
+                        widget.username,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        _email,
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Status Badge
+                      if (_isFriend)
+                        _buildStatusBadge('Aap dono friend hain', Colors.green,
+                            Icons.check_circle)
+                      else if (_requestSent)
+                        _buildStatusBadge('Friend request bhej di hai',
+                            Colors.orange, Icons.access_time)
+                      else if (_requestReceived)
+                        _buildStatusBadge('Isne aapko request bheji hai',
+                            Colors.blue, Icons.person_add)
+                      else if (_isBlocked)
+                        _buildStatusBadge('Aapne is user ko block kiya hai',
+                            Colors.red, Icons.block),
+
+                      const SizedBox(height: 30),
+
+                      // === ACTION BUTTONS ===
+                      if (_isBlocked)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _toggleBlock,
+                            icon: const Icon(Icons.lock_open),
+                            label: const Text('Unblock User'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        )
+                      else ...[
+                        if (_isFriend) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context, {
+                                  'action': 'chat',
+                                  'uid': widget.userId,
+                                  'name': widget.username,
+                                });
+                              },
+                              icon: const Icon(Icons.chat),
+                              label: const Text('Message'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF667EEA),
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _unFriend,
+                              icon: const Icon(Icons.person_remove),
+                              label: const Text('Unfriend'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                side: const BorderSide(color: Colors.red),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else if (_requestSent) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: null,
+                              icon: const Icon(Icons.access_time),
+                              label: const Text('Request Pending'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else if (_requestReceived) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _acceptRequest,
+                              icon: const Icon(Icons.check_circle),
+                              label: const Text('Accept Friend Request'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _sendRequest,
+                              icon: const Icon(Icons.person_add),
+                              label: const Text('Add Friend'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF667EEA),
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 20),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton.icon(
+                            onPressed: _toggleBlock,
+                            icon: const Icon(Icons.block, color: Colors.red),
+                            label: const Text('Block User',
+                                style: TextStyle(color: Colors.red)),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 30),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Member Since',
+                                    style: TextStyle(color: Colors.grey)),
+                                Text(_memberSince,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
     );
   }
 
