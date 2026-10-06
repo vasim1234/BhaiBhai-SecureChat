@@ -2324,7 +2324,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============ OneSignal Config ============
 static const String ONESIGNAL_APP_ID = '05bee600-4a45-44e5-b35e-5328544c25c1';
-static const String ONESIGNAL_REST_API_KEY = 'os_v2_app_aw7omackivcolm26kmufitbfyexxfhz2ompejtfxvdp3vwgtz5ssy4vpf37pkt56lne3lxjkfeq22lgoswhoitjpq4uthjcwmajpzji';
+static const String ONESIGNAL_REST_API_KEY = 'os_v2_app_aw7omackivcolm26kmufitbfygymadzu3yjexi4t2eys7b7ztj3ptl4gquxni3rlovqvvtvtkazd3dtxxlboytfy2knhvs3m4mbsf7i';
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
     uids.sort();
