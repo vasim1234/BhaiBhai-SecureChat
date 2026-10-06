@@ -675,12 +675,33 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             .where('members', arrayContains: currentUserId)
             .snapshots(),
         builder: (context, snapshot) {
+          // ERROR HANDLING (Detailed)
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, color: Colors.red, size: 50),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
+
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          // DEBUG: Kitne docs aaye
+          debugPrint('Chats Found: ${snapshot.data!.docs.length}');
 
           Map<String, Map<String, dynamic>> chats = {};
           for (var doc in snapshot.data!.docs) {
