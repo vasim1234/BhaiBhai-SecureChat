@@ -38,72 +38,78 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    String currentUid = FirebaseAuth.instance.currentUser!.uid;
+  String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
-    try {
-      // 1. User data fetch
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .get();
+  try {
+    // 1. User data fetch
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .get();
 
-      if (userDoc.exists) {
-        _email = userDoc['email'] ?? '';
-        _avatarUrl = userDoc['avatarUrl'];
-        if (userDoc['createdAt'] != null) {
-          Timestamp ts = userDoc['createdAt'];
-          _memberSince =
-              '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}';
-        }
-      }
+    if (userDoc.exists) {
+      Map<String, dynamic>? userData =
+          userDoc.data() as Map<String, dynamic>?;
 
-      // 2. Friends check
-      bool isFriend = await areFriends(currentUid, widget.userId);
+      _email = userData?['email'] ?? '';
 
-      // 3. Sent requests check
-      QuerySnapshot sentRequests = await FirebaseFirestore.instance
-          .collection('friend_requests')
-          .where('senderId', isEqualTo: currentUid)
-          .where('receiverId', isEqualTo: widget.userId)
-          .where('status', isEqualTo: 'pending')
-          .get();
+      // *** SAFE AVATAR CHECK ***
+      _avatarUrl = (userData != null && userData.containsKey('avatarUrl'))
+          ? userData['avatarUrl']
+          : null;
 
-      // 4. Received requests check
-      QuerySnapshot receivedRequests = await FirebaseFirestore.instance
-          .collection('friend_requests')
-          .where('senderId', isEqualTo: widget.userId)
-          .where('receiverId', isEqualTo: currentUid)
-          .where('status', isEqualTo: 'pending')
-          .get();
-
-      // 5. Block check
-      DocumentSnapshot blockDoc = await FirebaseFirestore.instance
-          .collection('blocked')
-          .doc('${currentUid}_${widget.userId}')
-          .get();
-
-      if (mounted) {
-        setState(() {
-          _isFriend = isFriend;
-          _requestSent = sentRequests.docs.isNotEmpty;
-          _requestReceived = receivedRequests.docs.isNotEmpty;
-          _isBlocked = blockDoc.exists;
-          _avatarUrl = userDoc['avatarUrl'];
-          if (receivedRequests.docs.isNotEmpty) {
-            _requestId = receivedRequests.docs.first.id;
-          }
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // *** AGAR KOI ERROR AATA HAI ***
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = e.toString();
-        });
+      if (userData?['createdAt'] != null) {
+        Timestamp ts = userData!['createdAt'];
+        _memberSince =
+            '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year}';
       }
     }
+
+    // 2. Friends check
+    bool isFriend = await areFriends(currentUid, widget.userId);
+
+    // 3. Sent requests check
+    QuerySnapshot sentRequests = await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .where('senderId', isEqualTo: currentUid)
+        .where('receiverId', isEqualTo: widget.userId)
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    // 4. Received requests check
+    QuerySnapshot receivedRequests = await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .where('senderId', isEqualTo: widget.userId)
+        .where('receiverId', isEqualTo: currentUid)
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    // 5. Block check
+    DocumentSnapshot blockDoc = await FirebaseFirestore.instance
+        .collection('blocked')
+        .doc('${currentUid}_${widget.userId}')
+        .get();
+
+    if (mounted) {
+      setState(() {
+        _isFriend = isFriend;
+        _requestSent = sentRequests.docs.isNotEmpty;
+        _requestReceived = receivedRequests.docs.isNotEmpty;
+        _isBlocked = blockDoc.exists;
+        if (receivedRequests.docs.isNotEmpty) {
+          _requestId = receivedRequests.docs.first.id;
+        }
+        _isLoading = false;
+      });
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
   }
 
   Future<void> _sendRequest() async {
