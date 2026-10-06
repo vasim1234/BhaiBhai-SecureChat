@@ -517,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-// ============ CHATS LIST SCREEN ============
+// ============ CHATS LIST SCREEN (With Unread Badge) ============
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
 
@@ -608,6 +608,22 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 
+  // *** UNREAD COUNT NIKALNE KA FUNCTION ***
+  Future<int> _getUnreadCount(String chatId) async {
+    try {
+      QuerySnapshot unreadMessages = await FirebaseFirestore.instance
+          .collection('chats')
+          .where('chatId', isEqualTo: chatId)
+          .where('receiverId', isEqualTo: currentUserId)
+          .where('isRead', isEqualTo: false)
+          .get();
+      return unreadMessages.docs.length;
+    } catch (e) {
+      debugPrint('Error getting unread count: $e');
+      return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -686,7 +702,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             .where('members', arrayContains: currentUserId)
             .snapshots(),
         builder: (context, snapshot) {
-          // 1. ERROR HANDLING
           if (snapshot.hasError) {
             return Center(
               child: Padding(
@@ -743,7 +758,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             );
           }
 
-          // 2. CHATS DATA FILTERING & SORTING
           Map<String, Map<String, dynamic>> chats = {};
           for (var doc in snapshot.data!.docs) {
             var data = doc.data() as Map<String, dynamic>;
@@ -781,7 +795,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               var chat = chatList[index];
               String chatId = chat['chatId'] ?? '';
 
-              // Safe Parsing for otherUserId
               List<String> uids = chatId.split('_');
               String otherUserId = uids.firstWhere(
                 (uid) => uid != currentUserId,
@@ -803,7 +816,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   String username = 'User';
                   String? avatarUrl;
 
-                  // Safe Document Reading (Fixes missing avatarUrl crash)
                   if (userSnapshot.hasData &&
                       userSnapshot.data != null &&
                       userSnapshot.data!.exists) {
@@ -817,67 +829,109 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     }
                   }
 
-                  return GestureDetector(
-                    onLongPress: () =>
-                        _showChatOptions(chatId, otherUserId, username),
-                    child: Card(
-                      elevation: 0,
-                      margin: const EdgeInsets.symmetric(
-                          vertical: 5, horizontal: 5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 15, vertical: 5),
-                        leading: AvatarWidget(
-                          avatarUrl: avatarUrl,
-                          username: username,
-                          size: 50,
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                username,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                  // *** UNREAD BADGE KE LIYE FUTUREBUILDER ***
+                  return FutureBuilder<int>(
+                    future: _getUnreadCount(chatId),
+                    builder: (context, unreadSnapshot) {
+                      int unreadCount = unreadSnapshot.data ?? 0;
+
+                      return GestureDetector(
+                        onLongPress: () =>
+                            _showChatOptions(chatId, otherUserId, username),
+                        child: Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 5, horizontal: 5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 15, vertical: 5),
+                            leading: AvatarWidget(
+                              avatarUrl: avatarUrl,
+                              username: username,
+                              size: 50,
+                            ),
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    username,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                if (isPinned)
+                                  const Icon(
+                                    Icons.push_pin,
+                                    size: 16,
+                                    color: Color(0xFF667EEA),
+                                  ),
+                              ],
+                            ),
+                            subtitle: Text(
+                              lastMessage,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: unreadCount > 0
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
-                            if (isPinned)
-                              const Icon(
-                                Icons.push_pin,
-                                size: 16,
-                                color: Color(0xFF667EEA),
-                              ),
-                          ],
-                        ),
-                        subtitle: Text(
-                          lastMessage,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        trailing: timestamp != null
-                            ? Text(
-                                DateFormat('hh:mm a').format(timestamp.toDate()),
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey),
-                              )
-                            : null,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(
-                                receiverUid: otherUserId,
-                                receiverName: username,
-                              ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // *** TIME ***
+                                if (timestamp != null)
+                                  Text(
+                                    DateFormat('hh:mm a')
+                                        .format(timestamp.toDate()),
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey),
+                                  ),
+                                // *** UNREAD BADGE ***
+                                if (unreadCount > 0)
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 8),
+                                    padding: const EdgeInsets.all(6),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 22,
+                                      minHeight: 22,
+                                    ),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF25D366),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
-                    ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    receiverUid: otherUserId,
+                                    receiverName: username,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
@@ -921,7 +975,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 }
-
 
 // ============ CREATE GROUP SCREEN ============
 class CreateGroupScreen extends StatefulWidget {
@@ -2454,8 +2507,9 @@ Future<void> _sendNotification(String message) async {
 
   // ============ BAQI FUNCTIONS ============
   Future<void> _markMessagesAsRead() async {
-    await Future.delayed(const Duration(seconds: 1));
+  await Future.delayed(const Duration(milliseconds: 500));
 
+  try {
     QuerySnapshot messages = await FirebaseFirestore.instance
         .collection('chats')
         .where('chatId', isEqualTo: chatId)
@@ -2469,6 +2523,11 @@ Future<void> _sendNotification(String message) async {
           .doc(doc.id)
           .update({'isRead': true});
     }
+
+    debugPrint('Marked ${messages.docs.length} messages as read');
+  } catch (e) {
+    debugPrint('Error marking messages as read: $e');
+  }
   }
 
   Future<void> _loadReceiverAvatar() async {
