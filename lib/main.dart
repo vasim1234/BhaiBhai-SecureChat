@@ -2588,27 +2588,35 @@ Future<void> _sendNotification(String message) async {
   }
 
   Future<void> _sendMessage(
-      {String? imageBase64, Map<String, dynamic>? replyTo}) async {
-    if (_isBlocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aapne is user ko block kiya hai')),
-      );
-      return;
-    }
-    if (!_areFriends) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
-      );
-      return;
-    }
-    if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
+    {String? imageBase64, Map<String, dynamic>? replyTo}) async {
+  if (_isBlocked) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Aapne is user ko block kiya hai')),
+    );
+    return;
+  }
+  if (!_areFriends) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
+    );
+    return;
+  }
+  if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
 
-    String messageText = _msgController.text.trim();
-    DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+  // *** PEHLE MESSAGE STORE KAREIN ***
+  String messageText = _msgController.text.trim();
 
-    List<String> members = [currentUserId, widget.receiverUid];
-    members.sort();
+  // *** FIR INPUT BOX KHALI KAREIN (INSTANT) ***
+  _msgController.clear();
+  _setTypingStatus(false);
 
+  DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+
+  List<String> members = [currentUserId, widget.receiverUid];
+  members.sort();
+
+  // *** AB FIRESTORE MEIN SAVE KAREIN (BACKGROUND MEIN) ***
+  try {
     await FirebaseFirestore.instance.collection('chats').add({
       'chatId': chatId,
       'members': members,
@@ -2626,9 +2634,14 @@ Future<void> _sendNotification(String message) async {
 
     // *** Notification bhejein ***
     await _sendNotification(messageText);
-
-    _msgController.clear();
-    _setTypingStatus(false);
+  } catch (e) {
+    // Agar save fail ho gaya, toh error dikhayein
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Message send nahi hua: $e')),
+      );
+    }
+  }
   }
 
   Future<void> _deleteMessage(String docId) async {
