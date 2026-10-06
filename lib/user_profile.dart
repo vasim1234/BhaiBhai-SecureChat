@@ -37,8 +37,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    String currentUid = FirebaseAuth.instance.currentUser!.uid;
+  String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
+  try {
+    // 1. User data fetch
     DocumentSnapshot userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
@@ -54,8 +56,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       }
     }
 
+    // 2. Friends check
     bool isFriend = await areFriends(currentUid, widget.userId);
 
+    // 3. Sent requests check
     QuerySnapshot sentRequests = await FirebaseFirestore.instance
         .collection('friend_requests')
         .where('senderId', isEqualTo: currentUid)
@@ -63,6 +67,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         .where('status', isEqualTo: 'pending')
         .get();
 
+    // 4. Received requests check
     QuerySnapshot receivedRequests = await FirebaseFirestore.instance
         .collection('friend_requests')
         .where('senderId', isEqualTo: widget.userId)
@@ -70,22 +75,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         .where('status', isEqualTo: 'pending')
         .get();
 
+    // 5. Block check
     DocumentSnapshot blockDoc = await FirebaseFirestore.instance
         .collection('blocked')
         .doc('${currentUid}_${widget.userId}')
         .get();
 
-    setState(() {
-      _isFriend = isFriend;
-      _requestSent = sentRequests.docs.isNotEmpty;
-      _requestReceived = receivedRequests.docs.isNotEmpty;
-      _isBlocked = blockDoc.exists;
-      _avatarUrl = userDoc['avatarUrl'];
-      if (receivedRequests.docs.isNotEmpty) {
-        _requestId = receivedRequests.docs.first.id;
-      }
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isFriend = isFriend;
+        _requestSent = sentRequests.docs.isNotEmpty;
+        _requestReceived = receivedRequests.docs.isNotEmpty;
+        _isBlocked = blockDoc.exists;
+        if (receivedRequests.docs.isNotEmpty) {
+          _requestId = receivedRequests.docs.first.id;
+        }
+        _isLoading = false;
+      });
+    }
+  } catch (e) {
+    // Agar koi error aata hai, toh bhi spinner nahi ghumega
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
   }
 
   Future<void> _sendRequest() async {
