@@ -536,14 +536,21 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   }
 
   Future<void> _loadPinnedChats() async {
-    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUserId)
-        .get();
-    if (userDoc.exists && userDoc['pinnedChats'] != null) {
-      setState(() {
-        _pinnedChats = List<String>.from(userDoc['pinnedChats']);
-      });
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+      if (userDoc.exists && userDoc.data() != null) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        if (data.containsKey('pinnedChats') && data['pinnedChats'] != null) {
+          setState(() {
+            _pinnedChats = List<String>.from(data['pinnedChats']);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading pinned chats: $e');
     }
   }
 
@@ -583,8 +590,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               ),
               const SizedBox(height: 20),
               ListTile(
-                leading: Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin,
-                    color: const Color(0xFF667EEA)),
+                leading: Icon(
+                  isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                  color: const Color(0xFF667EEA),
+                ),
                 title: Text(isPinned ? 'Unpin Chat' : 'Pin Chat'),
                 onTap: () {
                   Navigator.pop(context);
@@ -636,11 +645,11 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(120),
+          preferredSize: const Size.fromHeight(110),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search chats...',
@@ -657,7 +666,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   children: [
                     _buildFilterChip('All', true),
@@ -667,7 +676,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 5),
             ],
           ),
         ),
@@ -678,7 +686,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             .where('members', arrayContains: currentUserId)
             .snapshots(),
         builder: (context, snapshot) {
-          // ERROR HANDLING (Detailed)
+          // 1. ERROR HANDLING
           if (snapshot.hasError) {
             return Center(
               child: Padding(
@@ -686,10 +694,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error, color: Colors.red, size: 50),
+                    const Icon(Icons.error_outline, color: Colors.red, size: 50),
                     const SizedBox(height: 10),
                     Text(
-                      'Error: ${snapshot.error}',
+                      'Error loading chats:\n${snapshot.error}',
                       style: const TextStyle(color: Colors.red),
                       textAlign: TextAlign.center,
                     ),
@@ -699,29 +707,11 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             );
           }
 
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // DEBUG: Kitne docs aaye
-          debugPrint('Chats Found: ${snapshot.data!.docs.length}');
-
-          Map<String, Map<String, dynamic>> chats = {};
-          for (var doc in snapshot.data!.docs) {
-            var data = doc.data() as Map<String, dynamic>;
-            String chatId = data['chatId'] ?? '';
-            if (chatId.isNotEmpty) {
-              if (!chats.containsKey(chatId) ||
-                  (data['timestamp'] != null &&
-                      (chats[chatId]!['timestamp'] == null ||
-                          data['timestamp']
-                              .compareTo(chats[chatId]!['timestamp']) > 0))) {
-                chats[chatId] = data;
-              }
-            }
-          }
-
-          if (chats.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -732,8 +722,11 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                       color: const Color(0xFF667EEA).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.chat_bubble_outline,
-                        size: 60, color: Color(0xFF667EEA)),
+                    child: const Icon(
+                      Icons.chat_bubble_outline,
+                      size: 60,
+                      color: Color(0xFF667EEA),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -750,10 +743,27 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             );
           }
 
+          // 2. CHATS DATA FILTERING & SORTING
+          Map<String, Map<String, dynamic>> chats = {};
+          for (var doc in snapshot.data!.docs) {
+            var data = doc.data() as Map<String, dynamic>;
+            String chatId = data['chatId'] ?? doc.id;
+            if (chatId.isNotEmpty) {
+              if (!chats.containsKey(chatId) ||
+                  (data['timestamp'] != null &&
+                      (chats[chatId]!['timestamp'] == null ||
+                          data['timestamp']
+                                  .compareTo(chats[chatId]!['timestamp']) >
+                              0))) {
+                chats[chatId] = data;
+              }
+            }
+          }
+
           List<Map<String, dynamic>> chatList = chats.values.toList();
           chatList.sort((a, b) {
-            String aId = a['chatId'];
-            String bId = b['chatId'];
+            String aId = a['chatId'] ?? '';
+            String bId = b['chatId'] ?? '';
             bool aPin = _pinnedChats.contains(aId);
             bool bPin = _pinnedChats.contains(bId);
             if (aPin && !bPin) return -1;
@@ -769,16 +779,16 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             itemCount: chatList.length,
             itemBuilder: (context, index) {
               var chat = chatList[index];
-              String chatId = chat['chatId'];
+              String chatId = chat['chatId'] ?? '';
 
+              // Safe Parsing for otherUserId
               List<String> uids = chatId.split('_');
-              String otherUserId = '';
-              for (String uid in uids) {
-                if (uid != currentUserId) {
-                  otherUserId = uid;
-                  break;
-                }
-              }
+              String otherUserId = uids.firstWhere(
+                (uid) => uid != currentUserId,
+                orElse: () => '',
+              );
+
+              if (otherUserId.isEmpty) return const SizedBox.shrink();
 
               String lastMessage = chat['message'] ?? '';
               Timestamp? timestamp = chat['timestamp'];
@@ -792,9 +802,19 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 builder: (context, userSnapshot) {
                   String username = 'User';
                   String? avatarUrl;
-                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                    username = userSnapshot.data!['username'] ?? 'User';
-                    avatarUrl = userSnapshot.data!['avatarUrl'];
+
+                  // Safe Document Reading (Fixes missing avatarUrl crash)
+                  if (userSnapshot.hasData &&
+                      userSnapshot.data != null &&
+                      userSnapshot.data!.exists) {
+                    Map<String, dynamic>? userData =
+                        userSnapshot.data!.data() as Map<String, dynamic>?;
+                    if (userData != null) {
+                      username = userData['username'] ?? 'User';
+                      avatarUrl = userData.containsKey('avatarUrl')
+                          ? userData['avatarUrl']
+                          : null;
+                    }
                   }
 
                   return GestureDetector(
@@ -802,8 +822,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                         _showChatOptions(chatId, otherUserId, username),
                     child: Card(
                       elevation: 0,
-                      margin:
-                          const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 5, horizontal: 5),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -820,12 +840,16 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                             Expanded(
                               child: Text(
                                 username,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                             if (isPinned)
-                              const Icon(Icons.push_pin,
-                                  size: 16, color: Color(0xFF667EEA)),
+                              const Icon(
+                                Icons.push_pin,
+                                size: 16,
+                                color: Color(0xFF667EEA),
+                              ),
                           ],
                         ),
                         subtitle: Text(
@@ -897,6 +921,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 }
+
 
 // ============ CREATE GROUP SCREEN ============
 class CreateGroupScreen extends StatefulWidget {
