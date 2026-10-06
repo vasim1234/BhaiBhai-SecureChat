@@ -2349,30 +2349,65 @@ static const String ONESIGNAL_REST_API_KEY = 'os_v2_app_aw7omackivcolm26kmufitbf
   }
 
   // ============ NOTIFICATION BHEJEIN ============
-  Future<void> _sendNotification(String message) async {
-    try {
-      await http.post(
-        Uri.parse('https://onesignal.com/api/v1/notifications'),
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Authorization': 'Basic $ONESIGNAL_REST_API_KEY',
+Future<void> _sendNotification(String message) async {
+  try {
+    final response = await http.post(
+      Uri.parse('https://onesignal.com/api/v1/notifications'),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Basic $ONESIGNAL_REST_API_KEY',
+      },
+      body: jsonEncode({
+        'app_id': ONESIGNAL_APP_ID,
+        'include_aliases': {
+          'external_id': [widget.receiverUid],
         },
-        body: jsonEncode({
-          'app_id': ONESIGNAL_APP_ID,
-          'include_aliases': {
-            'external_id': [widget.receiverUid],
-          },
-          'target_channel': 'push',
-          'headings': {'en': 'Bhai Bhai'},
-          'contents': {
-            'en': message.isNotEmpty ? message : 'Photo bheji',
-          },
-        }),
+        'target_channel': 'push',
+        'headings': {'en': 'Bhai Bhai'},
+        'contents': {
+          'en': message.isNotEmpty ? message : 'Photo bheji',
+        },
+      }),
+    );
+
+    // *** DEBUG: Response print karein ***
+    debugPrint('=== OneSignal Notification ===');
+    debugPrint('Status Code: ${response.statusCode}');
+    debugPrint('Response Body: ${response.body}');
+    debugPrint('Receiver UID: ${widget.receiverUid}');
+    debugPrint('==============================');
+
+    // *** Agar error hai, toh screen par dikhayein ***
+    if (response.statusCode != 200) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Notif Error: ${response.statusCode}\n${response.body}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    // *** Agar exception hai, toh screen par dikhayein ***
+    debugPrint('=== OneSignal Error ===');
+    debugPrint('Error: $e');
+    debugPrint('=======================');
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Notif Exception: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
       );
-    } catch (e) {
-      // Notification fail ho gayi toh kuch nahi karein
     }
   }
+}
 
   // ============ TYPING INDICATOR ============
   void _listenToTypingStatus() {
