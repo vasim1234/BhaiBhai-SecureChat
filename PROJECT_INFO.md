@@ -27,6 +27,8 @@
 - ✅ Message Edit/Delete (apne message ko)
 - ✅ Photo Bhejna (Base64 format mein - bilkul free)
 - ✅ Image Caching (flicker fix)
+- ✅ **Fast Message Send (Instant UI update - WhatsApp jaisa)**
+- ✅ **Unread Badge (chat list mein green circle count)**
 
 ### Social Features
 - ✅ Search Users (username se)
@@ -47,16 +49,19 @@
 - ✅ Stats (Contacts, Chats, Blocked)
 - ✅ Account Settings
 
+### Notifications
+- ✅ **Push Notifications (OneSignal)**
+- ✅ **App se bheji gayi notification (REST API se)**
+- ✅ **Manual notification (OneSignal Dashboard se)**
+
 ---
 
 ## 🚧 Features Jo Baaki Hain
 
 ### Priority 1
 - ⏳ Voice/Video Calling (WebRTC)
-- ⏳ Push Notifications (FCM/OneSignal)
 
 ### Priority 2
-- ⏳ Chats List mein Unread Badge
 - ⏳ Chats List mein Search Function (currently working nahi hai)
 - ⏳ Group Admin Controls
 
@@ -64,6 +69,7 @@
 - ⏳ Status Updates (Stories)
 - ⏳ End-to-End Encryption
 - ⏳ Two-Factor Auth
+- ⏳ Message Forwarding
 
 ---
 
@@ -79,6 +85,11 @@
 - **Firebase Auth** (Email/Password login)
 - **Cloud Firestore** (real-time database)
 - **Firebase Storage** — **HATA DIYA** (Base64 use kar rahe hain)
+
+### Notifications
+- **OneSignal** (Push Notifications)
+- **OneSignal REST API** (app se notification bhejne ke liye)
+- **Firebase Service Account JSON** (OneSignal mein upload hai)
 
 ### Key Packages
 ```yaml
@@ -98,27 +109,11 @@ dependencies:
   path_provider: ^2.1.1
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.1.0
-
+  http: ^1.2.0
+  onesignal_flutter: ^5.3.0
 
 lib/
 ├── main.dart              (Main app - login, chat, profile, home)
 ├── friend_request.dart    (Friend request system)
 ├── user_profile.dart      (User profile screen)
 └── avatar_builder.dart    (2D avatar builder + AvatarWidget)
-
-## 📲 OneSignal Notifications
-
-- **OneSignal App ID:** `05bee600-4a45-44e5-b35e-5328544c25c1`
-- **REST API Key:** (GitHub par **mat** daalein — secret hai)
-- **Firebase Service Account JSON:** OneSignal mein upload hai
-
-### Notification Kaise Kaam Karti Hai:
-1. User login karta hai → `OneSignal.login(uid)` call hota hai
-2. Message bhejta hai → `_sendNotification()` function HTTP request bhejta hai
-3. OneSignal receiver ke device par notification bhejta hai
-
-### Important Files:
-- `main.dart` line 22 — OneSignal initialize
-- `ChatScreen` line 2277-2278 — App ID + REST API Key
-- `LoginScreen` — OneSignal.login()
-- `ProfileScreen` — OneSignal.logout()
