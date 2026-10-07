@@ -20,6 +20,7 @@ import 'avatar_builder.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3346,7 +3347,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _startRecording() async {
     try {
       final status = await Permission.microphone.request();
-      if (status != PermissionStatus.granted) {
+if (!status.isGranted) {                    // ✅ Ye line
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
