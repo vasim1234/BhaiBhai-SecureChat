@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 // ============ AVATAR BUILDER SCREEN ============
 class AvatarBuilderScreen extends StatefulWidget {
@@ -87,7 +86,7 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   }
 
   String get avatarUrl {
-    return 'https://api.dicebear.com/7.x/avataaars/svg?seed=$_selectedSeed'
+    return 'https://api.dicebear.com/7.x/avataaars/png?seed=$_selectedSeed'
         '&skinColor=$_skinColor'
         '&top=$_top'
         '&hairColor=$_hairColor'
@@ -124,14 +123,16 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
     setState(() => _isSaving = false);
   }
 
-  Widget _buildDropdown(String label, String value, List<String> items, Function(String) onChanged) {
+  Widget _buildDropdown(String label, String value, List<String> items,
+      Function(String) onChanged) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Expanded(
             flex: 2,
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           Expanded(
             flex: 3,
@@ -207,14 +208,22 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: ClipOval(
-                    child: SvgPicture.network(
+                    child: Image.network(
                       avatarUrl,
                       width: 130,
                       height: 130,
                       fit: BoxFit.cover,
-                      placeholderBuilder: (context) => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(Icons.error, color: Colors.grey),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -226,7 +235,8 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF667EEA),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -240,66 +250,60 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
               ),
               child: ListView(
                 children: [
                   const SizedBox(height: 15),
                   const Text(
                     'Apna Avatar Customize Karein',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
 
-                  // Skin Color
                   _buildDropdown('Skin Color', _skinColor, _skinColors, (val) {
                     setState(() => _skinColor = val);
                   }),
 
-                  // Hair Style
                   _buildDropdown('Hair Style', _top, _tops, (val) {
                     setState(() => _top = val);
                   }),
 
-                  // Hair Color
                   _buildDropdown('Hair Color', _hairColor, _hairColors, (val) {
                     setState(() => _hairColor = val);
                   }),
 
-                  // Eyes
                   _buildDropdown('Eyes', _eyes, _eyesOptions, (val) {
                     setState(() => _eyes = val);
                   }),
 
-                  // Eyebrows
                   _buildDropdown('Eyebrows', _eyebrows, _eyebrowsOptions, (val) {
                     setState(() => _eyebrows = val);
                   }),
 
-                  // Mouth
                   _buildDropdown('Mouth', _mouth, _mouthOptions, (val) {
                     setState(() => _mouth = val);
                   }),
 
-                  // Facial Hair
-                  _buildDropdown('Facial Hair', _facialHair, _facialHairOptions, (val) {
+                  _buildDropdown('Facial Hair', _facialHair,
+                      _facialHairOptions, (val) {
                     setState(() => _facialHair = val);
                   }),
 
-                  // Accessories
-                  _buildDropdown('Accessories', _accessories, _accessoriesOptions, (val) {
+                  _buildDropdown('Accessories', _accessories,
+                      _accessoriesOptions, (val) {
                     setState(() => _accessories = val);
                   }),
 
-                  // Clothes
                   _buildDropdown('Clothes', _clothing, _clothingOptions, (val) {
                     setState(() => _clothing = val);
                   }),
 
-                  // Clothes Color
-                  _buildDropdown('Clothes Color', _clothesColor, _clothesColors, (val) {
+                  _buildDropdown('Clothes Color', _clothesColor, _clothesColors,
+                      (val) {
                     setState(() => _clothesColor = val);
                   }),
 
@@ -320,7 +324,8 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                               ),
                             )
                           : const Icon(Icons.check),
-                      label: Text(_isSaving ? 'Saving...' : 'Avatar Save Karein'),
+                      label: Text(
+                          _isSaving ? 'Saving...' : 'Avatar Save Karein'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF667EEA),
                         foregroundColor: Colors.white,
@@ -360,12 +365,18 @@ class AvatarWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       return ClipOval(
-        child: SvgPicture.network(
+        child: Image.network(
           avatarUrl!,
           width: size,
           height: size,
           fit: BoxFit.cover,
-          placeholderBuilder: (context) => _defaultAvatar(),
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return _defaultAvatar();
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return _defaultAvatar();
+          },
         ),
       );
     }
