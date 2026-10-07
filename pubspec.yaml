@@ -25,6 +25,9 @@ dependencies:
   mobile_scanner: ^5.1.0
   http: ^1.2.0
   onesignal_flutter: ^5.3.0
+  record: ^5.1.2                    # 🎤 Recording ke liye
+  audioplayers: ^6.1.0              # ▶️ Playback ke liye
+  permission_handler: ^11.3.1       # 🔐 Mic permission ke liye
   
 dev_dependencies:
   flutter_test:
