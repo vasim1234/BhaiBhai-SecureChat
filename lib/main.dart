@@ -17,10 +17,9 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'avatar_builder.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_sound/flutter_sound.dart';        // ✅ Ye hona chahiye
+import 'package:audioplayers/audioplayers.dart';          // ✅ Ye ADD karo
+import 'package:permission_handler/permission_handler.dart';  // ✅ Ye hona chahiye
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
