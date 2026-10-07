@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,6 +17,9 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'avatar_builder.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -141,7 +145,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      // OneSignal Login
       await OneSignal.login(FirebaseAuth.instance.currentUser!.uid);
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -168,8 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
       );
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Password reset link email par bhej di!')),
+        const SnackBar(content: Text('Password reset link bhej di!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -196,7 +198,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ============ LOGO ============
                   Container(
                     width: 130,
                     height: 130,
@@ -215,7 +216,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Back bubble
                           Positioned(
                             bottom: 30,
                             left: 20,
@@ -235,7 +235,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          // Front bubble
                           Positioned(
                             top: 30,
                             right: 20,
@@ -273,11 +272,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text(
                     'Secure Community',
                     style: TextStyle(
-                        color: Colors.white70, fontSize: 15, letterSpacing: 0.5),
+                        color: Colors.white70,
+                        fontSize: 15,
+                        letterSpacing: 0.5),
                   ),
                   const SizedBox(height: 40),
-
-                  // ============ LOGIN CARD ============
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -293,7 +292,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Email Field
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -324,8 +322,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-
-                        // Password Field
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -346,8 +342,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.grey,
                               ),
                               onPressed: () {
-                                setState(
-                                    () => _obscurePassword = !_obscurePassword);
+                                setState(() =>
+                                    _obscurePassword = !_obscurePassword);
                               },
                             ),
                             border: OutlineInputBorder(
@@ -367,8 +363,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-
-                        // Forgot Password
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
@@ -383,10 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 5),
-
-                        // Login Button
                         SizedBox(
                           width: double.infinity,
                           height: 55,
@@ -434,15 +425,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 20),
-
-                        // ============ DIVIDER ============
                         Row(
                           children: [
                             Expanded(
-                              child:
-                                  Divider(color: Colors.grey[300], thickness: 1),
+                              child: Divider(
+                                  color: Colors.grey[300], thickness: 1),
                             ),
                             Padding(
                               padding:
@@ -456,15 +444,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             Expanded(
-                              child:
-                                  Divider(color: Colors.grey[300], thickness: 1),
+                              child: Divider(
+                                  color: Colors.grey[300], thickness: 1),
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 18),
-
-                        // ============ GOOGLE SIGN-IN ============
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -514,10 +499,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 20),
-
-                        // ============ SIGN UP / LOGIN TOGGLE ============
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -706,7 +688,7 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
   }
 }
 
-// ============ HOME SCREEN (With Online Status) ============
+// ============ HOME SCREEN ============
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -995,24 +977,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.red, size: 50),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Error loading chats:\n${snapshot.error}',
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1098,6 +1063,12 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               if (otherUserId.isEmpty) return const SizedBox.shrink();
 
               String lastMessage = chat['message'] ?? '';
+              if (lastMessage.isEmpty && chat['voiceBase64'] != null) {
+                lastMessage = '🎤 Voice message';
+              } else if (lastMessage.isEmpty &&
+                  chat['imageBase64'] != null) {
+                lastMessage = '📷 Photo';
+              }
               Timestamp? timestamp = chat['timestamp'];
               bool isPinned = _pinnedChats.contains(chatId);
 
@@ -1984,7 +1955,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN (Modern Design with Edit) ============
+// ============ PROFILE SCREEN (Modern) ============
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -2082,7 +2053,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ============ EDIT PROFILE DIALOG ============
   Future<void> _showEditProfileDialog(
       BuildContext context, String currentUsername) async {
     String uid = FirebaseAuth.instance.currentUser!.uid;
@@ -2363,7 +2333,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // ============ HEADER ============
                 Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.topCenter,
@@ -2507,8 +2476,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-
-                // ============ NAME + EMAIL ============
                 const SizedBox(height: 75),
                 Text(
                   username,
@@ -2532,8 +2499,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-
-                // ============ STATUS ============
                 if (status.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Container(
@@ -2556,8 +2521,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ],
-
-                // ============ BIO ============
                 if (bio.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Padding(
@@ -2573,8 +2536,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ],
-
-                // ============ BIRTHDAY ============
                 if (birthday.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Row(
@@ -2590,8 +2551,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ],
-
-                // ============ ONLINE BADGE ============
                 const SizedBox(height: 12),
                 Container(
                   padding:
@@ -2623,8 +2582,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-
-                // ============ QR + EDIT BUTTONS ============
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2677,8 +2634,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-
-                // ============ FRIEND REQUESTS ============
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2749,8 +2704,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                 ),
-
-                // ============ STATS CARD ============
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2827,8 +2780,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                 ),
-
-                // ============ ACCOUNT SETTINGS ============
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2881,13 +2832,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const Divider(height: 1),
-
                         _buildSettingsItem(
                           Icons.shield,
                           'Privacy',
                           const Color(0xFF10B981),
                           () {
-                            _showSimpleSheet(context, 'Privacy', 'Privacy settings jald aa rahi hain!');
+                            _showSimpleSheet(context, 'Privacy',
+                                'Privacy settings jald aa rahi hain!');
                           },
                         ),
                         _buildSettingsItem(
@@ -2895,7 +2846,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           'Notifications',
                           const Color(0xFFF59E0B),
                           () {
-                            _showSimpleSheet(context, 'Notifications', 'Notification settings jald aa rahi hain!');
+                            _showSimpleSheet(context, 'Notifications',
+                                'Notification settings jald aa rahi hain!');
                           },
                         ),
                         _buildSettingsItem(
@@ -2903,7 +2855,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           'Storage',
                           const Color(0xFF8B5CF6),
                           () {
-                            _showSimpleSheet(context, 'Storage', 'Storage info jald aa rahi hai!');
+                            _showSimpleSheet(context, 'Storage',
+                                'Storage info jald aa rahi hai!');
                           },
                         ),
                         _buildSettingsItem(
@@ -2911,7 +2864,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           'Help',
                           const Color(0xFF3B82F6),
                           () {
-                            _showSimpleSheet(context, 'Help & Support', 'Email: support@bhaibhai.com');
+                            _showSimpleSheet(context, 'Help & Support',
+                                'Email: support@bhaibhai.com');
                           },
                         ),
                         _buildSettingsItem(
@@ -2926,7 +2880,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
                 const Text(
                   'Bhai Bhai App v1.0.0 • Secure Community',
@@ -3314,7 +3267,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN ============
+// ============ CHAT SCREEN (With Voice Message) ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -3344,12 +3297,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final Map<String, Uint8List> _imageCache = {};
 
+  // ============ VOICE MESSAGE VARIABLES ============
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+  Duration _recordDuration = Duration.zero;
+  Timer? _recordTimer;
+  final Map<String, AudioPlayer> _audioPlayers = {};
+  final Map<String, bool> _isPlayingMap = {};
+  final Map<String, Duration> _playPositionMap = {};
+  final Map<String, Duration> _playDurationMap = {};
+
   static const String ONESIGNAL_APP_ID =
       '05bee600-4a45-44e5-b35e-5328544c25c1';
   static const String ONESIGNAL_REST_API_KEY = String.fromEnvironment(
     'ONESIGNAL_REST_API_KEY',
     defaultValue: '',
   );
+
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
     uids.sort();
@@ -3370,12 +3334,163 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _setTypingStatus(false);
+    _recordTimer?.cancel();
+    _audioRecorder.dispose();
+    for (var player in _audioPlayers.values) {
+      player.dispose();
+    }
     super.dispose();
   }
 
+  // ============ VOICE RECORDING ============
+  Future<void> _startRecording() async {
+    try {
+      final status = await Permission.microphone.request();
+      if (status != PermissionStatus.granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Microphone permission chahiye voice ke liye')),
+          );
+        }
+        return;
+      }
+
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      await _audioRecorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 128000,
+          sampleRate: 44100,
+        ),
+        path: path,
+      );
+
+      setState(() {
+        _isRecording = true;
+        _recordDuration = Duration.zero;
+      });
+
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted && _isRecording) {
+          setState(() {
+            _recordDuration = Duration(seconds: timer.tick);
+          });
+          if (timer.tick >= 300) _stopRecording(send: true);
+        }
+      });
+    } catch (e) {
+      debugPrint('Recording error: $e');
+    }
+  }
+
+  Future<void> _stopRecording({bool send = false}) async {
+    try {
+      _recordTimer?.cancel();
+      final path = await _audioRecorder.stop();
+
+      setState(() => _isRecording = false);
+
+      if (path == null || !send) {
+        if (path != null) {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        }
+        setState(() => _recordDuration = Duration.zero);
+        return;
+      }
+
+      final file = File(path);
+      final fileSize = await file.length();
+
+      if (fileSize > 900000) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Voice bahut lambi hai')),
+          );
+        }
+        await file.delete();
+        setState(() => _recordDuration = Duration.zero);
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      final base64Audio = base64Encode(bytes);
+
+      await _sendMessage(voiceBase64: base64Audio);
+      await file.delete();
+
+      setState(() => _recordDuration = Duration.zero);
+    } catch (e) {
+      debugPrint('Stop recording error: $e');
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    await _stopRecording(send: false);
+  }
+
+  // ============ VOICE PLAYBACK ============
+  Future<void> _playVoice(String messageId, String base64Audio) async {
+    try {
+      if (_isPlayingMap[messageId] == true) {
+        await _audioPlayers[messageId]?.stop();
+        setState(() {
+          _isPlayingMap[messageId] = false;
+          _playPositionMap[messageId] = Duration.zero;
+        });
+        return;
+      }
+
+      for (var player in _audioPlayers.values) {
+        await player.stop();
+      }
+
+      final player = AudioPlayer();
+      _audioPlayers[messageId] = player;
+
+      final bytes = base64Decode(base64Audio);
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final file = File(path);
+      await file.writeAsBytes(bytes);
+
+      player.onDurationChanged.listen((d) {
+        if (mounted) setState(() => _playDurationMap[messageId] = d);
+      });
+      player.onPositionChanged.listen((p) {
+        if (mounted) setState(() => _playPositionMap[messageId] = p);
+      });
+      player.onPlayerComplete.listen((_) {
+        if (mounted) {
+          setState(() {
+            _isPlayingMap[messageId] = false;
+            _playPositionMap[messageId] = Duration.zero;
+          });
+        }
+        file.delete();
+      });
+
+      await player.play(DeviceFileSource(path));
+      setState(() => _isPlayingMap[messageId] = true);
+    } catch (e) {
+      debugPrint('Playback error: $e');
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.inMinutes)}:${two(d.inSeconds % 60)}';
+  }
+
+  // ============ NOTIFICATION ============
   Future<void> _sendNotification(String message) async {
     try {
-      final response = await http.post(
+      await http.post(
         Uri.parse('https://onesignal.com/api/v1/notifications'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
@@ -3393,19 +3508,12 @@ class _ChatScreenState extends State<ChatScreen> {
           },
         }),
       );
-
-      debugPrint('=== OneSignal Notification ===');
-      debugPrint('Status Code: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
-      debugPrint('Receiver UID: ${widget.receiverUid}');
-      debugPrint('==============================');
     } catch (e) {
-      debugPrint('=== OneSignal Error ===');
-      debugPrint('Error: $e');
-      debugPrint('=======================');
+      debugPrint('OneSignal Error: $e');
     }
   }
 
+  // ============ TYPING + ONLINE ============
   void _listenToTypingStatus() {
     FirebaseFirestore.instance
         .collection('typing')
@@ -3444,9 +3552,9 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  // ============ HELPERS ============
   Future<void> _markMessagesAsRead() async {
     await Future.delayed(const Duration(milliseconds: 500));
-
     try {
       QuerySnapshot messages = await FirebaseFirestore.instance
           .collection('chats')
@@ -3523,8 +3631,12 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage(
-      {String? imageBase64, Map<String, dynamic>? replyTo}) async {
+  // ============ SEND MESSAGE ============
+  Future<void> _sendMessage({
+    String? imageBase64,
+    String? voiceBase64,
+    Map<String, dynamic>? replyTo,
+  }) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aapne is user ko block kiya hai')),
@@ -3538,14 +3650,15 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       return;
     }
-    if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
+    if (_msgController.text.trim().isEmpty &&
+        imageBase64 == null &&
+        voiceBase64 == null) return;
 
     String messageText = _msgController.text.trim();
     _msgController.clear();
     _setTypingStatus(false);
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
-
     List<String> members = [currentUserId, widget.receiverUid];
     members.sort();
 
@@ -3557,6 +3670,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'receiverId': widget.receiverUid,
         'message': messageText,
         'imageBase64': imageBase64,
+        'voiceBase64': voiceBase64,
         'replyTo': replyTo,
         'timestamp': FieldValue.serverTimestamp(),
         'expiresAt': Timestamp.fromDate(expiryTime),
@@ -3565,7 +3679,11 @@ class _ChatScreenState extends State<ChatScreen> {
         'isRead': false,
       });
 
-      await _sendNotification(messageText);
+      await _sendNotification(
+        messageText.isNotEmpty
+            ? messageText
+            : (voiceBase64 != null ? '🎤 Voice message' : 'Photo bheji'),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3580,6 +3698,7 @@ class _ChatScreenState extends State<ChatScreen> {
       'isDeleted': true,
       'message': 'Ye message delete kar diya gaya hai',
       'imageBase64': null,
+      'voiceBase64': null,
     });
   }
 
@@ -3648,21 +3767,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.reply, color: Color(0xFF667EEA)),
-                title: const Text('Reply'),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _replyToData = {
-                      'message': message,
-                      'senderName': isMe ? 'Aap' : widget.receiverName,
-                      'senderId': data['senderId'],
-                    };
-                  });
-                },
-              ),
-              if (isMe)
+              if (message.isNotEmpty)
+                ListTile(
+                  leading:
+                      const Icon(Icons.reply, color: Color(0xFF667EEA)),
+                  title: const Text('Reply'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _replyToData = {
+                        'message': message,
+                        'senderName': isMe ? 'Aap' : widget.receiverName,
+                        'senderId': data['senderId'],
+                      };
+                    });
+                  },
+                ),
+              if (isMe && message.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.edit, color: Colors.blue),
                   title: const Text('Edit Message'),
@@ -3807,6 +3928,74 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Center(child: Icon(Icons.broken_image, color: Colors.grey)),
       );
     }
+  }
+
+  // ============ VOICE PLAYER WIDGET ============
+  Widget _buildVoicePlayer(String messageId, String base64Audio, bool isMe) {
+    final isPlaying = _isPlayingMap[messageId] ?? false;
+    final position = _playPositionMap[messageId] ?? Duration.zero;
+    final duration = _playDurationMap[messageId] ?? Duration.zero;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isMe ? Colors.white.withOpacity(0.2) : Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => _playVoice(messageId, base64Audio),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white : const Color(0xFF667EEA),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isPlaying ? Icons.pause : Icons.play_arrow,
+                color: isMe ? const Color(0xFF667EEA) : Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: List.generate(20, (i) {
+                  final height = (i % 4) * 3.0 + 4.0;
+                  return Container(
+                    width: 2.5,
+                    height: height,
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    decoration: BoxDecoration(
+                      color: isMe
+                          ? Colors.white70
+                          : const Color(0xFF667EEA).withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isPlaying
+                    ? '${_formatDuration(position)} / ${_formatDuration(duration)}'
+                    : _formatDuration(duration),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe ? Colors.white70 : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Stream<QuerySnapshot> _getMessages() {
@@ -4004,6 +4193,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     bool isEdited = data['isEdited'] ?? false;
                     bool isRead = data['isRead'] ?? false;
                     String? imageBase64 = data['imageBase64'];
+                    String? voiceBase64 = data['voiceBase64'];
                     Map<String, dynamic>? replyTo = data['replyTo'];
 
                     return GestureDetector(
@@ -4103,6 +4293,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                   child: _buildCachedImage(imageBase64),
                                 ),
+                              if (voiceBase64 != null && !isDeleted)
+                                _buildVoicePlayer(doc.id, voiceBase64, isMe),
                               if (data['message'] != null &&
                                   (data['message'] as String).isNotEmpty)
                                 Padding(
@@ -4223,67 +4415,124 @@ class _ChatScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.attach_file,
-                          color: Color(0xFF667EEA)),
-                      onPressed: (_isUploading || _isBlocked)
-                          ? null
-                          : _showAttachmentOptions,
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _msgController,
-                        enabled: !_isBlocked && _areFriends,
-                        onChanged: (value) {
-                          _setTypingStatus(value.isNotEmpty);
-                        },
-                        decoration: InputDecoration(
-                          hintText: _isBlocked
-                              ? 'Aapne is user ko block kiya hai'
-                              : (!_areFriends
-                                  ? 'Pehle friend request accept karwa lein'
-                                  : 'Message likhein...'),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25),
+                if (_isRecording)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    color: Colors.red.withOpacity(0.1),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F7FB),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _formatDuration(_recordDuration),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Recording...',
+                            style: TextStyle(
+                                color: Colors.red, fontSize: 14),
+                          ),
+                        ),
+                        IconButton(
+                          icon:
+                              const Icon(Icons.close, color: Colors.red),
+                          onPressed: _cancelRecording,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send, color: Colors.red),
+                          onPressed: () => _stopRecording(send: true),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.attach_file,
+                            color: Color(0xFF667EEA)),
+                        onPressed: (_isUploading || _isBlocked)
+                            ? null
+                            : _showAttachmentOptions,
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _msgController,
+                          enabled: !_isBlocked && _areFriends,
+                          onChanged: (value) {
+                            _setTypingStatus(value.isNotEmpty);
+                            setState(() {});
+                          },
+                          decoration: InputDecoration(
+                            hintText: _isBlocked
+                                ? 'Aapne is user ko block kiya hai'
+                                : (!_areFriends
+                                    ? 'Pehle friend request accept karwa lein'
+                                    : 'Message likhein...'),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            filled: true,
+                            fillColor: const Color(0xFFF5F7FB),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: (_isBlocked || !_areFriends)
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onLongPress: (_isBlocked || !_areFriends)
                             ? null
-                            : const LinearGradient(
-                                colors: [
-                                  Color(0xFF667EEA),
-                                  Color(0xFF764BA2)
-                                ],
-                              ),
-                        color: (_isBlocked || !_areFriends)
-                            ? Colors.grey
-                            : null,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        onPressed: (_isBlocked || !_areFriends)
+                            : _startRecording,
+                        onLongPressEnd: (_isBlocked || !_areFriends)
                             ? null
-                            : () async {
-                                await _sendMessage(
-                                    replyTo: _replyToData);
-                                setState(() => _replyToData = null);
-                              },
+                            : (_) => _stopRecording(send: true),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: (_isBlocked || !_areFriends)
+                                ? null
+                                : const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                  ),
+                            color: (_isBlocked || !_areFriends)
+                                ? Colors.grey
+                                : null,
+                          ),
+                          child: _msgController.text.trim().isEmpty
+                              ? const Icon(Icons.mic,
+                                  color: Colors.white)
+                              : GestureDetector(
+                                  onTap: () async {
+                                    await _sendMessage(
+                                        replyTo: _replyToData);
+                                    setState(() => _replyToData = null);
+                                  },
+                                  child: const Icon(Icons.send,
+                                      color: Colors.white),
+                                ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
