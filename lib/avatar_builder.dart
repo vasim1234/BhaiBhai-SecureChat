@@ -77,6 +77,12 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   void initState() {
     super.initState();
     _generateRandomSeed();
+    // *** DEBUG: URL print karo ***
+    Future.delayed(const Duration(milliseconds: 500), () {
+      debugPrint('=== Avatar URL ===');
+      debugPrint(avatarUrl);
+      debugPrint('==================');
+    });
   }
 
   void _generateRandomSeed() {
@@ -86,7 +92,9 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   }
 
   String get avatarUrl {
-    return 'https://api.dicebear.com/7.x/avataaars/png?seed=$_selectedSeed'
+    return 'https://api.dicebear.com/7.x/avataaars/png'
+        '?seed=$_selectedSeed'
+        '&size=200'
         '&skinColor=$_skinColor'
         '&top=$_top'
         '&hairColor=$_hairColor'
@@ -220,8 +228,18 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Icon(Icons.error, color: Colors.grey),
+                        // *** DEBUG: Error screen par dikhao ***
+                        return Container(
+                          color: Colors.red.withOpacity(0.1),
+                          padding: const EdgeInsets.all(5),
+                          child: Center(
+                            child: Text(
+                              'Error:\n$error',
+                              style: const TextStyle(
+                                  fontSize: 8, color: Colors.red),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         );
                       },
                     ),
