@@ -140,7 +140,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      // *** OneSignal Login (Notification ke liye) ***
       await OneSignal.login(FirebaseAuth.instance.currentUser!.uid);
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -363,7 +362,8 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.alternate_email, size: 80, color: Colors.white),
+                  const Icon(Icons.alternate_email,
+                      size: 80, color: Colors.white),
                   const SizedBox(height: 20),
                   const Text(
                     'Apna Username Set Karein',
@@ -408,13 +408,15 @@ class _SetUsernameScreenState extends State<SetUsernameScreen> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF667EEA),
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 15),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 15),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   child: const Text('Save Username',
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
                                 ),
                               ),
                       ],
@@ -475,7 +477,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // *** IndexedStack use karein taaki state maintain rahe ***
       body: IndexedStack(
         index: _currentIndex,
         children: const [
@@ -517,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-// ============ CHATS LIST SCREEN (With Unread Badge) ============
+// ============ CHATS LIST SCREEN ============
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
 
@@ -608,7 +609,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 
-  // *** UNREAD COUNT NIKALNE KA FUNCTION ***
   Future<int> _getUnreadCount(String chatId) async {
     try {
       QuerySnapshot unreadMessages = await FirebaseFirestore.instance
@@ -665,7 +665,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: Container(
                   decoration: BoxDecoration(
                     boxShadow: [
@@ -683,7 +684,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                         color: Colors.grey[500],
                         fontSize: 14,
                       ),
-                      prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 22),
+                      prefixIcon: Icon(Icons.search,
+                          color: Colors.grey[500], size: 22),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
@@ -697,7 +699,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   children: [
                     _buildFilterChip('All', true),
@@ -724,7 +727,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 50),
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 50),
                     const SizedBox(height: 10),
                     Text(
                       'Error loading chats:\n${snapshot.error}',
@@ -761,7 +765,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   const SizedBox(height: 20),
                   const Text(
                     'Abhi koi chat nahi hai',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 5),
                   const Text(
@@ -844,7 +849,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     }
                   }
 
-                  // *** UNREAD BADGE KE LIYE FUTUREBUILDER ***
                   return FutureBuilder<int>(
                     future: _getUnreadCount(chatId),
                     builder: (context, unreadSnapshot) {
@@ -914,8 +918,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                             ),
                                             if (isPinned)
                                               const Padding(
-                                                padding:
-                                                    EdgeInsets.only(left: 4),
+                                                padding: EdgeInsets.only(
+                                                    left: 4),
                                                 child: Icon(
                                                   Icons.push_pin,
                                                   size: 14,
@@ -1151,7 +1155,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 ? const CircularProgressIndicator()
                 : const Text('Create',
                     style: TextStyle(
-                        color: Color(0xFF667EEA), fontWeight: FontWeight.bold)),
+                        color: Color(0xFF667EEA),
+                        fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1206,8 +1211,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           size: 45,
                         ),
                         title: Text(user['username'] ?? 'Unknown',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold)),
                         subtitle: Text(user['email'] ?? ''),
                       );
                     },
@@ -1381,7 +1386,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 }).toList();
 
                 if (docs.isEmpty) {
-                  return const Center(child: Text('Group mein message bhejein!'));
+                  return const Center(
+                      child: Text('Group mein message bhejein!'));
                 }
 
                 return ListView.builder(
@@ -1493,7 +1499,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
+                  icon:
+                      const Icon(Icons.attach_file, color: Color(0xFF667EEA)),
                   onPressed: _isUploading ? null : _showAttachmentOptions,
                 ),
                 Expanded(
@@ -1667,7 +1674,8 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => UserProfileScreen(
+                                        builder: (context) =>
+                                            UserProfileScreen(
                                           userId: user['uid'],
                                           username:
                                               user['username'] ?? 'User',
@@ -1702,7 +1710,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 }
 
-// ============ PROFILE SCREEN (Modern Design) ============
+// ============ PROFILE SCREEN (Modern Design with Edit) ============
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -1800,6 +1808,249 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ============ EDIT PROFILE DIALOG ============
+  Future<void> _showEditProfileDialog(
+      BuildContext context, String currentUsername) async {
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    DocumentSnapshot doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    String existingBio = '';
+    String existingStatus = '';
+    DateTime? existingBirthday;
+
+    if (doc.exists && doc.data() != null) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      existingBio = data['bio'] ?? '';
+      existingStatus = data['status'] ?? '';
+      if (data['birthday'] != null) {
+        Timestamp ts = data['birthday'];
+        existingBirthday = ts.toDate();
+      }
+    }
+
+    if (!context.mounted) return;
+
+    final TextEditingController usernameController =
+        TextEditingController(text: currentUsername);
+    final TextEditingController bioController =
+        TextEditingController(text: existingBio);
+    final TextEditingController statusController =
+        TextEditingController(text: existingStatus);
+
+    DateTime? selectedBirthday = existingBirthday;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: const Text('Edit Profile'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        prefixIcon: const Icon(Icons.alternate_email),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: statusController,
+                      maxLength: 50,
+                      decoration: InputDecoration(
+                        labelText: 'Status / Quote',
+                        hintText: 'Jaise: "Jeena yahan, marna yahan..."',
+                        prefixIcon: const Icon(Icons.format_quote),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: bioController,
+                      maxLines: 3,
+                      maxLength: 150,
+                      decoration: InputDecoration(
+                        labelText: 'Bio',
+                        hintText: 'Apne baare mein kuch likhein...',
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.only(bottom: 40),
+                          child: Icon(Icons.info_outline),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate:
+                              selectedBirthday ?? DateTime(2000, 1, 1),
+                          firstDate: DateTime(1950),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF4A6CF7),
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setDialogState(() => selectedBirthday = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[400]!),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cake, color: Colors.grey),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                selectedBirthday != null
+                                    ? '${selectedBirthday!.day}/${selectedBirthday!.month}/${selectedBirthday!.year}'
+                                    : 'Birthday select karein',
+                                style: TextStyle(
+                                  color: selectedBirthday != null
+                                      ? Colors.black87
+                                      : Colors.grey[600],
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.calendar_today,
+                                color: Colors.grey, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          String newUsername =
+                              usernameController.text.trim().toLowerCase();
+
+                          if (newUsername.length < 3 ||
+                              newUsername.length > 20) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Username 3-20 characters ka hona chahiye')),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSaving = true);
+
+                          try {
+                            if (newUsername != currentUsername) {
+                              QuerySnapshot existing = await FirebaseFirestore
+                                  .instance
+                                  .collection('users')
+                                  .where('username', isEqualTo: newUsername)
+                                  .get();
+
+                              if (existing.docs.isNotEmpty) {
+                                setDialogState(() => isSaving = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Ye username pehle se le liya gaya hai')),
+                                );
+                                return;
+                              }
+                            }
+
+                            String uid =
+                                FirebaseAuth.instance.currentUser!.uid;
+
+                            Map<String, dynamic> updateData = {
+                              'username': newUsername,
+                              'status': statusController.text.trim(),
+                              'bio': bioController.text.trim(),
+                            };
+
+                            if (selectedBirthday != null) {
+                              updateData['birthday'] =
+                                  Timestamp.fromDate(selectedBirthday!);
+                            }
+
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(uid)
+                                .update(updateData);
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              setState(() {});
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Profile update ho gayi!')),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSaving = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A6CF7),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -1813,10 +2064,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context, snapshot) {
           String username = 'Loading...';
           String memberSince = 'Oct 2026';
+          String bio = '';
+          String status = '';
+          String birthday = '';
+
           if (snapshot.hasData && snapshot.data!.exists) {
-            username = snapshot.data!['username'] ?? 'Not set';
-            if (snapshot.data!['createdAt'] != null) {
-              Timestamp ts = snapshot.data!['createdAt'];
+            Map<String, dynamic> data =
+                snapshot.data!.data() as Map<String, dynamic>;
+            username = data['username'] ?? 'Not set';
+            bio = data['bio'] ?? '';
+            status = data['status'] ?? '';
+
+            if (data['birthday'] != null) {
+              Timestamp ts = data['birthday'];
+              birthday = DateFormat('dd MMM yyyy').format(ts.toDate());
+            }
+
+            if (data['createdAt'] != null) {
+              Timestamp ts = data['createdAt'];
               memberSince = DateFormat('MMM yyyy').format(ts.toDate());
             }
           }
@@ -1824,12 +2089,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // ============ HEADER WITH GRADIENT BANNER ============
+                // ============ HEADER ============
                 Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.topCenter,
                   children: [
-                    // Gradient Banner
                     Container(
                       height: 200,
                       width: double.infinity,
@@ -1837,10 +2101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF4A6CF7),
-                            Color(0xFF8B5CF6),
-                          ],
+                          colors: [Color(0xFF4A6CF7), Color(0xFF8B5CF6)],
                         ),
                         borderRadius: BorderRadius.only(
                           bottomLeft: Radius.circular(30),
@@ -1849,7 +2110,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: Stack(
                         children: [
-                          // Decorative circles
                           Positioned(
                             top: -30,
                             right: -30,
@@ -1874,7 +2134,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                          // Top Bar (Back + Title + Settings)
                           SafeArea(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1883,7 +2142,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Back button
                                   Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.2),
@@ -1904,7 +2162,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       letterSpacing: 1.5,
                                     ),
                                   ),
-                                  // Settings button
                                   Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.2),
@@ -1930,7 +2187,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ),
-                    // Avatar (overlapping)
                     Positioned(
                       top: 130,
                       child: GestureDetector(
@@ -1963,13 +2219,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 decoration: const BoxDecoration(
                                   color: Color(0xFF4A6CF7),
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
                                 ),
                                 child: const Icon(
                                   Icons.camera_alt,
@@ -2010,11 +2259,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
 
+                // ============ STATUS ============
+                if (status.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4A6CF7).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '"$status"',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: Color(0xFF4A6CF7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+
+                // ============ BIO ============
+                if (bio.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    child: Text(
+                      bio,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+
+                // ============ BIRTHDAY ============
+                if (birthday.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cake, size: 16, color: Colors.grey),
+                      const SizedBox(width: 5),
+                      Text(
+                        birthday,
+                        style: const TextStyle(
+                            color: Colors.grey, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+
                 // ============ ONLINE BADGE ============
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -2075,7 +2382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            _pickProfilePhoto();
+                            _showEditProfileDialog(context, username);
                           },
                           icon: const Icon(Icons.edit,
                               color: Colors.white, size: 18),
@@ -2153,8 +2460,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           label: Text(
                               'Friend Requests${count > 0 ? ' ($count)' : ''}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4A6CF7),
                             foregroundColor: Colors.white,
@@ -2265,7 +2572,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Header
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
@@ -2302,35 +2608,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const Divider(height: 1),
 
-                        // Privacy
                         _buildSettingsItem(
                           Icons.shield,
                           'Privacy',
                           const Color(0xFF10B981),
-                          () {},
+                          () {
+                            _showSimpleSheet(context, 'Privacy', 'Privacy settings jald aa rahi hain!');
+                          },
                         ),
-                        // Notifications
                         _buildSettingsItem(
                           Icons.notifications,
                           'Notifications',
                           const Color(0xFFF59E0B),
-                          () {},
+                          () {
+                            _showSimpleSheet(context, 'Notifications', 'Notification settings jald aa rahi hain!');
+                          },
                         ),
-                        // Storage
                         _buildSettingsItem(
                           Icons.storage,
                           'Storage',
                           const Color(0xFF8B5CF6),
-                          () {},
+                          () {
+                            _showSimpleSheet(context, 'Storage', 'Storage info jald aa rahi hai!');
+                          },
                         ),
-                        // Help
                         _buildSettingsItem(
                           Icons.help_outline,
                           'Help',
                           const Color(0xFF3B82F6),
-                          () {},
+                          () {
+                            _showSimpleSheet(context, 'Help & Support', 'Email: support@bhaibhai.com');
+                          },
                         ),
-                        // Logout
                         _buildSettingsItem(
                           Icons.logout,
                           'Logout',
@@ -2358,7 +2667,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ============ HELPER WIDGETS ============
+  void _showSimpleSheet(BuildContext context, String title, String message) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  message,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildStatItem(IconData icon, String count, String label, Color color,
       {VoidCallback? onTap}) {
@@ -2564,7 +2904,8 @@ class ContactsListScreen extends StatelessWidget {
 
           if (contactIds.isEmpty) {
             return const Center(
-              child: Text('Abhi koi contact nahi hai.\nSearch karke chat shuru karein!'),
+              child: Text(
+                  'Abhi koi contact nahi hai.\nSearch karke chat shuru karein!'),
             );
           }
 
@@ -2573,7 +2914,10 @@ class ContactsListScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               String uid = contactIds.elementAt(index);
               return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(uid)
+                    .get(),
                 builder: (context, userSnap) {
                   String username = 'User';
                   String? avatarUrl;
@@ -2588,7 +2932,8 @@ class ContactsListScreen extends StatelessWidget {
                       size: 50,
                     ),
                     title: Text(username,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.bold)),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -2654,11 +2999,15 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
-              var data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+              var data =
+                  snapshot.data!.docs[index].data() as Map<String, dynamic>;
               String blockedId = data['blockedId'];
 
               return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('users').doc(blockedId).get(),
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(blockedId)
+                    .get(),
                 builder: (context, userSnap) {
                   String username = 'User';
                   String? avatarUrl;
@@ -2673,7 +3022,8 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
                       size: 50,
                     ),
                     title: Text(username,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.bold)),
                     trailing: TextButton(
                       onPressed: () => _unblock(blockedId),
                       child: const Text('Unblock',
@@ -2690,7 +3040,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
   }
 }
 
-// ============ CHAT SCREEN (With Notification + Typing + Reply + Read Receipts) ============
+// ============ CHAT SCREEN ============
 class ChatScreen extends StatefulWidget {
   final String receiverUid;
   final String receiverName;
@@ -2720,7 +3070,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final Map<String, Uint8List> _imageCache = {};
 
-  // ============ OneSignal Config ============
   static const String ONESIGNAL_APP_ID =
       '05bee600-4a45-44e5-b35e-5328544c25c1';
   static const String ONESIGNAL_REST_API_KEY = String.fromEnvironment(
@@ -2750,7 +3099,6 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  // ============ NOTIFICATION BHEJEIN ============
   Future<void> _sendNotification(String message) async {
     try {
       final response = await http.post(
@@ -2772,46 +3120,18 @@ class _ChatScreenState extends State<ChatScreen> {
         }),
       );
 
-      // *** DEBUG: Response print karein ***
       debugPrint('=== OneSignal Notification ===');
       debugPrint('Status Code: ${response.statusCode}');
       debugPrint('Response Body: ${response.body}');
       debugPrint('Receiver UID: ${widget.receiverUid}');
       debugPrint('==============================');
-
-      // *** Agar error hai, toh screen par dikhayein ***
-      if (response.statusCode != 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Notif Error: ${response.statusCode}\n${response.body}',
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 10),
-            ),
-          );
-        }
-      }
     } catch (e) {
-      // *** Agar exception hai, toh screen par dikhayein ***
       debugPrint('=== OneSignal Error ===');
       debugPrint('Error: $e');
       debugPrint('=======================');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Notif Exception: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 10),
-          ),
-        );
-      }
     }
   }
 
-  // ============ TYPING INDICATOR ============
   void _listenToTypingStatus() {
     FirebaseFirestore.instance
         .collection('typing')
@@ -2835,7 +3155,6 @@ class _ChatScreenState extends State<ChatScreen> {
         .set({currentUserId: isTyping}, SetOptions(merge: true));
   }
 
-  // ============ ONLINE STATUS ============
   void _listenToOnlineStatus() {
     FirebaseFirestore.instance
         .collection('users')
@@ -2851,7 +3170,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  // ============ BAQI FUNCTIONS ============
   Future<void> _markMessagesAsRead() async {
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -2869,8 +3187,6 @@ class _ChatScreenState extends State<ChatScreen> {
             .doc(doc.id)
             .update({'isRead': true});
       }
-
-      debugPrint('Marked ${messages.docs.length} messages as read');
     } catch (e) {
       debugPrint('Error marking messages as read: $e');
     }
@@ -2943,16 +3259,14 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     if (!_areFriends) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
+        const SnackBar(
+            content: Text('Pehle friend request accept karwa lein!')),
       );
       return;
     }
     if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
 
-    // *** PEHLE MESSAGE STORE KAREIN ***
     String messageText = _msgController.text.trim();
-
-    // *** FIR INPUT BOX KHALI KAREIN (INSTANT) ***
     _msgController.clear();
     _setTypingStatus(false);
 
@@ -2961,7 +3275,6 @@ class _ChatScreenState extends State<ChatScreen> {
     List<String> members = [currentUserId, widget.receiverUid];
     members.sort();
 
-    // *** AB FIRESTORE MEIN SAVE KAREIN (BACKGROUND MEIN) ***
     try {
       await FirebaseFirestore.instance.collection('chats').add({
         'chatId': chatId,
@@ -2978,10 +3291,8 @@ class _ChatScreenState extends State<ChatScreen> {
         'isRead': false,
       });
 
-      // *** Notification bhejein ***
       await _sendNotification(messageText);
     } catch (e) {
-      // Agar save fail ho gaya, toh error dikhayein
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Message send nahi hua: $e')),
@@ -3138,7 +3449,8 @@ class _ChatScreenState extends State<ChatScreen> {
       if (base64Image.length > 900000) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Photo bahut badi hai, chhoti photo try karein')),
+              content:
+                  Text('Photo bahut badi hai, chhoti photo try karein')),
         );
         setState(() => _isUploading = false);
         return;
@@ -3280,7 +3592,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(widget.receiverName,
-                      style: const TextStyle(color: Colors.white, fontSize: 16)),
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 16)),
                   if (_isReceiverTyping)
                     const Text(
                       'typing...',
@@ -3401,7 +3714,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 if (docs.isEmpty) {
                   return const Center(
-                      child: Text('Abhi koi message nahi hai. Hi bhejein!'));
+                      child:
+                          Text('Abhi koi message nahi hai. Hi bhejein!'));
                 }
 
                 return ListView.builder(
@@ -3432,7 +3746,8 @@ class _ChatScreenState extends State<ChatScreen> {
                               vertical: 4, horizontal: 8),
                           padding: const EdgeInsets.all(12),
                           constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
+                            maxWidth:
+                                MediaQuery.of(context).size.width * 0.75,
                           ),
                           decoration: BoxDecoration(
                             gradient: isMe && !isDeleted
@@ -3558,9 +3873,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                   if (isMe && !isDeleted)
                                     Padding(
-                                      padding: const EdgeInsets.only(left: 5),
+                                      padding:
+                                          const EdgeInsets.only(left: 5),
                                       child: Icon(
-                                        isRead ? Icons.done_all : Icons.done,
+                                        isRead
+                                            ? Icons.done_all
+                                            : Icons.done,
                                         size: 14,
                                         color: isRead
                                             ? Colors.lightBlue
@@ -3675,15 +3993,17 @@ class _ChatScreenState extends State<ChatScreen> {
                                   Color(0xFF764BA2)
                                 ],
                               ),
-                        color:
-                            (_isBlocked || !_areFriends) ? Colors.grey : null,
+                        color: (_isBlocked || !_areFriends)
+                            ? Colors.grey
+                            : null,
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.send, color: Colors.white),
                         onPressed: (_isBlocked || !_areFriends)
                             ? null
                             : () async {
-                                await _sendMessage(replyTo: _replyToData);
+                                await _sendMessage(
+                                    replyTo: _replyToData);
                                 setState(() => _replyToData = null);
                               },
                       ),
