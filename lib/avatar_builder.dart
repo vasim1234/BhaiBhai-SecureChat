@@ -366,7 +366,7 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   }
 }
 
-// ============ AVATAR WIDGET (Kisi bhi jagah use karne ke liye) ============
+// ============ AVATAR WIDGET (Base64 + Network dono handle kare) ============
 class AvatarWidget extends StatelessWidget {
   final String? avatarUrl;
   final String username;
@@ -382,21 +382,40 @@ class AvatarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          avatarUrl!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return _defaultAvatar();
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return _defaultAvatar();
-          },
-        ),
-      );
+      // Agar Base64 hai (profile photo)
+      if (!avatarUrl!.startsWith('http')) {
+        try {
+          final bytes = base64Decode(avatarUrl!);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+              errorBuilder: (context, error, stackTrace) => _defaultAvatar(),
+            ),
+          );
+        } catch (e) {
+          return _defaultAvatar();
+        }
+      }
+      // Agar URL hai (avatar)
+      else {
+        return ClipOval(
+          child: Image.network(
+            avatarUrl!,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return _defaultAvatar();
+            },
+            errorBuilder: (context, error, stackTrace) => _defaultAvatar(),
+          ),
+        );
+      }
     }
     return _defaultAvatar();
   }
