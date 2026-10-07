@@ -78,12 +78,6 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
   void initState() {
     super.initState();
     _generateRandomSeed();
-    // *** DEBUG: URL print karo ***
-    Future.delayed(const Duration(milliseconds: 500), () {
-      debugPrint('=== Avatar URL ===');
-      debugPrint(avatarUrl);
-      debugPrint('==================');
-    });
   }
 
   void _generateRandomSeed() {
@@ -229,7 +223,6 @@ class _AvatarBuilderScreenState extends State<AvatarBuilderScreen> {
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        // *** DEBUG: Error screen par dikhao ***
                         return Container(
                           color: Colors.red.withOpacity(0.1),
                           padding: const EdgeInsets.all(5),
@@ -421,23 +414,49 @@ class AvatarWidget extends StatelessWidget {
     return _defaultAvatar();
   }
 
+  // ============ MODERN DEFAULT AVATAR (Unique Color Per User) ============
   Widget _defaultAvatar() {
+    // 10 beautiful colors - username se auto-generate hoga
+    final colors = [
+      const Color(0xFF6366F1), // Indigo
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFFEC4899), // Pink
+      const Color(0xFFEF4444), // Red
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFF10B981), // Emerald
+      const Color(0xFF06B6D4), // Cyan
+      const Color(0xFF3B82F6), // Blue
+      const Color(0xFF14B8A6), // Teal
+      const Color(0xFFF97316), // Orange
+    ];
+
+    final colorIndex = username.isNotEmpty
+        ? username.codeUnitAt(0) % colors.length
+        : 0;
+    final bgColor = colors[colorIndex];
+
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-        ),
+        color: bgColor,
+        boxShadow: [
+          BoxShadow(
+            color: bgColor.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Center(
         child: Text(
           username.isNotEmpty ? username[0].toUpperCase() : '?',
           style: TextStyle(
             color: Colors.white,
-            fontSize: size * 0.4,
-            fontWeight: FontWeight.bold,
+            fontSize: size * 0.42,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
       ),
