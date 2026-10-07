@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'friend_request.dart';
 import 'avatar_builder.dart';
 
-// ============ USER PROFILE SCREEN (Modern Design with Bio/Status/Birthday) ============
+// ============ USER PROFILE SCREEN (Screenshot 2 Style) ============
 class UserProfileScreen extends StatefulWidget {
   final String userId;
   final String username;
@@ -301,10 +301,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               ],
                             ),
                           ),
+                          // Avatar (Big Circle with Border)
                           Positioned(
-                            top: 120,
+                            top: 110,
                             child: Container(
-                              padding: const EdgeInsets.all(4),
+                              padding: const EdgeInsets.all(5),
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
@@ -312,99 +313,166 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               child: AvatarWidget(
                                 avatarUrl: _avatarUrl,
                                 username: widget.username,
-                                size: 110,
+                                size: 120,
                               ),
                             ),
                           ),
                         ],
                       ),
 
-                      // ============ NAME + EMAIL ============
-                      const SizedBox(height: 75),
+                      // ============ NAME ============
+                      const SizedBox(height: 80),
                       Text(
                         widget.username,
                         style: const TextStyle(
-                          fontSize: 24,
+                          fontSize: 26,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1F2937),
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.email_outlined,
-                              size: 16, color: Colors.grey),
-                          const SizedBox(width: 5),
-                          Text(
-                            _email,
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 14),
-                          ),
-                        ],
-                      ),
 
-                      // ============ STATUS / QUOTE ============
-                      if (_status.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 40),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4A6CF7).withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '"$_status"',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontStyle: FontStyle.italic,
-                              color: Color(0xFF4A6CF7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-
-                      // ============ BIO ============
-                      if (_bio.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 30),
-                          child: Text(
-                            _bio,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                              height: 1.4,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-
-                      // ============ BIRTHDAY ============
-                      if (_birthday.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      // ============ EMAIL + BIRTHDAY CARDS ============
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
                           children: [
-                            const Icon(Icons.cake,
-                                size: 16, color: Colors.grey),
-                            const SizedBox(width: 5),
-                            Text(
-                              _birthday,
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 13),
+                            // Email Card
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F7FB),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.email_outlined,
+                                            color: Color(0xFF4A6CF7), size: 18),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Email',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _email.length > 22
+                                          ? '${_email.substring(0, 20)}...'
+                                          : _email,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1F2937),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Birthday Card
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F7FB),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.cake,
+                                            color: Color(0xFF8B5CF6), size: 18),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Birthday',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _birthday.isNotEmpty
+                                          ? _birthday
+                                          : 'Not set',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1F2937),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
+                      ),
+
+                      // ============ STATUS + BIO BOX ============
+                      if (_status.isNotEmpty || _bio.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFF8B5CF6),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                if (_status.isNotEmpty)
+                                  Text(
+                                    '- "$_status"',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontStyle: FontStyle.italic,
+                                      color: Color(0xFF4A6CF7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                if (_status.isNotEmpty && _bio.isNotEmpty)
+                                  const SizedBox(height: 10),
+                                if (_bio.isNotEmpty)
+                                  Text(
+                                    _bio,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[700],
+                                      height: 1.4,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
 
-                      // ============ STATUS BADGE ============
-                      const SizedBox(height: 15),
+                      // ============ FRIEND BADGE ============
+                      const SizedBox(height: 18),
                       if (_isFriend)
                         _buildStatusBadge('Aap dono friend hain', Colors.green,
                             Icons.check_circle)
@@ -420,15 +488,104 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                       const SizedBox(height: 25),
 
-                      // ============ ACTION BUTTONS ============
+                      // ============ MESSAGE BUTTON ============
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _buildActionButtons(context),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isFriend
+                                ? () {
+                                    Navigator.pop(context, {
+                                      'action': 'chat',
+                                      'uid': widget.userId,
+                                      'name': widget.username,
+                                    });
+                                  }
+                                : null,
+                            icon: const Icon(Icons.chat_bubble,
+                                color: Colors.white),
+                            label: const Text('Message',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4A6CF7),
+                              disabledBackgroundColor: Colors.grey[300],
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 2,
+                            ),
+                          ),
+                        ),
                       ),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 12),
+
+                      // ============ UNFRIEND + BLOCK BUTTONS ============
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            // Unfriend Button
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isFriend ? _unFriend : null,
+                                icon: const Icon(Icons.person_remove,
+                                    color: Color(0xFFEF4444), size: 20),
+                                label: const Text('Unfriend',
+                                    style: TextStyle(
+                                        color: Color(0xFFEF4444),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15)),
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  side: const BorderSide(
+                                      color: Color(0xFFEF4444), width: 1.5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Block Button
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _toggleBlock,
+                                icon: Icon(
+                                  _isBlocked ? Icons.lock_open : Icons.block,
+                                  color: const Color(0xFF1F2937),
+                                  size: 20,
+                                ),
+                                label: Text(
+                                  _isBlocked ? 'Unblock' : 'Block',
+                                  style: const TextStyle(
+                                      color: Color(0xFF1F2937),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  side: BorderSide(
+                                      color: Colors.grey[300]!, width: 1.5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                       // ============ MEMBER SINCE CARD ============
+                      const SizedBox(height: 25),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Container(
@@ -486,165 +643,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  // ============ ACTION BUTTONS WIDGET ============
-  Widget _buildActionButtons(BuildContext context) {
-    if (_isBlocked) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: _toggleBlock,
-          icon: const Icon(Icons.lock_open, color: Colors.white),
-          label: const Text('Unblock User',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6B7280),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        if (_isFriend) ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context, {
-                  'action': 'chat',
-                  'uid': widget.userId,
-                  'name': widget.username,
-                });
-              },
-              icon: const Icon(Icons.chat_bubble, color: Colors.white),
-              label: const Text('Message',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A6CF7),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 2,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _unFriend,
-              icon: const Icon(Icons.person_remove, color: Color(0xFFEF4444)),
-              label: const Text('Unfriend',
-                  style: TextStyle(
-                      color: Color(0xFFEF4444),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ] else if (_requestSent) ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.access_time, color: Colors.white),
-              label: const Text('Request Pending',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF9CA3AF),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ] else if (_requestReceived) ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _acceptRequest,
-              icon: const Icon(Icons.check_circle, color: Colors.white),
-              label: const Text('Accept Friend Request',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 2,
-              ),
-            ),
-          ),
-        ] else ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _sendRequest,
-              icon: const Icon(Icons.person_add, color: Colors.white),
-              label: const Text('Add Friend',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A6CF7),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 2,
-              ),
-            ),
-          ),
-        ],
-
-        const SizedBox(height: 15),
-
-        SizedBox(
-          width: double.infinity,
-          child: TextButton.icon(
-            onPressed: _toggleBlock,
-            icon: const Icon(Icons.block, color: Color(0xFFEF4444), size: 20),
-            label: const Text(
-              'Block User',
-              style: TextStyle(
-                color: Color(0xFFEF4444),
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ============ STATUS BADGE WIDGET ============
   Widget _buildStatusBadge(String text, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
