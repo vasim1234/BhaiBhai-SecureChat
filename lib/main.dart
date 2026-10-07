@@ -15,6 +15,7 @@ import 'dart:typed_data';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'avatar_builder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
