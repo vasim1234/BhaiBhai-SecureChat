@@ -1659,16 +1659,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _openAvatarBuilder() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AvatarBuilderScreen(),
-      ),
+  Future<void> _pickProfilePhoto() async {
+  final ImagePicker picker = ImagePicker();
+  final XFile? image = await picker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 50,
+    maxWidth: 800,
+    maxHeight: 800,
+  );
+
+  if (image == null) return;
+
+  setState(() => _isLoadingAvatar = true);
+
+  try {
+    final dir = await getTemporaryDirectory();
+    final targetPath =
+        '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    final compressedFile = await FlutterImageCompress.compressAndGetFile(
+      image.path,
+      targetPath,
+      quality: 50,
+      minWidth: 800,
+      minHeight: 800,
     );
-    if (result != null) {
-      setState(() => _avatarUrl = result);
+
+    if (compressedFile == null) {
+      setState(() => _isLoadingAvatar = false);
+      return;
     }
+
+    final compressedBytes = await compressedFile.readAsBytes();
+    String base64Image = base64Encode(compressedBytes);
+
+    if (base64Image.length > 900000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo bahut badi hai, chhoti photo try karein')),
+      );
+      setState(() => _isLoadingAvatar = false);
+      return;
+    }
+
+    // Firestore mein save karein
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'avatarUrl': base64Image,
+    });
+
+    setState(() {
+      _avatarUrl = base64Image;
+      _isLoadingAvatar = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile photo save ho gayi!')),
+    );
+  } catch (e) {
+    setState(() => _isLoadingAvatar = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e')),
+    );
+  }
   }
 
   @override
@@ -1717,7 +1769,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     children: [
                       GestureDetector(
-                        onTap: _openAvatarBuilder,
+                        onTap: _pickProfilePhoto,
                         child: Stack(
                           children: [
                             Container(
