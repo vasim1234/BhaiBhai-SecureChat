@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'friend_request.dart';
 import 'avatar_builder.dart';
 
-// ============ USER PROFILE SCREEN (Modern Design) ============
+// ============ USER PROFILE SCREEN (Modern Design with Bio/Status/Birthday) ============
 class UserProfileScreen extends StatefulWidget {
   final String userId;
   final String username;
@@ -28,6 +29,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String _requestId = '';
   String _email = '';
   String _memberSince = 'Oct 2026';
+  String _bio = '';
+  String _status = '';
+  String _birthday = '';
   String? _avatarUrl;
   String? _errorMessage;
 
@@ -51,10 +55,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             userDoc.data() as Map<String, dynamic>?;
 
         _email = userData?['email'] ?? '';
+        _bio = userData?['bio'] ?? '';
+        _status = userData?['status'] ?? '';
 
         _avatarUrl = (userData != null && userData.containsKey('avatarUrl'))
             ? userData['avatarUrl']
             : null;
+
+        if (userData?['birthday'] != null) {
+          Timestamp ts = userData!['birthday'];
+          _birthday = DateFormat('dd MMM yyyy').format(ts.toDate());
+        }
 
         if (userData?['createdAt'] != null) {
           Timestamp ts = userData!['createdAt'];
@@ -207,7 +218,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         clipBehavior: Clip.none,
                         alignment: Alignment.topCenter,
                         children: [
-                          // Gradient Banner
                           Container(
                             height: 190,
                             width: double.infinity,
@@ -227,7 +237,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                             child: Stack(
                               children: [
-                                // Decorative circles
                                 Positioned(
                                   top: -30,
                                   right: -30,
@@ -252,7 +261,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                     ),
                                   ),
                                 ),
-                                // Top Bar (Back button + Title)
                                 SafeArea(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -293,7 +301,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               ],
                             ),
                           ),
-                          // Avatar (overlapping)
                           Positioned(
                             top: 120,
                             child: Container(
@@ -336,6 +343,65 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ),
                         ],
                       ),
+
+                      // ============ STATUS / QUOTE ============
+                      if (_status.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 40),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4A6CF7).withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '"$_status"',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
+                              color: Color(0xFF4A6CF7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+
+                      // ============ BIO ============
+                      if (_bio.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: Text(
+                            _bio,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[700],
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+
+                      // ============ BIRTHDAY ============
+                      if (_birthday.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.cake,
+                                size: 16, color: Colors.grey),
+                            const SizedBox(width: 5),
+                            Text(
+                              _birthday,
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       // ============ STATUS BADGE ============
                       const SizedBox(height: 15),
@@ -446,7 +512,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     return Column(
       children: [
-        // Message / Add Friend / Accept button
         if (_isFriend) ...[
           SizedBox(
             width: double.infinity,
@@ -560,7 +625,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         const SizedBox(height: 15),
 
-        // Block User button
         SizedBox(
           width: double.infinity,
           child: TextButton.icon(
