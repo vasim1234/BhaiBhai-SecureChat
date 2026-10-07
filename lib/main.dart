@@ -2809,12 +2809,12 @@ Future<void> _sendNotification(String message) async {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 20,
-      maxWidth: 500,
-      maxHeight: 500,
-    );
+   final XFile? image = await picker.pickImage(
+  source: ImageSource.gallery,
+  imageQuality: 50,
+  maxWidth: 800,
+  maxHeight: 800,
+);
 
     if (image == null) return;
     setState(() => _isUploading = true);
@@ -2825,12 +2825,12 @@ Future<void> _sendNotification(String message) async {
           '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
-        image.path,
-        targetPath,
-        quality: 20,
-        minWidth: 400,
-        minHeight: 400,
-      );
+  image.path,
+  targetPath,
+  quality: 50,
+  minWidth: 800,
+  minHeight: 800,
+);
 
       if (compressedFile == null) {
         setState(() => _isUploading = false);
