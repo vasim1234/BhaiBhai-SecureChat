@@ -11,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'friend_request.dart';
 import 'user_profile.dart';
-import 'avatar_builder.dart';
 import 'dart:typed_data';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
