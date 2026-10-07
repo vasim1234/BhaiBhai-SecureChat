@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'friend_request.dart';
 import 'avatar_builder.dart';
 
-// ============ USER PROFILE SCREEN ============
+// ============ USER PROFILE SCREEN (Modern Design) ============
 class UserProfileScreen extends StatefulWidget {
   final String userId;
   final String username;
@@ -111,7 +111,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result == 'success' ? 'Friend request bhej di!' : result),
+          content:
+              Text(result == 'success' ? 'Friend request bhej di!' : result),
         ),
       );
       if (result == 'success') {
@@ -178,11 +179,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
-      appBar: AppBar(
-        title: Text(widget.username),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -204,39 +200,145 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                      // ============ HEADER WITH GRADIENT BANNER ============
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.topCenter,
+                        children: [
+                          // Gradient Banner
+                          Container(
+                            height: 190,
+                            width: double.infinity,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF4A6CF7),
+                                  Color(0xFF8B5CF6),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(30),
+                                bottomRight: Radius.circular(30),
+                              ),
+                            ),
+                            child: Stack(
+                              children: [
+                                // Decorative circles
+                                Positioned(
+                                  top: -30,
+                                  right: -30,
+                                  child: Container(
+                                    width: 140,
+                                    height: 140,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: -40,
+                                  left: -40,
+                                  child: Container(
+                                    width: 170,
+                                    height: 170,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withOpacity(0.08),
+                                    ),
+                                  ),
+                                ),
+                                // Top Bar (Back button + Title)
+                                SafeArea(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: IconButton(
+                                            icon: const Icon(
+                                                Icons.arrow_back,
+                                                color: Colors.white),
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            widget.username,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        child: AvatarWidget(
-                          avatarUrl: _avatarUrl,
-                          username: widget.username,
-                          size: 100,
-                        ),
+                          // Avatar (overlapping)
+                          Positioned(
+                            top: 120,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: AvatarWidget(
+                                avatarUrl: _avatarUrl,
+                                username: widget.username,
+                                size: 110,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 15),
+
+                      // ============ NAME + EMAIL ============
+                      const SizedBox(height: 75),
                       Text(
                         widget.username,
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
                         ),
                       ),
                       const SizedBox(height: 5),
-                      Text(
-                        _email,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.email_outlined,
+                              size: 16, color: Colors.grey),
+                          const SizedBox(width: 5),
+                          Text(
+                            _email,
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 14),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 15),
 
+                      // ============ STATUS BADGE ============
+                      const SizedBox(height: 15),
                       if (_isFriend)
                         _buildStatusBadge('Aap dono friend hain', Colors.green,
                             Icons.check_circle)
@@ -250,168 +352,238 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         _buildStatusBadge('Aapne is user ko block kiya hai',
                             Colors.red, Icons.block),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 25),
 
-                      if (_isBlocked)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _toggleBlock,
-                            icon: const Icon(Icons.lock_open),
-                            label: const Text('Unblock User'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        )
-                      else ...[
-                        if (_isFriend) ...[
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(context, {
-                                  'action': 'chat',
-                                  'uid': widget.userId,
-                                  'name': widget.username,
-                                });
-                              },
-                              icon: const Icon(Icons.chat),
-                              label: const Text('Message'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF667EEA),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _unFriend,
-                              icon: const Icon(Icons.person_remove),
-                              label: const Text('Unfriend'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
-                                side: const BorderSide(color: Colors.red),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ] else if (_requestSent) ...[
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: null,
-                              icon: const Icon(Icons.access_time),
-                              label: const Text('Request Pending'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ] else if (_requestReceived) ...[
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _acceptRequest,
-                              icon: const Icon(Icons.check_circle),
-                              label: const Text('Accept Friend Request'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ] else ...[
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _sendRequest,
-                              icon: const Icon(Icons.person_add),
-                              label: const Text('Add Friend'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF667EEA),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      // ============ ACTION BUTTONS ============
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildActionButtons(context),
+                      ),
 
-                        const SizedBox(height: 20),
+                      const SizedBox(height: 25),
 
-                        SizedBox(
-                          width: double.infinity,
-                          child: TextButton.icon(
-                            onPressed: _toggleBlock,
-                            icon: const Icon(Icons.block, color: Colors.red),
-                            label: const Text('Block User',
-                                style: TextStyle(color: Colors.red)),
+                      // ============ MEMBER SINCE CARD ============
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 30),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Member Since',
-                                    style: TextStyle(color: Colors.grey)),
-                                Text(_memberSince,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ],
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF8B5CF6)
+                                      .withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.calendar_today,
+                                    color: Color(0xFF8B5CF6), size: 20),
+                              ),
+                              const SizedBox(width: 14),
+                              const Text(
+                                'Member Since',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                _memberSince,
+                                style: const TextStyle(
+                                  color: Color(0xFF1F2937),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
     );
   }
 
+  // ============ ACTION BUTTONS WIDGET ============
+  Widget _buildActionButtons(BuildContext context) {
+    if (_isBlocked) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _toggleBlock,
+          icon: const Icon(Icons.lock_open, color: Colors.white),
+          label: const Text('Unblock User',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF6B7280),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Message / Add Friend / Accept button
+        if (_isFriend) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context, {
+                  'action': 'chat',
+                  'uid': widget.userId,
+                  'name': widget.username,
+                });
+              },
+              icon: const Icon(Icons.chat_bubble, color: Colors.white),
+              label: const Text('Message',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A6CF7),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _unFriend,
+              icon: const Icon(Icons.person_remove, color: Color(0xFFEF4444)),
+              label: const Text('Unfriend',
+                  style: TextStyle(
+                      color: Color(0xFFEF4444),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ] else if (_requestSent) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.access_time, color: Colors.white),
+              label: const Text('Request Pending',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9CA3AF),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ] else if (_requestReceived) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _acceptRequest,
+              icon: const Icon(Icons.check_circle, color: Colors.white),
+              label: const Text('Accept Friend Request',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ] else ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _sendRequest,
+              icon: const Icon(Icons.person_add, color: Colors.white),
+              label: const Text('Add Friend',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A6CF7),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 15),
+
+        // Block User button
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: _toggleBlock,
+            icon: const Icon(Icons.block, color: Color(0xFFEF4444), size: 20),
+            label: const Text(
+              'Block User',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============ STATUS BADGE WIDGET ============
   Widget _buildStatusBadge(String text, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
@@ -421,8 +593,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         children: [
           Icon(icon, color: color, size: 18),
           const SizedBox(width: 8),
-          Text(text,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          Text(
+            text,
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w600, fontSize: 13),
+          ),
         ],
       ),
     );
