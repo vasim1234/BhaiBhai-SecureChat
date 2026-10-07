@@ -666,17 +666,32 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search chats...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
-                      borderSide: BorderSide.none,
+                child: Container(
+                  decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search chats...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 22),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
-                    filled: true,
-                    fillColor: const Color(0xFFF0F2F5),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                 ),
               ),
@@ -835,88 +850,24 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     builder: (context, unreadSnapshot) {
                       int unreadCount = unreadSnapshot.data ?? 0;
 
-                      return GestureDetector(
-                        onLongPress: () =>
-                            _showChatOptions(chatId, otherUserId, username),
-                        child: Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 5, horizontal: 5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 15, vertical: 5),
-                            leading: AvatarWidget(
-                              avatarUrl: avatarUrl,
-                              username: username,
-                              size: 50,
+                      return Container(
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
                             ),
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    username,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                if (isPinned)
-                                  const Icon(
-                                    Icons.push_pin,
-                                    size: 16,
-                                    color: Color(0xFF667EEA),
-                                  ),
-                              ],
-                            ),
-                            subtitle: Text(
-                              lastMessage,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontWeight: unreadCount > 0
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // *** TIME ***
-                                if (timestamp != null)
-                                  Text(
-                                    DateFormat('hh:mm a')
-                                        .format(timestamp.toDate()),
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey),
-                                  ),
-                                // *** UNREAD BADGE ***
-                                if (unreadCount > 0)
-                                  Container(
-                                    margin: const EdgeInsets.only(left: 8),
-                                    padding: const EdgeInsets.all(6),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 22,
-                                      minHeight: 22,
-                                    ),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF25D366),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      '$unreadCount',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -928,6 +879,119 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                 ),
                               );
                             },
+                            onLongPress: () => _showChatOptions(
+                                chatId, otherUserId, username),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              child: Row(
+                                children: [
+                                  AvatarWidget(
+                                    avatarUrl: avatarUrl,
+                                    username: username,
+                                    size: 52,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                username,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                  color: Color(0xFF1F2937),
+                                                ),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (isPinned)
+                                              const Padding(
+                                                padding:
+                                                    EdgeInsets.only(left: 4),
+                                                child: Icon(
+                                                  Icons.push_pin,
+                                                  size: 14,
+                                                  color: Color(0xFF667EEA),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          lastMessage,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: unreadCount > 0
+                                                ? const Color(0xFF1F2937)
+                                                : Colors.grey[600],
+                                            fontWeight: unreadCount > 0
+                                                ? FontWeight.w500
+                                                : FontWeight.normal,
+                                            fontSize: 13.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.end,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      if (timestamp != null)
+                                        Text(
+                                          DateFormat('hh:mm a')
+                                              .format(timestamp.toDate()),
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color: unreadCount > 0
+                                                ? const Color(0xFF25D366)
+                                                : Colors.grey[500],
+                                            fontWeight: unreadCount > 0
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      const SizedBox(height: 6),
+                                      if (unreadCount > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          constraints: const BoxConstraints(
+                                              minWidth: 20),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF25D366),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '$unreadCount',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        )
+                                      else
+                                        const SizedBox(height: 20),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       );
@@ -955,21 +1019,34 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   Widget _buildFilterChip(String label, bool isSelected) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
       decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFF667EEA).withOpacity(0.2)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected ? const Color(0xFF667EEA) : Colors.grey[300]!,
-        ),
+        gradient: isSelected
+            ? const LinearGradient(
+                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+              )
+            : null,
+        color: isSelected ? null : Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        border: isSelected
+            ? null
+            : Border.all(color: Colors.grey[300]!, width: 1),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF667EEA).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: isSelected ? const Color(0xFF667EEA) : Colors.grey[700],
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : Colors.grey[700],
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          fontSize: 13,
         ),
       ),
     );
@@ -1183,9 +1260,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 20,
-      maxWidth: 500,
-      maxHeight: 500,
+      imageQuality: 50,
+      maxWidth: 800,
+      maxHeight: 800,
     );
     if (image == null) return;
     setState(() => _isUploading = true);
@@ -1196,9 +1273,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
-        quality: 20,
-        minWidth: 400,
-        minHeight: 400,
+        quality: 50,
+        minWidth: 800,
+        minHeight: 800,
       );
       if (compressedFile == null) {
         setState(() => _isUploading = false);
@@ -1660,67 +1737,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickProfilePhoto() async {
-  final ImagePicker picker = ImagePicker();
-  final XFile? image = await picker.pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 50,
-    maxWidth: 800,
-    maxHeight: 800,
-  );
-
-  if (image == null) return;
-
-  setState(() => _isLoadingAvatar = true);
-
-  try {
-    final dir = await getTemporaryDirectory();
-    final targetPath =
-        '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-    final compressedFile = await FlutterImageCompress.compressAndGetFile(
-      image.path,
-      targetPath,
-      quality: 50,
-      minWidth: 800,
-      minHeight: 800,
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 800,
+      maxHeight: 800,
     );
 
-    if (compressedFile == null) {
-      setState(() => _isLoadingAvatar = false);
-      return;
-    }
+    if (image == null) return;
 
-    final compressedBytes = await compressedFile.readAsBytes();
-    String base64Image = base64Encode(compressedBytes);
+    setState(() => _isLoadingAvatar = true);
 
-    if (base64Image.length > 900000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo bahut badi hai, chhoti photo try karein')),
+    try {
+      final dir = await getTemporaryDirectory();
+      final targetPath =
+          '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 50,
+        minWidth: 800,
+        minHeight: 800,
       );
+
+      if (compressedFile == null) {
+        setState(() => _isLoadingAvatar = false);
+        return;
+      }
+
+      final compressedBytes = await compressedFile.readAsBytes();
+      String base64Image = base64Encode(compressedBytes);
+
+      if (base64Image.length > 900000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Photo bahut badi hai, chhoti photo try karein')),
+        );
+        setState(() => _isLoadingAvatar = false);
+        return;
+      }
+
+      // Firestore mein save karein
+      String uid = FirebaseAuth.instance.currentUser!.uid;
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'avatarUrl': base64Image,
+      });
+
+      setState(() {
+        _avatarUrl = base64Image;
+        _isLoadingAvatar = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo save ho gayi!')),
+      );
+    } catch (e) {
       setState(() => _isLoadingAvatar = false);
-      return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
-
-    // Firestore mein save karein
-    String uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'avatarUrl': base64Image,
-    });
-
-    setState(() {
-      _avatarUrl = base64Image;
-      _isLoadingAvatar = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile photo save ho gayi!')),
-    );
-  } catch (e) {
-    setState(() => _isLoadingAvatar = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e')),
-    );
-  }
   }
 
   @override
@@ -2428,11 +2506,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final Map<String, Uint8List> _imageCache = {};
 
   // ============ OneSignal Config ============
-static const String ONESIGNAL_APP_ID = '05bee600-4a45-44e5-b35e-5328544c25c1';
-static const String ONESIGNAL_REST_API_KEY = String.fromEnvironment(
-  'ONESIGNAL_REST_API_KEY',
-  defaultValue: '',
-);
+  static const String ONESIGNAL_APP_ID =
+      '05bee600-4a45-44e5-b35e-5328544c25c1';
+  static const String ONESIGNAL_REST_API_KEY = String.fromEnvironment(
+    'ONESIGNAL_REST_API_KEY',
+    defaultValue: '',
+  );
   String get chatId {
     List<String> uids = [currentUserId, widget.receiverUid];
     uids.sort();
@@ -2457,65 +2536,65 @@ static const String ONESIGNAL_REST_API_KEY = String.fromEnvironment(
   }
 
   // ============ NOTIFICATION BHEJEIN ============
-Future<void> _sendNotification(String message) async {
-  try {
-    final response = await http.post(
-      Uri.parse('https://onesignal.com/api/v1/notifications'),
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'Basic $ONESIGNAL_REST_API_KEY',
-      },
-      body: jsonEncode({
-        'app_id': ONESIGNAL_APP_ID,
-        'include_aliases': {
-          'external_id': [widget.receiverUid],
+  Future<void> _sendNotification(String message) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://onesignal.com/api/v1/notifications'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': 'Basic $ONESIGNAL_REST_API_KEY',
         },
-        'target_channel': 'push',
-        'headings': {'en': 'Bhai Bhai'},
-        'contents': {
-          'en': message.isNotEmpty ? message : 'Photo bheji',
-        },
-      }),
-    );
+        body: jsonEncode({
+          'app_id': ONESIGNAL_APP_ID,
+          'include_aliases': {
+            'external_id': [widget.receiverUid],
+          },
+          'target_channel': 'push',
+          'headings': {'en': 'Bhai Bhai'},
+          'contents': {
+            'en': message.isNotEmpty ? message : 'Photo bheji',
+          },
+        }),
+      );
 
-    // *** DEBUG: Response print karein ***
-    debugPrint('=== OneSignal Notification ===');
-    debugPrint('Status Code: ${response.statusCode}');
-    debugPrint('Response Body: ${response.body}');
-    debugPrint('Receiver UID: ${widget.receiverUid}');
-    debugPrint('==============================');
+      // *** DEBUG: Response print karein ***
+      debugPrint('=== OneSignal Notification ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('Receiver UID: ${widget.receiverUid}');
+      debugPrint('==============================');
 
-    // *** Agar error hai, toh screen par dikhayein ***
-    if (response.statusCode != 200) {
+      // *** Agar error hai, toh screen par dikhayein ***
+      if (response.statusCode != 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Notif Error: ${response.statusCode}\n${response.body}',
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 10),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // *** Agar exception hai, toh screen par dikhayein ***
+      debugPrint('=== OneSignal Error ===');
+      debugPrint('Error: $e');
+      debugPrint('=======================');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Notif Error: ${response.statusCode}\n${response.body}',
-            ),
+            content: Text('Notif Exception: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 10),
           ),
         );
       }
     }
-  } catch (e) {
-    // *** Agar exception hai, toh screen par dikhayein ***
-    debugPrint('=== OneSignal Error ===');
-    debugPrint('Error: $e');
-    debugPrint('=======================');
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Notif Exception: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 10),
-        ),
-      );
-    }
   }
-}
 
   // ============ TYPING INDICATOR ============
   void _listenToTypingStatus() {
@@ -2559,27 +2638,27 @@ Future<void> _sendNotification(String message) async {
 
   // ============ BAQI FUNCTIONS ============
   Future<void> _markMessagesAsRead() async {
-  await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
 
-  try {
-    QuerySnapshot messages = await FirebaseFirestore.instance
-        .collection('chats')
-        .where('chatId', isEqualTo: chatId)
-        .where('receiverId', isEqualTo: currentUserId)
-        .where('isRead', isEqualTo: false)
-        .get();
-
-    for (var doc in messages.docs) {
-      await FirebaseFirestore.instance
+    try {
+      QuerySnapshot messages = await FirebaseFirestore.instance
           .collection('chats')
-          .doc(doc.id)
-          .update({'isRead': true});
-    }
+          .where('chatId', isEqualTo: chatId)
+          .where('receiverId', isEqualTo: currentUserId)
+          .where('isRead', isEqualTo: false)
+          .get();
 
-    debugPrint('Marked ${messages.docs.length} messages as read');
-  } catch (e) {
-    debugPrint('Error marking messages as read: $e');
-  }
+      for (var doc in messages.docs) {
+        await FirebaseFirestore.instance
+            .collection('chats')
+            .doc(doc.id)
+            .update({'isRead': true});
+      }
+
+      debugPrint('Marked ${messages.docs.length} messages as read');
+    } catch (e) {
+      debugPrint('Error marking messages as read: $e');
+    }
   }
 
   Future<void> _loadReceiverAvatar() async {
@@ -2640,60 +2719,60 @@ Future<void> _sendNotification(String message) async {
   }
 
   Future<void> _sendMessage(
-    {String? imageBase64, Map<String, dynamic>? replyTo}) async {
-  if (_isBlocked) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Aapne is user ko block kiya hai')),
-    );
-    return;
-  }
-  if (!_areFriends) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
-    );
-    return;
-  }
-  if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
-
-  // *** PEHLE MESSAGE STORE KAREIN ***
-  String messageText = _msgController.text.trim();
-
-  // *** FIR INPUT BOX KHALI KAREIN (INSTANT) ***
-  _msgController.clear();
-  _setTypingStatus(false);
-
-  DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
-
-  List<String> members = [currentUserId, widget.receiverUid];
-  members.sort();
-
-  // *** AB FIRESTORE MEIN SAVE KAREIN (BACKGROUND MEIN) ***
-  try {
-    await FirebaseFirestore.instance.collection('chats').add({
-      'chatId': chatId,
-      'members': members,
-      'senderId': currentUserId,
-      'receiverId': widget.receiverUid,
-      'message': messageText,
-      'imageBase64': imageBase64,
-      'replyTo': replyTo,
-      'timestamp': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(expiryTime),
-      'isEdited': false,
-      'isDeleted': false,
-      'isRead': false,
-    });
-
-    // *** Notification bhejein ***
-    await _sendNotification(messageText);
-  } catch (e) {
-    // Agar save fail ho gaya, toh error dikhayein
-    if (mounted) {
+      {String? imageBase64, Map<String, dynamic>? replyTo}) async {
+    if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Message send nahi hua: $e')),
+        const SnackBar(content: Text('Aapne is user ko block kiya hai')),
       );
+      return;
     }
-  }
+    if (!_areFriends) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pehle friend request accept karwa lein!')),
+      );
+      return;
+    }
+    if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
+
+    // *** PEHLE MESSAGE STORE KAREIN ***
+    String messageText = _msgController.text.trim();
+
+    // *** FIR INPUT BOX KHALI KAREIN (INSTANT) ***
+    _msgController.clear();
+    _setTypingStatus(false);
+
+    DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+
+    List<String> members = [currentUserId, widget.receiverUid];
+    members.sort();
+
+    // *** AB FIRESTORE MEIN SAVE KAREIN (BACKGROUND MEIN) ***
+    try {
+      await FirebaseFirestore.instance.collection('chats').add({
+        'chatId': chatId,
+        'members': members,
+        'senderId': currentUserId,
+        'receiverId': widget.receiverUid,
+        'message': messageText,
+        'imageBase64': imageBase64,
+        'replyTo': replyTo,
+        'timestamp': FieldValue.serverTimestamp(),
+        'expiresAt': Timestamp.fromDate(expiryTime),
+        'isEdited': false,
+        'isDeleted': false,
+        'isRead': false,
+      });
+
+      // *** Notification bhejein ***
+      await _sendNotification(messageText);
+    } catch (e) {
+      // Agar save fail ho gaya, toh error dikhayein
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Message send nahi hua: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _deleteMessage(String docId) async {
@@ -2810,12 +2889,12 @@ Future<void> _sendNotification(String message) async {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-   final XFile? image = await picker.pickImage(
-  source: ImageSource.gallery,
-  imageQuality: 50,
-  maxWidth: 800,
-  maxHeight: 800,
-);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
 
     if (image == null) return;
     setState(() => _isUploading = true);
@@ -2826,12 +2905,12 @@ Future<void> _sendNotification(String message) async {
           '${dir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
-  image.path,
-  targetPath,
-  quality: 50,
-  minWidth: 800,
-  minHeight: 800,
-);
+        image.path,
+        targetPath,
+        quality: 50,
+        minWidth: 800,
+        minHeight: 800,
+      );
 
       if (compressedFile == null) {
         setState(() => _isUploading = false);
@@ -2986,8 +3065,7 @@ Future<void> _sendNotification(String message) async {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(widget.receiverName,
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 16)),
+                      style: const TextStyle(color: Colors.white, fontSize: 16)),
                   if (_isReceiverTyping)
                     const Text(
                       'typing...',
@@ -3015,7 +3093,8 @@ Future<void> _sendNotification(String message) async {
             icon: const Icon(Icons.call),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Calling feature jald aa raha hai!')),
+                const SnackBar(
+                    content: Text('Calling feature jald aa raha hai!')),
               );
             },
           ),
