@@ -3297,15 +3297,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final Map<String, Uint8List> _imageCache = {};
 
-  // ============ VOICE MESSAGE VARIABLES ============
-  final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _isRecording = false;
-  Duration _recordDuration = Duration.zero;
-  Timer? _recordTimer;
-  final Map<String, AudioPlayer> _audioPlayers = {};
-  final Map<String, bool> _isPlayingMap = {};
-  final Map<String, Duration> _playPositionMap = {};
-  final Map<String, Duration> _playDurationMap = {};
+// ============ VOICE MESSAGE VARIABLES ============
+final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
+bool _recordInitialized = false;
+bool _isRecording = false;
+Duration _recordDuration = Duration.zero;
+Timer? _recordTimer;
+final Map<String, AudioPlayer> _audioPlayers = {};
+final Map<String, bool> _isPlayingMap = {};
+final Map<String, Duration> _playPositionMap = {};
+final Map<String, Duration> _playDurationMap = {};
 
   static const String ONESIGNAL_APP_ID =
       '05bee600-4a45-44e5-b35e-5328544c25c1';
