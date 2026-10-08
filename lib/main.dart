@@ -18,7 +18,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'avatar_builder.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';   // ✅ Add karo
 import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
@@ -3333,17 +3333,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
-  void dispose() {
-    _setTypingStatus(false);
-    _recordTimer?.cancel();
-    if (_recordInitialized) {
-      _audioRecorder.closeRecorder();
-    }
-    for (var player in _audioPlayers.values) {
-      player.dispose();
-    }
-    super.dispose();
+void dispose() {
+  _setTypingStatus(false);
+  _recordTimer?.cancel();
+  if (_recordInitialized) {
+    _audioRecorder.closeRecorder();
   }
+  for (var player in _audioPlayers.values) {
+    player.dispose();
+  }
+  super.dispose();
+}
 
   // ============ INIT RECORDER ============
   Future<void> _initRecorder() async {
@@ -3447,37 +3447,45 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============ VOICE PLAYBACK ============
   Future<void> _playVoice(String messageId, String base64Audio) async {
-    try {
-      if (_isPlayingMap[messageId] == true) {
-        await _audioPlayers[messageId]?.stop();
-        setState(() {
-          _isPlayingMap[messageId] = false;
-          _playPositionMap[messageId] = Duration.zero;
-        });
-        return;
-      }
-
-      for (var player in _audioPlayers.values) {
-        await player.stop();
-      }
-
-      final player = AudioPlayer();
-      _audioPlayers[messageId] = player;
-
-      final bytes = base64Decode(base64Audio);
-      final dir = await getTemporaryDirectory();
-      final path =
-          '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      final file = File(path);
-      await file.writeAsBytes(bytes);
-
-      player.onDurationChanged.listen((d) {
-        if (mounted) setState(() => _playDurationMap[messageId] = d);
+  try {
+    if (_isPlayingMap[messageId] == true) {
+      await _audioPlayers[messageId]?.stop();
+      setState(() {
+        _isPlayingMap[messageId] = false;
+        _playPositionMap[messageId] = Duration.zero;
       });
-      player.onPositionChanged.listen((p) {
-        if (mounted) setState(() => _playPositionMap[messageId] = p);
-      });
-      player.onPlayerComplete.listen((_) {
+      return;
+    }
+
+    // Purane players stop karo
+    for (var player in _audioPlayers.values) {
+      await player.stop();
+    }
+
+    final player = AudioPlayer();
+    _audioPlayers[messageId] = player;
+
+    // Base64 ko temp file mein save karo
+    final bytes = base64Decode(base64Audio);
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final file = File(path);
+    await file.writeAsBytes(bytes);
+
+    // Duration + position listen karo
+    player.durationStream.listen((d) {
+      if (d != null && mounted) {
+        setState(() => _playDurationMap[messageId] = d);
+      }
+    });
+
+    player.positionStream.listen((p) {
+      if (mounted) setState(() => _playPositionMap[messageId] = p);
+    });
+
+    player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
         if (mounted) {
           setState(() {
             _isPlayingMap[messageId] = false;
@@ -3485,13 +3493,17 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         }
         file.delete();
-      });
+      }
+    });
 
-      await player.play(DeviceFileSource(path));
-      setState(() => _isPlayingMap[messageId] = true);
-    } catch (e) {
-      debugPrint('Playback error: $e');
-    }
+    // Play karo
+    await player.setFilePath(path);
+    player.play();
+
+    setState(() => _isPlayingMap[messageId] = true);
+  } catch (e) {
+    debugPrint('Playback error: $e');
+  }
   }
 
   String _formatDuration(Duration d) {
