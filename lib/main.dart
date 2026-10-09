@@ -21,8 +21,6 @@ import 'package:flutter_sound/flutter_sound.dart';           // ✅ Line 20
 import 'package:permission_handler/permission_handler.dart'; // ✅ Line 21
 
 void main() async {
-
-void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   OneSignal.initialize("05bee600-4a45-44e5-b35e-5328544c25c1");
@@ -3410,7 +3408,7 @@ void dispose() {
 Future<void> _stopRecording({bool send = false}) async {
   try {
     _recordTimer?.cancel();
-    final path = await _audioRecorder.stopRecorder();
+    final path = await _audioRecorder.stopRecorder(); 
 
     setState(() => _isRecording = false);
 
@@ -3495,9 +3493,6 @@ Future<void> _cancelRecording() async {
     }
   }
 
-  Future<void> _cancelRecording() async {
-    await _stopRecording(send: false);
-  }
 
   // ============ VOICE PLAYBACK ============
   Future<void> _playVoice(String messageId, String base64Audio) async {
