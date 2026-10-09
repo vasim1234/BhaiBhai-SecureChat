@@ -3475,7 +3475,7 @@ Future<void> _cancelRecording() async {
 
     _audioPlayer.setSubscriptionDuration(const Duration(milliseconds: 100));
 
-    _audioPlayer.onProgress.listen((e) {
+    _audioPlayer.onProgress?.listen((e) {
       if (mounted) {
         setState(() {
           _playPositionMap[messageId] = e.position;
