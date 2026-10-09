@@ -17,9 +17,10 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'avatar_builder.dart';
-import 'package:record/record.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_sound/flutter_sound.dart';           // ✅ Line 20
+import 'package:permission_handler/permission_handler.dart'; // ✅ Line 21
+
+void main() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3298,14 +3299,16 @@ class _ChatScreenState extends State<ChatScreen> {
   final Map<String, Uint8List> _imageCache = {};
 
   // ============ VOICE MESSAGE VARIABLES ============
-  final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _isRecording = false;
-  Duration _recordDuration = Duration.zero;
-  Timer? _recordTimer;
-  final Map<String, AudioPlayer> _audioPlayers = {};
-  final Map<String, bool> _isPlayingMap = {};
-  final Map<String, Duration> _playPositionMap = {};
-  final Map<String, Duration> _playDurationMap = {};
+final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
+final FlutterSoundPlayer _audioPlayer = FlutterSoundPlayer();
+bool _recorderInitialized = false;
+bool _playerInitialized = false;
+bool _isRecording = false;
+Duration _recordDuration = Duration.zero;
+Timer? _recordTimer;
+final Map<String, bool> _isPlayingMap = {};
+final Map<String, Duration> _playPositionMap = {};
+final Map<String, Duration> _playDurationMap = {};
 
   static const String ONESIGNAL_APP_ID =
       '05bee600-4a45-44e5-b35e-5328544c25c1';
@@ -3321,71 +3324,134 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _checkBlockStatus();
-    _checkFriendStatus();
-    _loadReceiverAvatar();
-    _markMessagesAsRead();
-    _listenToTypingStatus();
-    _listenToOnlineStatus();
+void initState() {
+  super.initState();
+  _checkBlockStatus();
+  _checkFriendStatus();
+  _loadReceiverAvatar();
+  _markMessagesAsRead();
+  _listenToTypingStatus();
+  _listenToOnlineStatus();
+  _initRecorder();
+  _initPlayer();
+}
+
+Future<void> _initRecorder() async {
+  if (_recorderInitialized) return;
+  try {
+    await _audioRecorder.openRecorder();
+    _recorderInitialized = true;
+  } catch (e) {
+    debugPrint('Recorder init error: $e');
   }
+}
+
+Future<void> _initPlayer() async {
+  if (_playerInitialized) return;
+  try {
+    await _audioPlayer.openPlayer();
+    _playerInitialized = true;
+  } catch (e) {
+    debugPrint('Player init error: $e');
+  }
+}
 
   @override
-  void dispose() {
-    _setTypingStatus(false);
-    _recordTimer?.cancel();
-    _audioRecorder.dispose();
-    for (var player in _audioPlayers.values) {
-      player.dispose();
-    }
-    super.dispose();
-  }
+void dispose() {
+  _setTypingStatus(false);
+  _recordTimer?.cancel();
+  if (_recorderInitialized) _audioRecorder.closeRecorder();
+  if (_playerInitialized) _audioPlayer.closePlayer();
+  super.dispose();
+}
 
   // ============ VOICE RECORDING ============
   Future<void> _startRecording() async {
-    try {
-      final status = await Permission.microphone.request();
-      if (!status.isGranted) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Microphone permission chahiye voice ke liye')),
-          );
-        }
-        return;
+  try {
+    final status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission chahiye')),
+        );
       }
-
-      final dir = await getTemporaryDirectory();
-      final path =
-          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-      await _audioRecorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
-        path: path,
-      );
-
-      setState(() {
-        _isRecording = true;
-        _recordDuration = Duration.zero;
-      });
-
-      _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (mounted && _isRecording) {
-          setState(() {
-            _recordDuration = Duration(seconds: timer.tick);
-          });
-          if (timer.tick >= 300) _stopRecording(send: true);
-        }
-      });
-    } catch (e) {
-      debugPrint('Recording error: $e');
+      return;
     }
+
+    await _initRecorder();
+
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+    await _audioRecorder.startRecorder(
+      toFile: path,
+      codec: Codec.aacADTS,
+    );
+
+    setState(() {
+      _isRecording = true;
+      _recordDuration = Duration.zero;
+    });
+
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && _isRecording) {
+        setState(() {
+          _recordDuration = Duration(seconds: timer.tick);
+        });
+        if (timer.tick >= 300) _stopRecording(send: true);
+      }
+    });
+  } catch (e) {
+    debugPrint('Recording error: $e');
   }
+}
+
+Future<void> _stopRecording({bool send = false}) async {
+  try {
+    _recordTimer?.cancel();
+    final path = await _audioRecorder.stopRecorder();
+
+    setState(() => _isRecording = false);
+
+    if (path == null || !send) {
+      if (path != null) {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      }
+      setState(() => _recordDuration = Duration.zero);
+      return;
+    }
+
+    final file = File(path);
+    final fileSize = await file.length();
+
+    if (fileSize > 900000) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Voice bahut lambi hai')),
+        );
+      }
+      await file.delete();
+      setState(() => _recordDuration = Duration.zero);
+      return;
+    }
+
+    final bytes = await file.readAsBytes();
+    final base64Audio = base64Encode(bytes);
+
+    await _sendMessage(voiceBase64: base64Audio);
+    await file.delete();
+
+    setState(() => _recordDuration = Duration.zero);
+  } catch (e) {
+    debugPrint('Stop recording error: $e');
+  }
+}
+
+Future<void> _cancelRecording() async {
+  await _stopRecording(send: false);
+}
 
   Future<void> _stopRecording({bool send = false}) async {
     try {
@@ -3435,37 +3501,41 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============ VOICE PLAYBACK ============
   Future<void> _playVoice(String messageId, String base64Audio) async {
-    try {
-      if (_isPlayingMap[messageId] == true) {
-        await _audioPlayers[messageId]?.stop();
+  try {
+    if (_isPlayingMap[messageId] == true) {
+      await _audioPlayer.stopPlayer();
+      setState(() {
+        _isPlayingMap[messageId] = false;
+        _playPositionMap[messageId] = Duration.zero;
+      });
+      return;
+    }
+
+    await _audioPlayer.stopPlayer();
+    await _initPlayer();
+
+    final bytes = base64Decode(base64Audio);
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final file = File(path);
+    await file.writeAsBytes(bytes);
+
+    _audioPlayer.setSubscriptionDuration(const Duration(milliseconds: 100));
+
+    _audioPlayer.onProgress.listen((e) {
+      if (mounted) {
         setState(() {
-          _isPlayingMap[messageId] = false;
-          _playPositionMap[messageId] = Duration.zero;
+          _playPositionMap[messageId] = e.position;
+          _playDurationMap[messageId] = e.duration;
         });
-        return;
       }
+    });
 
-      for (var player in _audioPlayers.values) {
-        await player.stop();
-      }
-
-      final player = AudioPlayer();
-      _audioPlayers[messageId] = player;
-
-      final bytes = base64Decode(base64Audio);
-      final dir = await getTemporaryDirectory();
-      final path =
-          '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      final file = File(path);
-      await file.writeAsBytes(bytes);
-
-      player.onDurationChanged.listen((d) {
-        if (mounted) setState(() => _playDurationMap[messageId] = d);
-      });
-      player.onPositionChanged.listen((p) {
-        if (mounted) setState(() => _playPositionMap[messageId] = p);
-      });
-      player.onPlayerComplete.listen((_) {
+    await _audioPlayer.startPlayer(
+      fromURI: path,
+      codec: Codec.aacADTS,
+      whenFinished: () {
         if (mounted) {
           setState(() {
             _isPlayingMap[messageId] = false;
@@ -3473,13 +3543,13 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         }
         file.delete();
-      });
+      },
+    );
 
-      await player.play(DeviceFileSource(path));
-      setState(() => _isPlayingMap[messageId] = true);
-    } catch (e) {
-      debugPrint('Playback error: $e');
-    }
+    setState(() => _isPlayingMap[messageId] = true);
+  } catch (e) {
+    debugPrint('Playback error: $e');
+  }
   }
 
   String _formatDuration(Duration d) {
