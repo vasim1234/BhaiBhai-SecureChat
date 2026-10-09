@@ -4517,42 +4517,44 @@ Future<void> _cancelRecording() async {
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onLongPress: (_isBlocked || !_areFriends)
-                            ? null
-                            : _startRecording,
-                        onLongPressEnd: (_isBlocked || !_areFriends)
-                            ? null
-                            : (_) => _stopRecording(send: true),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: (_isBlocked || !_areFriends)
-                                ? null
-                                : const LinearGradient(
-                                    colors: [
-                                      Color(0xFF667EEA),
-                                      Color(0xFF764BA2)
-                                    ],
-                                  ),
-                            color: (_isBlocked || !_areFriends)
-                                ? Colors.grey
-                                : null,
-                          ),
-                          child: _msgController.text.trim().isEmpty
-                              ? const Icon(Icons.mic,
-                                  color: Colors.white)
-                              : GestureDetector(
-                                  onTap: () async {
-                                    await _sendMessage(
-                                        replyTo: _replyToData);
-                                    setState(() => _replyToData = null);
-                                  },
-                                  child: const Icon(Icons.send,
-                                      color: Colors.white),
-                                ),
-                        ),
-                      ),
+  // 🎤 Mic pe ungli dabao — turant recording start
+  onTapDown: (_isBlocked || !_areFriends || _msgController.text.trim().isNotEmpty)
+      ? null
+      : (_) => _startRecording(),
+  // 📤 Ungli uthao — voice send
+  onTapUp: (_isBlocked || !_areFriends || _msgController.text.trim().isNotEmpty)
+      ? null
+      : (_) => _stopRecording(send: true),
+  // ❌ Cancel
+  onTapCancel: (_isBlocked || !_areFriends || _msgController.text.trim().isNotEmpty)
+      ? null
+      : () => _cancelRecording(),
+  // 📨 Text bhejo (agar text likha hai)
+  onTap: (_isBlocked || !_areFriends || _msgController.text.trim().isEmpty)
+      ? null
+      : () async {
+          await _sendMessage(replyTo: _replyToData);
+          setState(() => _replyToData = null);
+        },
+  child: Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: (_isBlocked || !_areFriends)
+          ? null
+          : const LinearGradient(
+              colors: [
+                Color(0xFF667EEA),
+                Color(0xFF764BA2)
+              ],
+            ),
+      color: (_isBlocked || !_areFriends) ? Colors.grey : null,
+    ),
+    child: _msgController.text.trim().isEmpty
+        ? const Icon(Icons.mic, color: Colors.white)
+        : const Icon(Icons.send, color: Colors.white),
+  ),
+),
                     ],
                   ),
               ],
