@@ -3451,49 +3451,6 @@ Future<void> _cancelRecording() async {
   await _stopRecording(send: false);
 }
 
-  Future<void> _stopRecording({bool send = false}) async {
-    try {
-      _recordTimer?.cancel();
-      final path = await _audioRecorder.stop();
-
-      setState(() => _isRecording = false);
-
-      if (path == null || !send) {
-        if (path != null) {
-          final file = File(path);
-          if (await file.exists()) await file.delete();
-        }
-        setState(() => _recordDuration = Duration.zero);
-        return;
-      }
-
-      final file = File(path);
-      final fileSize = await file.length();
-
-      if (fileSize > 900000) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Voice bahut lambi hai')),
-          );
-        }
-        await file.delete();
-        setState(() => _recordDuration = Duration.zero);
-        return;
-      }
-
-      final bytes = await file.readAsBytes();
-      final base64Audio = base64Encode(bytes);
-
-      await _sendMessage(voiceBase64: base64Audio);
-      await file.delete();
-
-      setState(() => _recordDuration = Duration.zero);
-    } catch (e) {
-      debugPrint('Stop recording error: $e');
-    }
-  }
-
-
   // ============ VOICE PLAYBACK ============
   Future<void> _playVoice(String messageId, String base64Audio) async {
   try {
