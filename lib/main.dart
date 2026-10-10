@@ -19,6 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'avatar_builder.dart';
 import 'package:flutter_sound/flutter_sound.dart';           // ✅ Line 20
 import 'package:permission_handler/permission_handler.dart'; // ✅ Line 21
+import 'group_info.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1779,6 +1780,22 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 style: const TextStyle(color: Colors.white)),
           ],
         ),
+        actions: [
+  IconButton(
+    icon: const Icon(Icons.more_vert, color: Colors.white),
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => GroupInfoScreen(
+            groupId: widget.groupId,
+            groupName: widget.groupName,
+          ),
+        ),
+      );
+    },
+  ),
+],
       ),
       body: Column(
         children: [
