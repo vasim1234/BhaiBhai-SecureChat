@@ -20,6 +20,7 @@ import 'avatar_builder.dart';
 import 'package:flutter_sound/flutter_sound.dart';           // ✅ Line 20
 import 'package:permission_handler/permission_handler.dart'; // ✅ Line 21
 import 'group_info.dart';
+import 'status_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2016,12 +2017,10 @@ Future<void> _loadGroupInfo() async {
 // ============ UPDATES SCREEN ============
 class UpdatesScreen extends StatelessWidget {
   const UpdatesScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Updates')),
-      body: const Center(child: Text('Status updates jald aa rahe hain!')),
-    );
+    return const StatusScreen();
   }
 }
 
