@@ -22,6 +22,7 @@ import 'package:permission_handler/permission_handler.dart'; // ✅ Line 21
 import 'group_info.dart';
 import 'status_screen.dart';
 import 'hisab_screen.dart';
+import 'khata_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -740,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: const [
   ChatsListScreen(),
   UpdatesScreen(),
-  HisabScreen(),              // 👈 Ye add karo
+  KhataScreen(),              // 👈 Ye
   CallsScreen(),
 ],
       ),
