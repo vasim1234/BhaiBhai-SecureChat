@@ -773,7 +773,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-// ============ CHATS LIST SCREEN ============
+// ============ CHATS LIST SCREEN (With Groups) ============
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
 
@@ -974,278 +974,154 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             .collection('chats')
             .where('members', arrayContains: currentUserId)
             .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(30),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF667EEA).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.chat_bubble_outline,
-                      size: 60,
-                      color: Color(0xFF667EEA),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Abhi koi chat nahi hai',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Search icon se user dhundhein!',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          Map<String, Map<String, dynamic>> chats = {};
-          for (var doc in snapshot.data!.docs) {
-            var data = doc.data() as Map<String, dynamic>;
-            String chatId = data['chatId'] ?? doc.id;
-            if (chatId.isNotEmpty) {
-              if (!chats.containsKey(chatId) ||
-                  (data['timestamp'] != null &&
-                      (chats[chatId]!['timestamp'] == null ||
-                          data['timestamp']
-                                  .compareTo(chats[chatId]!['timestamp']) >
-                              0))) {
-                chats[chatId] = data;
+        builder: (context, chatSnapshot) {
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('groups')
+                .where('members', arrayContains: currentUserId)
+                .snapshots(),
+            builder: (context, groupSnapshot) {
+              // Loading state
+              if (chatSnapshot.connectionState == ConnectionState.waiting ||
+                  groupSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
               }
-            }
-          }
 
-          List<Map<String, dynamic>> chatList = chats.values.toList();
-          chatList.sort((a, b) {
-            String aId = a['chatId'] ?? '';
-            String bId = b['chatId'] ?? '';
-            bool aPin = _pinnedChats.contains(aId);
-            bool bPin = _pinnedChats.contains(bId);
-            if (aPin && !bPin) return -1;
-            if (!aPin && bPin) return 1;
-            Timestamp? ta = a['timestamp'];
-            Timestamp? tb = b['timestamp'];
-            if (ta == null || tb == null) return 0;
-            return tb.compareTo(ta);
-          });
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: chatList.length,
-            itemBuilder: (context, index) {
-              var chat = chatList[index];
-              String chatId = chat['chatId'] ?? '';
-
-              List<String> uids = chatId.split('_');
-              String otherUserId = uids.firstWhere(
-                (uid) => uid != currentUserId,
-                orElse: () => '',
-              );
-
-              if (otherUserId.isEmpty) return const SizedBox.shrink();
-
-              String lastMessage = chat['message'] ?? '';
-              if (lastMessage.isEmpty && chat['voiceBase64'] != null) {
-                lastMessage = '🎤 Voice message';
-              } else if (lastMessage.isEmpty &&
-                  chat['imageBase64'] != null) {
-                lastMessage = '📷 Photo';
+              // Errors
+              if (chatSnapshot.hasError) {
+                return Center(child: Text('Error: ${chatSnapshot.error}'));
               }
-              Timestamp? timestamp = chat['timestamp'];
-              bool isPinned = _pinnedChats.contains(chatId);
+              if (groupSnapshot.hasError) {
+                return Center(child: Text('Error: ${groupSnapshot.error}'));
+              }
 
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(otherUserId)
-                    .get(),
-                builder: (context, userSnapshot) {
-                  String username = 'User';
-                  String? avatarUrl;
+              // Empty state
+              final hasChats =
+                  chatSnapshot.hasData && chatSnapshot.data!.docs.isNotEmpty;
+              final hasGroups =
+                  groupSnapshot.hasData && groupSnapshot.data!.docs.isNotEmpty;
 
-                  if (userSnapshot.hasData &&
-                      userSnapshot.data != null &&
-                      userSnapshot.data!.exists) {
-                    Map<String, dynamic>? userData =
-                        userSnapshot.data!.data() as Map<String, dynamic>?;
-                    if (userData != null) {
-                      username = userData['username'] ?? 'User';
-                      avatarUrl = userData.containsKey('avatarUrl')
-                          ? userData['avatarUrl']
-                          : null;
+              if (!hasChats && !hasGroups) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF667EEA).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_outline,
+                          size: 60,
+                          color: Color(0xFF667EEA),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Abhi koi chat nahi hai',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Search icon se user dhundhein!',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // ============ CHATS LIST ============
+              Map<String, Map<String, dynamic>> chats = {};
+              if (chatSnapshot.hasData) {
+                for (var doc in chatSnapshot.data!.docs) {
+                  var data = doc.data() as Map<String, dynamic>;
+                  String chatId = data['chatId'] ?? doc.id;
+                  if (chatId.isNotEmpty) {
+                    if (!chats.containsKey(chatId) ||
+                        (data['timestamp'] != null &&
+                            (chats[chatId]!['timestamp'] == null ||
+                                data['timestamp']
+                                        .compareTo(
+                                            chats[chatId]!['timestamp']) >
+                                    0))) {
+                      chats[chatId] = data;
                     }
                   }
+                }
+              }
 
-                  return FutureBuilder<int>(
-                    future: _getUnreadCount(chatId),
-                    builder: (context, unreadSnapshot) {
-                      int unreadCount = unreadSnapshot.data ?? 0;
+              List<Map<String, dynamic>> chatList = chats.values.toList();
+              chatList.sort((a, b) {
+                Timestamp? ta = a['timestamp'];
+                Timestamp? tb = b['timestamp'];
+                if (ta == null || tb == null) return 0;
+                return tb.compareTo(ta);
+              });
 
-                      return Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+              // ============ GROUPS LIST ============
+              List<Map<String, dynamic>> groupsList = [];
+              if (groupSnapshot.hasData) {
+                groupsList = groupSnapshot.data!.docs
+                    .map((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      data['groupId'] = doc.id;
+                      return data;
+                    })
+                    .toList();
+                groupsList.sort((a, b) {
+                  Timestamp? ta = a['createdAt'];
+                  Timestamp? tb = b['createdAt'];
+                  if (ta == null || tb == null) return 0;
+                  return tb.compareTo(ta);
+                });
+              }
+
+              // ============ COMBINE + SHOW ============
+              return ListView(
+                padding: const EdgeInsets.all(8),
+                children: [
+                  // 🟢 GROUPS FIRST
+                  if (groupsList.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: Text(
+                        'GROUPS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                          letterSpacing: 1.2,
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ChatScreen(
-                                    receiverUid: otherUserId,
-                                    receiverName: username,
-                                  ),
-                                ),
-                              );
-                            },
-                            onLongPress: () => _showChatOptions(
-                                chatId, otherUserId, username),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                              child: Row(
-                                children: [
-                                  AvatarWidget(
-                                    avatarUrl: avatarUrl,
-                                    username: username,
-                                    size: 52,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                username,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 16,
-                                                  color: Color(0xFF1F2937),
-                                                ),
-                                                maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            if (isPinned)
-                                              const Padding(
-                                                padding: EdgeInsets.only(
-                                                    left: 4),
-                                                child: Icon(
-                                                  Icons.push_pin,
-                                                  size: 14,
-                                                  color: Color(0xFF667EEA),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          lastMessage,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: unreadCount > 0
-                                                ? const Color(0xFF1F2937)
-                                                : Colors.grey[600],
-                                            fontWeight: unreadCount > 0
-                                                ? FontWeight.w500
-                                                : FontWeight.normal,
-                                            fontSize: 13.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      if (timestamp != null)
-                                        Text(
-                                          DateFormat('hh:mm a')
-                                              .format(timestamp.toDate()),
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color: unreadCount > 0
-                                                ? const Color(0xFF25D366)
-                                                : Colors.grey[500],
-                                            fontWeight: unreadCount > 0
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                      const SizedBox(height: 6),
-                                      if (unreadCount > 0)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          constraints: const BoxConstraints(
-                                              minWidth: 20),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF25D366),
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            '$unreadCount',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        )
-                                      else
-                                        const SizedBox(height: 20),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                      ),
+                    ),
+                    ...groupsList.map((group) {
+                      return _buildGroupTile(group);
+                    }).toList(),
+                  ],
+                  // 🟢 CHATS
+                  if (chatList.isNotEmpty) ...[
+                    if (groupsList.isNotEmpty)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(12, 16, 12, 4),
+                        child: Text(
+                          'CHATS',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            letterSpacing: 1.2,
                           ),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ),
+                    ...chatList.map((chat) {
+                      return _buildChatTile(chat);
+                    }).toList(),
+                  ],
+                ],
               );
             },
           );
@@ -1264,6 +1140,306 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 
+  // ============ GROUP TILE ============
+  Widget _buildGroupTile(Map<String, dynamic> group) {
+    String groupId = group['groupId'] ?? '';
+    String groupName = group['name'] ?? 'Group';
+    List<String> members = List<String>.from(group['members'] ?? []);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GroupChatScreen(
+                  groupId: groupId,
+                  groupName: groupName,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                // Group avatar
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF8B5CF6), Color(0xFF667EEA)],
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      groupName.isNotEmpty
+                          ? groupName[0].toUpperCase()
+                          : 'G',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        groupName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Color(0xFF1F2937),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${members.length} members',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'Group',
+                    style: TextStyle(
+                      color: Color(0xFF8B5CF6),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============ CHAT TILE ============
+  Widget _buildChatTile(Map<String, dynamic> chat) {
+    String chatId = chat['chatId'] ?? '';
+    List<String> uids = chatId.split('_');
+    String otherUserId = uids.firstWhere(
+      (uid) => uid != currentUserId,
+      orElse: () => '',
+    );
+
+    if (otherUserId.isEmpty) return const SizedBox.shrink();
+
+    String lastMessage = chat['message'] ?? '';
+    if (lastMessage.isEmpty && chat['voiceBase64'] != null) {
+      lastMessage = '🎤 Voice message';
+    } else if (lastMessage.isEmpty && chat['imageBase64'] != null) {
+      lastMessage = '📷 Photo';
+    }
+    Timestamp? timestamp = chat['timestamp'];
+    bool isPinned = _pinnedChats.contains(chatId);
+
+    return FutureBuilder<DocumentSnapshot>(
+      future:
+          FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
+      builder: (context, userSnapshot) {
+        String username = 'User';
+        String? avatarUrl;
+
+        if (userSnapshot.hasData &&
+            userSnapshot.data != null &&
+            userSnapshot.data!.exists) {
+          Map<String, dynamic>? userData =
+              userSnapshot.data!.data() as Map<String, dynamic>?;
+          if (userData != null) {
+            username = userData['username'] ?? 'User';
+            avatarUrl = userData.containsKey('avatarUrl')
+                ? userData['avatarUrl']
+                : null;
+          }
+        }
+
+        return FutureBuilder<int>(
+          future: _getUnreadCount(chatId),
+          builder: (context, unreadSnapshot) {
+            int unreadCount = unreadSnapshot.data ?? 0;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(
+                          receiverUid: otherUserId,
+                          receiverName: username,
+                        ),
+                      ),
+                    );
+                  },
+                  onLongPress: () =>
+                      _showChatOptions(chatId, otherUserId, username),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    child: Row(
+                      children: [
+                        AvatarWidget(
+                          avatarUrl: avatarUrl,
+                          username: username,
+                          size: 52,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      username,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: Color(0xFF1F2937),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isPinned)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 4),
+                                      child: Icon(
+                                        Icons.push_pin,
+                                        size: 14,
+                                        color: Color(0xFF667EEA),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                lastMessage,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: unreadCount > 0
+                                      ? const Color(0xFF1F2937)
+                                      : Colors.grey[600],
+                                  fontWeight: unreadCount > 0
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (timestamp != null)
+                              Text(
+                                DateFormat('hh:mm a')
+                                    .format(timestamp.toDate()),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: unreadCount > 0
+                                      ? const Color(0xFF25D366)
+                                      : Colors.grey[500],
+                                  fontWeight: unreadCount > 0
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            const SizedBox(height: 6),
+                            if (unreadCount > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                constraints:
+                                    const BoxConstraints(minWidth: 20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF25D366),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '$unreadCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            else
+                              const SizedBox(height: 20),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildFilterChip(String label, bool isSelected) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -1276,9 +1452,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             : null,
         color: isSelected ? null : Colors.white,
         borderRadius: BorderRadius.circular(25),
-        border: isSelected
-            ? null
-            : Border.all(color: Colors.grey[300]!, width: 1),
+        border:
+            isSelected ? null : Border.all(color: Colors.grey[300]!, width: 1),
         boxShadow: isSelected
             ? [
                 BoxShadow(
