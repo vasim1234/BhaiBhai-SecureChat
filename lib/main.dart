@@ -3364,34 +3364,50 @@ void dispose() {
 }
 
   // ============ VOICE RECORDING ============
-  Future<void> _startRecording() async {
+ Future<void> _startRecording() async {
+  // 🎯 Turant UI update karo — red dot + timer dikhe
+  setState(() {
+    _isRecording = true;
+    _recordDuration = Duration.zero;
+  });
+
   try {
+    // 1️⃣ Permission check
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
+      setState(() => _isRecording = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone permission chahiye')),
+          const SnackBar(content: Text('❌ Mic permission denied')),
         );
       }
       return;
     }
 
+    // 2️⃣ Recorder init karo
     await _initRecorder();
+    if (!_recorderInitialized) {
+      setState(() => _isRecording = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Recorder init failed')),
+        );
+      }
+      return;
+    }
 
+    // 3️⃣ Path banao
     final dir = await getTemporaryDirectory();
     final path =
         '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
+    // 4️⃣ Recording start karo
     await _audioRecorder.startRecorder(
       toFile: path,
       codec: Codec.aacADTS,
     );
 
-    setState(() {
-      _isRecording = true;
-      _recordDuration = Duration.zero;
-    });
-
+    // 5️⃣ Timer start karo
     _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted && _isRecording) {
         setState(() {
@@ -3401,9 +3417,20 @@ void dispose() {
       }
     });
   } catch (e) {
+    // ❌ Error screen pe dikhao
+    setState(() => _isRecording = false);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recording Error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+    }
     debugPrint('Recording error: $e');
   }
-}
+ }
 
 Future<void> _stopRecording({bool send = false}) async {
   try {
