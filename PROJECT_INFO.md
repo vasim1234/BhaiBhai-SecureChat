@@ -351,12 +351,12 @@ status Collection
 OneSignal App ID
 
 ```
-05bee600-4a45-44e5-b35e-5328544c25c1
+0.......
 ```
 
 OneSignal REST API Key
 
-Note: Ye GitHub par public nahi karni chahiye. --dart-define=ONESIGNAL_REST_API_KEY=... ke through inject hoti hai GitHub Secret se.
+Note: Ye GitHub par public nahi karni chahiye. --......... ke through inject hoti hai GitHub Secret se.
 
 Firebase Service Account JSON
 
@@ -501,8 +501,9 @@ GitHub Secrets Required
 
 Firebase Project
 
-· Project Name: Bhai bhai app
-· Project ID: bhai-bhai-app
+Firebase Project
+· Project Name: [Firebase Console se lo]
+· Project ID: [Firebase Console se lo]
 · Package Name: com.example.bhaibhai_securechat
 
 Important Functions
