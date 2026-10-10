@@ -21,6 +21,7 @@ import 'package:flutter_sound/flutter_sound.dart';           // ✅ Line 20
 import 'package:permission_handler/permission_handler.dart'; // ✅ Line 21
 import 'group_info.dart';
 import 'status_screen.dart';
+import 'hisab_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -737,11 +738,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: IndexedStack(
         index: _currentIndex,
         children: const [
-          ChatsListScreen(),
-          UpdatesScreen(),
-          CommunitiesScreen(),
-          CallsScreen(),
-        ],
+  ChatsListScreen(),
+  UpdatesScreen(),
+  HisabScreen(),              // 👈 Ye add karo
+  CallsScreen(),
+],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -760,15 +761,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           unselectedItemColor: Colors.grey,
           type: BottomNavigationBarType.fixed,
           items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.update), label: 'Updates'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.groups_outlined), label: 'Communities'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.call_outlined), label: 'Calls'),
-          ],
+  BottomNavigationBarItem(
+      icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
+  BottomNavigationBarItem(
+      icon: Icon(Icons.update), label: 'Updates'),
+  BottomNavigationBarItem(
+      icon: Icon(Icons.receipt_long_outlined), label: 'Hisaab'),
+  BottomNavigationBarItem(
+      icon: Icon(Icons.call_outlined), label: 'Calls'),
+],
         ),
       ),
     );
