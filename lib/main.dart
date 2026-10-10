@@ -3513,7 +3513,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       await _audioPlayer.startPlayer(
         fromURI: path,
-        codec: Codec.aacMP4,
+        codec: Codec.aacADTS,
         whenFinished: () {
           if (mounted) {
             setState(() {
