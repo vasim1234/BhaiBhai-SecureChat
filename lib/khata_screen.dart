@@ -221,8 +221,7 @@ class _KhataScreenState extends State<KhataScreen> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('khate')
-            .where('userId', isEqualTo: currentUserId)
-            .orderBy('createdAt', descending: true)
+            .where('userId', isEqualTo: currentUserId) 
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
