@@ -3,6 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 // ============ KHATA DETAIL SCREEN (Bande Ka Pura Hisaab) ============
 class KhataDetailScreen extends StatefulWidget {
@@ -24,7 +27,319 @@ class KhataDetailScreen extends StatefulWidget {
 class _KhataDetailScreenState extends State<KhataDetailScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // ============ ADD ENTRY ============
+  // ============ FETCH ALL ENTRIES ============
+  Future<List<Map<String, dynamic>>> _fetchEntries() async {
+    QuerySnapshot snap = await FirebaseFirestore.instance
+        .collection('hisab')
+        .where('khataId', isEqualTo: widget.khataId)
+        .get();
+
+    List<Map<String, dynamic>> entries = snap.docs.map((doc) {
+      var data = doc.data() as Map<String, dynamic>;
+      data['docId'] = doc.id;
+      return data;
+    }).toList();
+
+    entries.sort((a, b) {
+      Timestamp ta = a['date'] as Timestamp;
+      Timestamp tb = b['date'] as Timestamp;
+      return tb.compareTo(ta);
+    });
+    return entries;
+  }
+
+  // ============ PDF EXPORT ============
+  Future<void> _exportPDF() async {
+    try {
+      List<Map<String, dynamic>> entries = await _fetchEntries();
+
+      if (entries.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Koi entry nahi hai')),
+          );
+        }
+        return;
+      }
+
+      // Totals calculate (sirf unsettled)
+      double totalDiya = 0;
+      double totalLiya = 0;
+      for (var entry in entries) {
+        if (entry['isSettled'] == true) continue;
+        double amount = (entry['amount'] as num).toDouble();
+        if (entry['type'] == 'diya') {
+          totalDiya += amount;
+        } else {
+          totalLiya += amount;
+        }
+      }
+      double netBalance = totalDiya - totalLiya;
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return [
+              // Header
+              pw.Header(
+                level: 0,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Khata - ${widget.personName}',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue700,
+                      ),
+                    ),
+                    if (widget.phoneNumber.isNotEmpty) ...[
+                      pw.SizedBox(height: 3),
+                      pw.Text(
+                        'Phone: ${widget.phoneNumber}',
+                        style: const pw.TextStyle(
+                          fontSize: 12,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      'Generated: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}',
+                      style: const pw.TextStyle(
+                        fontSize: 11,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Balance Summary
+              pw.Container(
+                padding: const pw.EdgeInsets.all(15),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.blue50,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      netBalance == 0
+                          ? 'Settled'
+                          : 'Total Balance: Rs. ${netBalance.abs().toStringAsFixed(0)}',
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: netBalance == 0
+                            ? PdfColors.grey700
+                            : (netBalance >= 0
+                                ? PdfColors.green700
+                                : PdfColors.red700),
+                      ),
+                    ),
+                    if (netBalance != 0) ...[
+                      pw.SizedBox(height: 5),
+                      pw.Text(
+                        netBalance >= 0
+                            ? 'Aapko lena hai'
+                            : 'Aapko dena hai',
+                        style: const pw.TextStyle(
+                          fontSize: 12,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                    pw.SizedBox(height: 10),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'Diya: Rs. ${totalDiya.toStringAsFixed(0)}',
+                          style: const pw.TextStyle(
+                            fontSize: 13,
+                            color: PdfColors.red700,
+                          ),
+                        ),
+                        pw.Text(
+                          'Liya: Rs. ${totalLiya.toStringAsFixed(0)}',
+                          style: const pw.TextStyle(
+                            fontSize: 13,
+                            color: PdfColors.green700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Entries Table
+              pw.Table.fromTextArray(
+                headers: [
+                  'Date',
+                  'Type',
+                  'Amount',
+                  'Note',
+                  'Status'
+                ],
+                data: entries.map((entry) {
+                  DateTime date = (entry['date'] as Timestamp).toDate();
+                  bool isDiya = entry['type'] == 'diya';
+                  bool isSettled = entry['isSettled'] == true;
+                  return [
+                    DateFormat('dd MMM yy').format(date),
+                    isDiya ? 'Diya' : 'Liya',
+                    'Rs. ${entry['amount'].toStringAsFixed(0)}',
+                    entry['note'] ?? '-',
+                    isSettled ? 'Settled' : 'Pending',
+                  ];
+                }).toList(),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                  fontSize: 11,
+                ),
+                headerDecoration: const pw.BoxDecoration(
+                  color: PdfColors.blue700,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 10),
+              ),
+
+              pw.SizedBox(height: 20),
+              pw.Divider(),
+              pw.Text(
+                'Bhai Bhai Secure Chat - Hisaab Kitaab',
+                style: const pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ];
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name:
+            'khata_${widget.personName}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+    } catch (e) {
+      debugPrint('PDF error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ WHATSAPP SEND ============
+  Future<void> _sendViaWhatsApp() async {
+    try {
+      List<Map<String, dynamic>> entries = await _fetchEntries();
+
+      if (entries.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Koi entry nahi hai')),
+          );
+        }
+        return;
+      }
+
+      // Totals calculate (sirf unsettled)
+      double totalDiya = 0;
+      double totalLiya = 0;
+      for (var entry in entries) {
+        if (entry['isSettled'] == true) continue;
+        double amount = (entry['amount'] as num).toDouble();
+        if (entry['type'] == 'diya') {
+          totalDiya += amount;
+        } else {
+          totalLiya += amount;
+        }
+      }
+      double netBalance = totalDiya - totalLiya;
+
+      // Message banao
+      String message = '📒 *KHATA - ${widget.personName}*\n\n';
+      if (widget.phoneNumber.isNotEmpty) {
+        message += '📱 ${widget.phoneNumber}\n\n';
+      }
+      message += '━━━━━━━━━━━━━━━━━━\n';
+      message +=
+          '💰 *Total Diya:* ₹ ${totalDiya.toStringAsFixed(0)}\n';
+      message +=
+          '💰 *Total Liya:* ₹ ${totalLiya.toStringAsFixed(0)}\n';
+      message += '━━━━━━━━━━━━━━━━━━\n';
+
+      if (netBalance == 0) {
+        message += '✅ *SETTLED*\n';
+      } else if (netBalance > 0) {
+        message +=
+            '🔴 *AAPKO LENE HAIN:* ₹ ${netBalance.toStringAsFixed(0)}\n';
+      } else {
+        message +=
+            '🟢 *AAPKO DENE HAIN:* ₹ ${netBalance.abs().toStringAsFixed(0)}\n';
+      }
+      message += '━━━━━━━━━━━━━━━━━━\n\n';
+
+      message += '📋 *ENTRIES*\n\n';
+      for (var entry in entries) {
+        DateTime date = (entry['date'] as Timestamp).toDate();
+        bool isDiya = entry['type'] == 'diya';
+        bool isSettled = entry['isSettled'] == true;
+        String emoji = isSettled ? '✅' : (isDiya ? '🔴' : '🟢');
+        String typeText = isDiya ? 'Diya' : 'Liya';
+        message +=
+            '$emoji ${DateFormat('dd MMM').format(date)} — $typeText ₹ ${entry['amount'].toStringAsFixed(0)}\n';
+        if ((entry['note'] ?? '').isNotEmpty) {
+          message += '   _${entry['note']}_\n';
+        }
+      }
+
+      message += '\n_Bhai Bhai Secure Chat_';
+
+      // WhatsApp kholo
+      String phone = widget.phoneNumber.isNotEmpty
+          ? widget.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '')
+          : '';
+      if (phone.isNotEmpty && !phone.startsWith('91')) phone = '91$phone';
+
+      Uri url;
+      if (phone.isNotEmpty) {
+        url = Uri.parse(
+          'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
+        );
+      } else {
+        url = Uri.parse(
+          'https://wa.me/?text=${Uri.encodeComponent(message)}',
+        );
+      }
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('WhatsApp error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('WhatsApp error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ ADD ENTRY DIALOG ============
   void _showAddEntryDialog({Map<String, dynamic>? existingEntry, String? docId}) {
     final TextEditingController amountController = TextEditingController(
         text: existingEntry != null ? existingEntry['amount'].toString() : '');
@@ -57,9 +372,7 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                           const Text('💰', style: TextStyle(fontSize: 24)),
                           const SizedBox(width: 10),
                           Text(
-                            existingEntry == null
-                                ? 'Naya Entry'
-                                : 'Edit Entry',
+                            existingEntry == null ? 'Naya Entry' : 'Edit Entry',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -77,7 +390,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      // Amount + Date
                       Row(
                         children: [
                           Expanded(
@@ -133,7 +445,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 15),
-                      // Note
                       TextField(
                         controller: noteController,
                         maxLines: 2,
@@ -147,7 +458,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      // Type buttons
                       Row(
                         children: [
                           Expanded(
@@ -270,7 +580,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      // Save / Cancel
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -378,7 +687,7 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
     );
   }
 
-  // ============ SETTLE ENTRY ============
+  // ============ SETTLE / UNSETTLE / DELETE ============
   Future<void> _settleEntry(String docId) async {
     bool confirm = await showDialog<bool>(
           context: context,
@@ -419,7 +728,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
     }
   }
 
-  // ============ UNSETTLE ENTRY ============
   Future<void> _unsettleEntry(String docId) async {
     await FirebaseFirestore.instance.collection('hisab').doc(docId).update({
       'isSettled': false,
@@ -432,7 +740,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
     }
   }
 
-  // ============ DELETE ENTRY ============
   Future<void> _deleteEntry(String docId) async {
     bool confirm = await showDialog<bool>(
           context: context,
@@ -477,16 +784,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
     if (await canLaunchUrl(url)) await launchUrl(url);
   }
 
-  Future<void> _openWhatsApp() async {
-    if (widget.phoneNumber.isEmpty) return;
-    String cleanPhone = widget.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    if (!cleanPhone.startsWith('91')) cleanPhone = '91$cleanPhone';
-    final Uri url = Uri.parse('https://wa.me/$cleanPhone');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
   // ============ ENTRY OPTIONS ============
   void _showEntryOptions(Map<String, dynamic> entry, String docId) {
     bool isSettled = entry['isSettled'] == true;
@@ -512,7 +809,8 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
               const SizedBox(height: 15),
               if (!isSettled)
                 ListTile(
-                  leading: const Icon(Icons.check_circle, color: Colors.green),
+                  leading:
+                      const Icon(Icons.check_circle, color: Colors.green),
                   title: const Text('Mark as Settled'),
                   onTap: () {
                     Navigator.pop(sheetContext);
@@ -599,15 +897,20 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF4A6CF7)),
+            tooltip: 'PDF Save',
+            onPressed: _exportPDF,
+          ),
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.green),
+            tooltip: 'WhatsApp pe bhejo',
+            onPressed: _sendViaWhatsApp,
+          ),
           if (widget.phoneNumber.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.call, color: Color(0xFF4A6CF7)),
               onPressed: _makeCall,
-            ),
-          if (widget.phoneNumber.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.chat, color: Colors.green),
-              onPressed: _openWhatsApp,
             ),
         ],
       ),
@@ -636,7 +939,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
             });
           }
 
-          // Balance calculate (sirf unsettled)
           double totalDiya = 0;
           double totalLiya = 0;
           for (var entry in allEntries) {
@@ -707,7 +1009,7 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                 ),
               ),
 
-              // Entries list
+              // Entries
               Expanded(
                 child: allEntries.isEmpty
                     ? _buildEmptyState()
@@ -737,67 +1039,7 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Diya entry
-                          final controller = TextEditingController();
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20)),
-                              title: const Text('Maine Diya'),
-                              content: TextField(
-                                controller: controller,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Amount (₹)',
-                                  prefixIcon: Icon(Icons.currency_rupee),
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Cancel'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    if (controller.text.trim().isEmpty) return;
-                                    await FirebaseFirestore.instance
-                                        .collection('hisab')
-                                        .add({
-                                      'userId': currentUserId,
-                                      'khataId': widget.khataId,
-                                      'personName': widget.personName,
-                                      'phoneNumber': widget.phoneNumber,
-                                      'amount': double.parse(
-                                          controller.text.trim()),
-                                      'type': 'diya',
-                                      'date': FieldValue.serverTimestamp(),
-                                      'note': '',
-                                      'isSettled': false,
-                                      'createdAt':
-                                          FieldValue.serverTimestamp(),
-                                    });
-                                    if (context.mounted) {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Diya entry add ho gayi!')),
-                                      );
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('Add'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                        onPressed: () => _showAddEntryDialog(),
                         icon: const Icon(Icons.arrow_upward),
                         label: const Text('AAPNE DIYE ₹'),
                         style: ElevatedButton.styleFrom(
@@ -813,67 +1055,7 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Liya entry
-                          final controller = TextEditingController();
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20)),
-                              title: const Text('Maine Liya'),
-                              content: TextField(
-                                controller: controller,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Amount (₹)',
-                                  prefixIcon: Icon(Icons.currency_rupee),
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Cancel'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    if (controller.text.trim().isEmpty) return;
-                                    await FirebaseFirestore.instance
-                                        .collection('hisab')
-                                        .add({
-                                      'userId': currentUserId,
-                                      'khataId': widget.khataId,
-                                      'personName': widget.personName,
-                                      'phoneNumber': widget.phoneNumber,
-                                      'amount': double.parse(
-                                          controller.text.trim()),
-                                      'type': 'liya',
-                                      'date': FieldValue.serverTimestamp(),
-                                      'note': '',
-                                      'isSettled': false,
-                                      'createdAt':
-                                          FieldValue.serverTimestamp(),
-                                    });
-                                    if (context.mounted) {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Liya entry add ho gayi!')),
-                                      );
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('Add'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                        onPressed: () => _showAddEntryDialog(),
                         icon: const Icon(Icons.arrow_downward),
                         label: const Text('AAPNE LIYE ₹'),
                         style: ElevatedButton.styleFrom(
@@ -950,7 +1132,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
         ),
         child: Row(
           children: [
-            // Type indicator
             Container(
               width: 40,
               height: 40,
@@ -968,17 +1149,13 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            // Date + Note
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${DateFormat('dd MMM yy').format(date)} • ${DateFormat('hh:mm a').format(date)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   ),
                   if ((entry['note'] ?? '').isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -986,9 +1163,8 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                       entry['note'],
                       style: TextStyle(
                         fontSize: 13,
-                        color: isSettled
-                            ? Colors.grey[500]
-                            : Colors.grey[800],
+                        color:
+                            isSettled ? Colors.grey[500] : Colors.grey[800],
                         fontWeight: FontWeight.w500,
                         decoration:
                             isSettled ? TextDecoration.lineThrough : null,
@@ -1000,7 +1176,6 @@ class _KhataDetailScreenState extends State<KhataDetailScreen> {
                 ],
               ),
             ),
-            // Amount
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
