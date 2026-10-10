@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:convert';
 import 'avatar_builder.dart';
 
 // ============ GROUP INFO SCREEN (Admin Controls) ============
@@ -53,6 +58,217 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     }
   }
 
+  // ============ CHANGE GROUP PHOTO (Admin only) ============
+  Future<void> _changeGroupPhoto() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
+
+    if (image == null) return;
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final targetPath =
+          '${dir.path}/group_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 50,
+        minWidth: 800,
+        minHeight: 800,
+      );
+
+      if (compressedFile == null) return;
+
+      final bytes = await compressedFile.readAsBytes();
+      String base64Image = base64Encode(bytes);
+
+      if (base64Image.length > 900000) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo bahut badi hai')),
+          );
+        }
+        return;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .update({'groupPhoto': base64Image});
+
+      if (mounted) {
+        setState(() {
+          _groupData?['groupPhoto'] = base64Image;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group photo update ho gayi!')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
+  }
+
+  // ============ ADD MEMBERS SHEET ============
+  void _showAddMembers() {
+    List<String> currentMembers =
+        List<String>.from(_groupData?['members'] ?? []);
+    List<String> selectedUsers = [];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.7,
+              maxChildSize: 0.9,
+              minChildSize: 0.5,
+              builder: (context, scrollController) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'Add Members',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 15),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+
+                          final availableUsers = snapshot.data!.docs
+                              .where((doc) =>
+                                  !currentMembers.contains(doc.id) &&
+                                  doc.id != currentUserId)
+                              .toList();
+
+                          if (availableUsers.isEmpty) {
+                            return const Center(
+                              child: Text('Koi naya user available nahi'),
+                            );
+                          }
+
+                          return ListView.builder(
+                            controller: scrollController,
+                            itemCount: availableUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = availableUsers[index];
+                              final data =
+                                  user.data() as Map<String, dynamic>;
+                              String username = data['username'] ?? 'User';
+                              bool isSelected =
+                                  selectedUsers.contains(user.id);
+
+                              return CheckboxListTile(
+                                value: isSelected,
+                                onChanged: (val) {
+                                  setSheetState(() {
+                                    if (val == true) {
+                                      selectedUsers.add(user.id);
+                                    } else {
+                                      selectedUsers.remove(user.id);
+                                    }
+                                  });
+                                },
+                                secondary: AvatarWidget(
+                                  avatarUrl: data['avatarUrl'],
+                                  username: username,
+                                  size: 45,
+                                ),
+                                title: Text(username,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600)),
+                                subtitle: Text(data['email'] ?? ''),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    if (selectedUsers.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              List<String> newMembers = [
+                                ...currentMembers,
+                                ...selectedUsers,
+                              ];
+
+                              await FirebaseFirestore.instance
+                                  .collection('groups')
+                                  .doc(widget.groupId)
+                                  .update({'members': newMembers});
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                setState(() {
+                                  _groupData?['members'] = newMembers;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          '${selectedUsers.length} members add ho gaye!')),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.person_add),
+                            label:
+                                Text('Add ${selectedUsers.length} Member(s)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4A6CF7),
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   // ============ CHANGE GROUP NAME (Admin only) ============
   Future<void> _changeGroupName() async {
     final TextEditingController nameController = TextEditingController(
@@ -63,8 +279,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Change Group Name'),
           content: TextField(
             controller: nameController,
@@ -124,8 +340,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Group Bio'),
           content: TextField(
             controller: bioController,
@@ -247,8 +463,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Text(title),
             content: Text(message),
             actions: [
@@ -272,8 +488,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
 
   // ============ MEMBERS SHEET ============
   void _showMembers() {
-    List<String> members =
-        List<String>.from(_groupData?['members'] ?? []);
+    List<String> members = List<String>.from(_groupData?['members'] ?? []);
 
     showModalBottomSheet(
       context: context,
@@ -379,8 +594,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
 
     String groupName = _groupData?['name'] ?? 'Group';
     String groupBio = _groupData?['bio'] ?? '';
-    List<String> members =
-        List<String>.from(_groupData?['members'] ?? []);
+    String? groupPhoto = _groupData?['groupPhoto'];
+    List<String> members = List<String>.from(_groupData?['members'] ?? []);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
@@ -393,6 +608,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // Group Avatar + Name
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -408,26 +624,64 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               ),
               child: Column(
                 children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFF667EEA)],
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        groupName.isNotEmpty
-                            ? groupName[0].toUpperCase()
-                            : 'G',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    onTap: _isAdmin ? _changeGroupPhoto : null,
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: groupPhoto == null
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFF8B5CF6),
+                                      Color(0xFF667EEA)
+                                    ],
+                                  )
+                                : null,
+                          ),
+                          child: groupPhoto != null
+                              ? ClipOval(
+                                  child: Image.memory(
+                                    base64Decode(groupPhoto),
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    groupName.isNotEmpty
+                                        ? groupName[0].toUpperCase()
+                                        : 'G',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                         ),
-                      ),
+                        if (_isAdmin)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF4A6CF7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -460,6 +714,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // Options
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -482,7 +738,19 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     () => _showMembers(),
                   ),
                   const Divider(height: 1),
+
+                  // Add Members (admin only)
                   if (_isAdmin) ...[
+                    _buildOption(
+                      Icons.person_add,
+                      'Add Members',
+                      const Color(0xFF10B981),
+                      null,
+                      () => _showAddMembers(),
+                    ),
+                    const Divider(height: 1),
+
+                    // Change Name
                     _buildOption(
                       Icons.edit,
                       'Change Group Name',
@@ -491,6 +759,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                       _changeGroupName,
                     ),
                     const Divider(height: 1),
+
+                    // Change Bio
                     _buildOption(
                       Icons.info_outline,
                       'Change Group Bio',
@@ -500,6 +770,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     ),
                     const Divider(height: 1),
                   ],
+
+                  // Leave Group
                   _buildOption(
                     Icons.exit_to_app,
                     'Exit Group',
@@ -508,6 +780,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     _leaveGroup,
                     isRed: true,
                   ),
+
+                  // Delete Group (admin only)
                   if (_isAdmin) ...[
                     const Divider(height: 1),
                     _buildOption(
