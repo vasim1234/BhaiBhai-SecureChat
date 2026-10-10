@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -19,58 +18,7 @@ class HisabScreen extends StatefulWidget {
 class _HisabScreenState extends State<HisabScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // ============ PICK CONTACT (Safe) ============
-  Future<void> _pickContact({
-    required TextEditingController nameController,
-    required TextEditingController phoneController,
-  }) async {
-    try {
-      final Contact? contact = await FlutterContacts.openExternalPick();
-
-      // Mounted check — agar widget abhi bhi active hai
-      if (!mounted) return;
-
-      // User ne cancel kiya
-      if (contact == null) return;
-
-      // Naam fill karo (safe)
-      String displayName = contact.displayName;
-      if (displayName.isNotEmpty) {
-        nameController.text = displayName;
-      }
-
-      // Number fill karo (safe)
-      if (contact.phones.isNotEmpty) {
-        String phoneNumber = contact.phones.first.number;
-        if (phoneNumber.isNotEmpty) {
-          phoneController.text = phoneNumber;
-        }
-      }
-
-      // Success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$displayName add ho gaya'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Contact picker error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Contact error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // ============ ADD ENTRY DIALOG ============
+  // ============ ADD ENTRY DIALOG (Screenshot Design) ============
   void _showAddEntryDialog(
       {Map<String, dynamic>? existingEntry, String? docId}) {
     final TextEditingController nameController =
@@ -83,9 +31,6 @@ class _HisabScreenState extends State<HisabScreen> {
         TextEditingController(text: existingEntry?['note'] ?? '');
 
     String type = existingEntry?['type'] ?? 'diya';
-    DateTime selectedDate = existingEntry != null
-        ? (existingEntry['date'] as Timestamp).toDate()
-        : DateTime.now();
     bool isSaving = false;
 
     showDialog(
@@ -93,298 +38,455 @@ class _HisabScreenState extends State<HisabScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
+            return Dialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              title:
-                  Text(existingEntry == null ? 'Naya Hisaab' : 'Edit Hisaab'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Type toggle
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setDialogState(() => type = 'diya'),
+                  borderRadius: BorderRadius.circular(25)),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      const Row(
+                        children: [
+                          Text('💰', style: TextStyle(fontSize: 28)),
+                          SizedBox(width: 10),
+                          Text(
+                            'Naya Lena-Dena',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 25),
+
+                      // Bande ka naam label
+                      const Text(
+                        'BANDE KA NAAM',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Name field + Contacts button
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: nameController,
+                              decoration: InputDecoration(
+                                hintText: 'Naam likhein',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey[300]!, width: 1),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey[300]!, width: 1),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          GestureDetector(
+                            onTap: () {
+                              // Contact picker hata diya — manual entry
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Contact list se number manually daalein'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
                             child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
-                                color: type == 'diya'
-                                    ? Colors.green
-                                    : Colors.grey[200],
+                                color: const Color(0xFF10B981).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              child: const Column(
                                 children: [
-                                  Icon(
-                                    Icons.arrow_upward,
+                                  Text('📇', style: TextStyle(fontSize: 20)),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'CONTACTS',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF10B981),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Mobile Number + Amount
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'MOBILE NUMBER',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextField(
+                                  controller: phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: InputDecoration(
+                                    hintText: 'Number',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: Colors.grey[300]!, width: 1),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: Colors.grey[300]!, width: 1),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'AMOUNT (₹)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextField(
+                                  controller: amountController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    hintText: '0',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFF10B981),
+                                          width: 1.5),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFF10B981),
+                                          width: 1.5),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Wajah / Note
+                      const Text(
+                        'WAJAH / NOTE',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: noteController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText: 'Kis cheez ke paise hain?',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.grey[300]!, width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: Colors.grey[300]!, width: 1),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Type buttons (Diya / Liya)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setDialogState(() => type = 'diya'),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: type == 'diya'
+                                      ? const Color(0xFFEF4444)
+                                          .withOpacity(0.1)
+                                      : Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
                                     color: type == 'diya'
-                                        ? Colors.white
-                                        : Colors.grey[600],
-                                    size: 18,
+                                        ? const Color(0xFFEF4444)
+                                        : Colors.grey[300]!,
+                                    width: type == 'diya' ? 2 : 1,
                                   ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'Maine Diya',
-                                    style: TextStyle(
-                                      color: type == 'diya'
-                                          ? Colors.white
-                                          : Colors.grey[600],
-                                      fontWeight: FontWeight.w600,
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFEF4444),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Diya',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFEF4444),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setDialogState(() => type = 'liya'),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: type == 'liya'
-                                    ? Colors.red
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.arrow_downward,
-                                    color: type == 'liya'
-                                        ? Colors.white
-                                        : Colors.grey[600],
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'Maine Liya',
-                                    style: TextStyle(
-                                      color: type == 'liya'
-                                          ? Colors.white
-                                          : Colors.grey[600],
-                                      fontWeight: FontWeight.w600,
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'UDHAAR LENE HAIN',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFEF4444),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Name field (with contact picker)
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Person ka Naam *',
-                        prefixIcon: const Icon(Icons.person),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.contacts,
-                              color: Color(0xFF4A6CF7)),
-                          tooltip: 'Contact se select karo',
-                          onPressed: () => _pickContact(
-                            nameController: nameController,
-                            phoneController: phoneController,
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Phone field
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        prefixIcon: const Icon(Icons.phone),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.contacts,
-                              color: Color(0xFF4A6CF7)),
-                          tooltip: 'Contact se select karo',
-                          onPressed: () => _pickContact(
-                            nameController: nameController,
-                            phoneController: phoneController,
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Amount
-                    TextField(
-                      controller: amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Amount (₹) *',
-                        prefixIcon: const Icon(Icons.currency_rupee),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Date picker
-                    InkWell(
-                      onTap: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now(),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: Color(0xFF4A6CF7),
+                                  ],
                                 ),
                               ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null) {
-                          setDialogState(() => selectedDate = picked);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[400]!),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today,
-                                color: Colors.grey),
-                            const SizedBox(width: 12),
-                            Text(
-                              DateFormat('dd MMM yyyy').format(selectedDate),
-                              style: const TextStyle(fontSize: 15),
                             ),
-                            const Spacer(),
-                            const Icon(Icons.arrow_drop_down,
-                                color: Colors.grey),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setDialogState(() => type = 'liya'),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: type == 'liya'
+                                      ? const Color(0xFF10B981)
+                                          .withOpacity(0.1)
+                                      : Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: type == 'liya'
+                                        ? const Color(0xFF10B981)
+                                        : Colors.grey[300]!,
+                                    width: type == 'liya' ? 2 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF10B981),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Liya',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF10B981),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'ADVANCE DENE HAIN',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 20),
 
-                    // Note
-                    TextField(
-                      controller: noteController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Note (optional)',
-                        hintText: 'Jaise: Gym fees, Rent, etc.',
-                        prefixIcon: const Icon(Icons.note),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      // Save / Cancel
+                      Center(
+                        child: isSaving
+                            ? const CircularProgressIndicator()
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      if (nameController.text.trim().isEmpty ||
+                                          amountController.text.trim().isEmpty) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Naam aur Amount zaroori hai')),
+                                        );
+                                        return;
+                                      }
+
+                                      setDialogState(() => isSaving = true);
+
+                                      try {
+                                        Map<String, dynamic> data = {
+                                          'userId': currentUserId,
+                                          'personName': nameController.text.trim(),
+                                          'phoneNumber':
+                                              phoneController.text.trim(),
+                                          'amount': double.parse(
+                                              amountController.text.trim()),
+                                          'type': type,
+                                          'date': Timestamp.fromDate(
+                                              DateTime.now()),
+                                          'note': noteController.text.trim(),
+                                          'updatedAt':
+                                              FieldValue.serverTimestamp(),
+                                        };
+
+                                        if (existingEntry == null) {
+                                          data['createdAt'] = FieldValue
+                                              .serverTimestamp();
+                                          await FirebaseFirestore.instance
+                                              .collection('hisab')
+                                              .add(data);
+                                        } else {
+                                          await FirebaseFirestore.instance
+                                              .collection('hisab')
+                                              .doc(docId)
+                                              .update(data);
+                                        }
+
+                                        if (dialogContext.mounted) {
+                                          Navigator.pop(dialogContext);
+                                          ScaffoldMessenger.of(dialogContext)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    existingEntry == null
+                                                        ? 'Hisaab add ho gaya!'
+                                                        : 'Hisaab update ho gaya!')),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        setDialogState(() => isSaving = false);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text('Error: $e')),
+                                        );
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF10B981),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 30, vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      existingEntry == null ? 'Save' : 'Update',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          if (nameController.text.trim().isEmpty ||
-                              amountController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Naam aur Amount zaroori hai')),
-                            );
-                            return;
-                          }
-
-                          setDialogState(() => isSaving = true);
-
-                          try {
-                            Map<String, dynamic> data = {
-                              'userId': currentUserId,
-                              'personName': nameController.text.trim(),
-                              'phoneNumber': phoneController.text.trim(),
-                              'amount': double.parse(
-                                  amountController.text.trim()),
-                              'type': type,
-                              'date': Timestamp.fromDate(selectedDate),
-                              'note': noteController.text.trim(),
-                              'updatedAt': FieldValue.serverTimestamp(),
-                            };
-
-                            if (existingEntry == null) {
-                              data['createdAt'] =
-                                  FieldValue.serverTimestamp();
-                              await FirebaseFirestore.instance
-                                  .collection('hisab')
-                                  .add(data);
-                            } else {
-                              await FirebaseFirestore.instance
-                                  .collection('hisab')
-                                  .doc(docId)
-                                  .update(data);
-                            }
-
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                              ScaffoldMessenger.of(dialogContext)
-                                  .showSnackBar(
-                                SnackBar(
-                                    content: Text(existingEntry == null
-                                        ? 'Hisaab add ho gaya!'
-                                        : 'Hisaab update ho gaya!')),
-                              );
-                            }
-                          } catch (e) {
-                            setDialogState(() => isSaving = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A6CF7),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text(existingEntry == null ? 'Add' : 'Save'),
-                ),
-              ],
             );
           },
         );
@@ -444,208 +546,6 @@ class _HisabScreenState extends State<HisabScreen> {
     final Uri url = Uri.parse('https://wa.me/$cleanPhone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  // ============ EXPORT PDF ============
-  Future<void> _exportPDF(List<Map<String, dynamic>> entries) async {
-    try {
-      double totalDiya = 0;
-      double totalLiya = 0;
-      for (var entry in entries) {
-        double amount = (entry['amount'] as num).toDouble();
-        if (entry['type'] == 'diya') {
-          totalDiya += amount;
-        } else {
-          totalLiya += amount;
-        }
-      }
-      double netBalance = totalDiya - totalLiya;
-
-      final pdf = pw.Document();
-
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return [
-              pw.Header(
-                level: 0,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Hisaab Kitaab',
-                      style: pw.TextStyle(
-                        fontSize: 26,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue700,
-                      ),
-                    ),
-                    pw.SizedBox(height: 5),
-                    pw.Text(
-                      'Generated: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}',
-                      style: const pw.TextStyle(
-                        fontSize: 11,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(15),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.blue50,
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Total Balance: Rs. ${netBalance.abs().toStringAsFixed(0)}',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                        color: netBalance >= 0
-                            ? PdfColors.green700
-                            : PdfColors.red700,
-                      ),
-                    ),
-                    pw.SizedBox(height: 5),
-                    pw.Text(
-                      netBalance >= 0 ? 'Aapko lena hai' : 'Aapko dena hai',
-                      style: const pw.TextStyle(
-                        fontSize: 12,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                    pw.SizedBox(height: 10),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(
-                          'Diya: Rs. ${totalDiya.toStringAsFixed(0)}',
-                          style: const pw.TextStyle(
-                            fontSize: 13,
-                            color: PdfColors.green700,
-                          ),
-                        ),
-                        pw.Text(
-                          'Liya: Rs. ${totalLiya.toStringAsFixed(0)}',
-                          style: const pw.TextStyle(
-                            fontSize: 13,
-                            color: PdfColors.red700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                headers: [
-                  'Naam',
-                  'Phone',
-                  'Type',
-                  'Amount',
-                  'Date',
-                  'Note'
-                ],
-                data: entries.map((entry) {
-                  DateTime date = (entry['date'] as Timestamp).toDate();
-                  return [
-                    entry['personName'] ?? '',
-                    entry['phoneNumber'] ?? '-',
-                    entry['type'] == 'diya' ? 'Diya' : 'Liya',
-                    'Rs. ${entry['amount'].toStringAsFixed(0)}',
-                    DateFormat('dd MMM yy').format(date),
-                    entry['note'] ?? '-',
-                  ];
-                }).toList(),
-                headerStyle: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                  fontSize: 11,
-                ),
-                headerDecoration: const pw.BoxDecoration(
-                  color: PdfColors.blue700,
-                ),
-                cellStyle: const pw.TextStyle(fontSize: 10),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(),
-              pw.Text(
-                'Bhai Bhai Secure Chat - Hisaab Kitaab',
-                style: const pw.TextStyle(
-                  fontSize: 10,
-                  color: PdfColors.grey600,
-                ),
-              ),
-            ];
-          },
-        ),
-      );
-
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'hisaab_${DateTime.now().millisecondsSinceEpoch}.pdf',
-      );
-    } catch (e) {
-      debugPrint('Error exporting PDF: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF error: $e')),
-        );
-      }
-    }
-  }
-
-  // ============ SEND VIA WHATSAPP ============
-  Future<void> _sendHisabViaWhatsApp(
-      List<Map<String, dynamic>> entries, String phone) async {
-    try {
-      double totalDiya = 0;
-      double totalLiya = 0;
-      for (var entry in entries) {
-        double amount = (entry['amount'] as num).toDouble();
-        if (entry['type'] == 'diya') {
-          totalDiya += amount;
-        } else {
-          totalLiya += amount;
-        }
-      }
-
-      String message = '📋 *Hisaab Kitaab*\n\n';
-      message += '💰 *Total Diya:* ₹ ${totalDiya.toStringAsFixed(0)}\n';
-      message += '💰 *Total Liya:* ₹ ${totalLiya.toStringAsFixed(0)}\n';
-      message +=
-          '📊 *Balance:* ₹ ${(totalDiya - totalLiya).abs().toStringAsFixed(0)}\n';
-      message +=
-          '${(totalDiya - totalLiya) >= 0 ? "✅ Aapko lena hai" : "🔴 Aapko dena hai"}\n\n';
-      message += '--- *Details* ---\n';
-
-      for (var entry in entries) {
-        DateTime date = (entry['date'] as Timestamp).toDate();
-        String emoji = entry['type'] == 'diya' ? '🟢' : '🔴';
-        message +=
-            '$emoji ${entry['personName']} - ₹ ${entry['amount'].toStringAsFixed(0)} (${DateFormat('dd MMM').format(date)})\n';
-      }
-
-      String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-      if (!cleanPhone.startsWith('91')) cleanPhone = '91$cleanPhone';
-
-      final Uri url = Uri.parse(
-        'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
-      );
-
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('WhatsApp error: $e');
     }
   }
 
@@ -894,6 +794,208 @@ class _HisabScreenState extends State<HisabScreen> {
     return entries;
   }
 
+  // ============ PDF EXPORT ============
+  Future<void> _exportPDF(List<Map<String, dynamic>> entries) async {
+    try {
+      double totalDiya = 0;
+      double totalLiya = 0;
+      for (var entry in entries) {
+        double amount = (entry['amount'] as num).toDouble();
+        if (entry['type'] == 'diya') {
+          totalDiya += amount;
+        } else {
+          totalLiya += amount;
+        }
+      }
+      double netBalance = totalDiya - totalLiya;
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return [
+              pw.Header(
+                level: 0,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Hisaab Kitaab',
+                      style: pw.TextStyle(
+                        fontSize: 26,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      'Generated: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}',
+                      style: const pw.TextStyle(
+                        fontSize: 11,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(15),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.blue50,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Total Balance: Rs. ${netBalance.abs().toStringAsFixed(0)}',
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: netBalance >= 0
+                            ? PdfColors.green700
+                            : PdfColors.red700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      netBalance >= 0 ? 'Aapko lena hai' : 'Aapko dena hai',
+                      style: const pw.TextStyle(
+                        fontSize: 12,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 10),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'Diya: Rs. ${totalDiya.toStringAsFixed(0)}',
+                          style: const pw.TextStyle(
+                            fontSize: 13,
+                            color: PdfColors.green700,
+                          ),
+                        ),
+                        pw.Text(
+                          'Liya: Rs. ${totalLiya.toStringAsFixed(0)}',
+                          style: const pw.TextStyle(
+                            fontSize: 13,
+                            color: PdfColors.red700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Table.fromTextArray(
+                headers: [
+                  'Naam',
+                  'Phone',
+                  'Type',
+                  'Amount',
+                  'Date',
+                  'Note'
+                ],
+                data: entries.map((entry) {
+                  DateTime date = (entry['date'] as Timestamp).toDate();
+                  return [
+                    entry['personName'] ?? '',
+                    entry['phoneNumber'] ?? '-',
+                    entry['type'] == 'diya' ? 'Diya' : 'Liya',
+                    'Rs. ${entry['amount'].toStringAsFixed(0)}',
+                    DateFormat('dd MMM yy').format(date),
+                    entry['note'] ?? '-',
+                  ];
+                }).toList(),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                  fontSize: 11,
+                ),
+                headerDecoration: const pw.BoxDecoration(
+                  color: PdfColors.blue700,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 10),
+              ),
+              pw.SizedBox(height: 20),
+              pw.Divider(),
+              pw.Text(
+                'Bhai Bhai Secure Chat - Hisaab Kitaab',
+                style: const pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ];
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'hisaab_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+    } catch (e) {
+      debugPrint('Error exporting PDF: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ SEND VIA WHATSAPP ============
+  Future<void> _sendHisabViaWhatsApp(
+      List<Map<String, dynamic>> entries, String phone) async {
+    try {
+      double totalDiya = 0;
+      double totalLiya = 0;
+      for (var entry in entries) {
+        double amount = (entry['amount'] as num).toDouble();
+        if (entry['type'] == 'diya') {
+          totalDiya += amount;
+        } else {
+          totalLiya += amount;
+        }
+      }
+
+      String message = '📋 *Hisaab Kitaab*\n\n';
+      message += '💰 *Total Diya:* ₹ ${totalDiya.toStringAsFixed(0)}\n';
+      message += '💰 *Total Liya:* ₹ ${totalLiya.toStringAsFixed(0)}\n';
+      message +=
+          '📊 *Balance:* ₹ ${(totalDiya - totalLiya).abs().toStringAsFixed(0)}\n';
+      message +=
+          '${(totalDiya - totalLiya) >= 0 ? "✅ Aapko lena hai" : "🔴 Aapko dena hai"}\n\n';
+      message += '--- *Details* ---\n';
+
+      for (var entry in entries) {
+        DateTime date = (entry['date'] as Timestamp).toDate();
+        String emoji = entry['type'] == 'diya' ? '🟢' : '🔴';
+        message +=
+            '$emoji ${entry['personName']} - ₹ ${entry['amount'].toStringAsFixed(0)} (${DateFormat('dd MMM').format(date)})\n';
+      }
+
+      String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+      if (!cleanPhone.startsWith('91')) cleanPhone = '91$cleanPhone';
+
+      final Uri url = Uri.parse(
+        'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('WhatsApp error: $e');
+    }
+  }
+
   // ============ PDF BUTTON HANDLER ============
   Future<void> _handlePDFExport() async {
     List<Map<String, dynamic>> entries = await _fetchAllEntries();
@@ -921,7 +1023,6 @@ class _HisabScreenState extends State<HisabScreen> {
     }
 
     final TextEditingController phoneController = TextEditingController();
-    final TextEditingController nameController = TextEditingController();
 
     showDialog(
       context: context,
@@ -935,13 +1036,6 @@ class _HisabScreenState extends State<HisabScreen> {
           decoration: InputDecoration(
             labelText: 'Phone Number',
             prefixIcon: const Icon(Icons.phone),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.contacts, color: Color(0xFF4A6CF7)),
-              onPressed: () => _pickContact(
-                nameController: nameController,
-                phoneController: phoneController,
-              ),
-            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -1028,43 +1122,12 @@ class _HisabScreenState extends State<HisabScreen> {
           }
           double netBalance = totalDiya - totalLiya;
 
-          List<Map<String, dynamic>> diyaList =
-              allEntries.where((e) => e['type'] == 'diya').toList();
-          List<Map<String, dynamic>> liyaList =
-              allEntries.where((e) => e['type'] == 'liya').toList();
-
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
               _buildBalanceCard(totalDiya, totalLiya, netBalance),
               const SizedBox(height: 20),
-              if (diyaList.isNotEmpty) ...[
-                const Text(
-                  '🟢 MAINE DIYA',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...diyaList.map((entry) => _buildEntryTile(entry)).toList(),
-                const SizedBox(height: 20),
-              ],
-              if (liyaList.isNotEmpty) ...[
-                const Text(
-                  '🔴 MAINE LIYA',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...liyaList.map((entry) => _buildEntryTile(entry)).toList(),
-              ],
+              _buildEntryTileList(allEntries),
             ],
           );
         },
@@ -1077,6 +1140,51 @@ class _HisabScreenState extends State<HisabScreen> {
             style:
                 TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
+    );
+  }
+
+  Widget _buildEntryTileList(List<Map<String, dynamic>> entries) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'ENTRIES',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                letterSpacing: 1.2,
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  'AAPNE DIYE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[400],
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Text(
+                  'AAPNE LIYE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[400],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...entries.map((entry) => _buildEntryTile(entry)).toList(),
+      ],
     );
   }
 
@@ -1258,7 +1366,7 @@ class _HisabScreenState extends State<HisabScreen> {
           children: [
             CircleAvatar(
               radius: 22,
-              backgroundColor: isDiya ? Colors.green : Colors.red,
+              backgroundColor: isDiya ? Colors.red : Colors.green,
               child: Text(
                 entry['personName'][0].toUpperCase(),
                 style: const TextStyle(
@@ -1282,35 +1390,34 @@ class _HisabScreenState extends State<HisabScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    DateFormat('dd MMM yyyy').format(date),
+                    '${DateFormat('dd MMM yy').format(date)} • ${DateFormat('hh:mm a').format(date)}',
                     style: TextStyle(
                       color: Colors.grey[600],
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
+                  if ((entry['note'] ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      entry['note'],
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '₹ ${entry['amount'].toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: isDiya ? Colors.green : Colors.red,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isDiya ? 'Diya' : 'Liya',
-                  style: TextStyle(
-                    color: isDiya ? Colors.green : Colors.red,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+            Text(
+              '₹ ${entry['amount'].toStringAsFixed(0)}',
+              style: TextStyle(
+                color: isDiya ? Colors.red : Colors.green,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
