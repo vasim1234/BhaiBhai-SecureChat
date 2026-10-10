@@ -21,34 +21,7 @@ class _HisabScreenState extends State<HisabScreen> {
 
   // ============ PICK CONTACT ============
   Future<void> _pickContact(TextEditingController phoneController) async {
-  try {
-    // Direct system contact picker kholo (permission ki zaroorat nahi)
-    final Contact? contact = await FlutterContacts.openExternalPick();
-
-    if (contact != null && contact.phones.isNotEmpty) {
-      phoneController.text = contact.phones.first.number;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${contact.displayName} ka number add hua')),
-        );
-      }
-    }
-  } catch (e) {
-    debugPrint('Error picking contact: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Contact picker error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  }
-        return;
-      }
-
-      // Contact picker kholo
+    try {
       final Contact? contact = await FlutterContacts.openExternalPick();
 
       if (contact != null && contact.phones.isNotEmpty) {
@@ -61,6 +34,14 @@ class _HisabScreenState extends State<HisabScreen> {
       }
     } catch (e) {
       debugPrint('Error picking contact: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Contact picker error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -84,7 +65,7 @@ class _HisabScreenState extends State<HisabScreen> {
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -96,7 +77,6 @@ class _HisabScreenState extends State<HisabScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Type toggle
                     Row(
                       children: [
                         Expanded(
@@ -177,8 +157,6 @@ class _HisabScreenState extends State<HisabScreen> {
                       ],
                     ),
                     const SizedBox(height: 15),
-
-                    // Name
                     TextField(
                       controller: nameController,
                       decoration: InputDecoration(
@@ -190,8 +168,6 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Phone (with contact picker)
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
@@ -210,8 +186,6 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Amount
                     TextField(
                       controller: amountController,
                       keyboardType: TextInputType.number,
@@ -224,8 +198,6 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Date picker
                     InkWell(
                       onTap: () async {
                         final DateTime? picked = await showDatePicker(
@@ -272,8 +244,6 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Note
                     TextField(
                       controller: noteController,
                       maxLines: 2,
@@ -291,7 +261,7 @@ class _HisabScreenState extends State<HisabScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -336,9 +306,10 @@ class _HisabScreenState extends State<HisabScreen> {
                                   .update(data);
                             }
 
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(dialogContext)
+                                  .showSnackBar(
                                 SnackBar(
                                     content: Text(existingEntry == null
                                         ? 'Hisaab add ho gaya!'
@@ -450,7 +421,6 @@ class _HisabScreenState extends State<HisabScreen> {
           pageFormat: PdfPageFormat.a4,
           build: (pw.Context context) {
             return [
-              // Header
               pw.Header(
                 level: 0,
                 child: pw.Column(
@@ -476,8 +446,6 @@ class _HisabScreenState extends State<HisabScreen> {
                 ),
               ),
               pw.SizedBox(height: 20),
-
-              // Balance Summary
               pw.Container(
                 padding: const pw.EdgeInsets.all(15),
                 decoration: pw.BoxDecoration(
@@ -529,8 +497,6 @@ class _HisabScreenState extends State<HisabScreen> {
                 ),
               ),
               pw.SizedBox(height: 20),
-
-              // Table
               pw.Table.fromTextArray(
                 headers: [
                   'Naam',
@@ -561,7 +527,6 @@ class _HisabScreenState extends State<HisabScreen> {
                 ),
                 cellStyle: const pw.TextStyle(fontSize: 10),
               ),
-
               pw.SizedBox(height: 20),
               pw.Divider(),
               pw.Text(
@@ -646,7 +611,7 @@ class _HisabScreenState extends State<HisabScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -756,7 +721,7 @@ class _HisabScreenState extends State<HisabScreen> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            Navigator.pop(context);
+                            Navigator.pop(sheetContext);
                             _makeCall(entry['phoneNumber']);
                           },
                           icon: const Icon(Icons.call,
@@ -776,7 +741,7 @@ class _HisabScreenState extends State<HisabScreen> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            Navigator.pop(context);
+                            Navigator.pop(sheetContext);
                             _openWhatsApp(entry['phoneNumber']);
                           },
                           icon: const Icon(Icons.chat, color: Colors.green),
@@ -800,7 +765,7 @@ class _HisabScreenState extends State<HisabScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                           _showAddEntryDialog(
                               existingEntry: entry, docId: docId);
                         },
@@ -820,7 +785,7 @@ class _HisabScreenState extends State<HisabScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                           _deleteEntry(docId);
                         },
                         icon: const Icon(Icons.delete),
@@ -910,7 +875,7 @@ class _HisabScreenState extends State<HisabScreen> {
     final TextEditingController phoneController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('WhatsApp Number'),
@@ -931,13 +896,13 @@ class _HisabScreenState extends State<HisabScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
               if (phoneController.text.trim().isEmpty) return;
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _sendHisabViaWhatsApp(entries, phoneController.text.trim());
             },
             style: ElevatedButton.styleFrom(
@@ -960,13 +925,11 @@ class _HisabScreenState extends State<HisabScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // PDF Export
           IconButton(
             icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF4A6CF7)),
             tooltip: 'PDF Save',
             onPressed: _handlePDFExport,
           ),
-          // WhatsApp Send
           IconButton(
             icon: const Icon(Icons.share, color: Colors.green),
             tooltip: 'WhatsApp pe bhejo',
