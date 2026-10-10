@@ -21,17 +21,30 @@ class _HisabScreenState extends State<HisabScreen> {
 
   // ============ PICK CONTACT ============
   Future<void> _pickContact(TextEditingController phoneController) async {
-    try {
-      // Permission maango
-      if (!await FlutterContacts.requestPermission()) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Contact permission chahiye'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+  try {
+    // Direct system contact picker kholo (permission ki zaroorat nahi)
+    final Contact? contact = await FlutterContacts.openExternalPick();
+
+    if (contact != null && contact.phones.isNotEmpty) {
+      phoneController.text = contact.phones.first.number;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${contact.displayName} ka number add hua')),
+        );
+      }
+    }
+  } catch (e) {
+    debugPrint('Error picking contact: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Contact picker error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  }
         return;
       }
 
