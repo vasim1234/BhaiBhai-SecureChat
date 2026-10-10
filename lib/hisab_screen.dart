@@ -19,7 +19,7 @@ class HisabScreen extends StatefulWidget {
 class _HisabScreenState extends State<HisabScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // ============ PICK CONTACT (Naam + Number dono) ============
+  // ============ PICK CONTACT (Safe) ============
   Future<void> _pickContact({
     required TextEditingController nameController,
     required TextEditingController phoneController,
@@ -27,33 +27,42 @@ class _HisabScreenState extends State<HisabScreen> {
     try {
       final Contact? contact = await FlutterContacts.openExternalPick();
 
-      if (contact != null) {
-        // Naam fill karo
-        if (contact.displayName.isNotEmpty) {
-          nameController.text = contact.displayName;
-        }
+      // Mounted check — agar widget abhi bhi active hai
+      if (!mounted) return;
 
-        // Number fill karo
-        if (contact.phones.isNotEmpty) {
-          phoneController.text = contact.phones.first.number;
-        }
+      // User ne cancel kiya
+      if (contact == null) return;
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${contact.displayName} add ho gaya'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+      // Naam fill karo (safe)
+      String displayName = contact.displayName;
+      if (displayName.isNotEmpty) {
+        nameController.text = displayName;
+      }
+
+      // Number fill karo (safe)
+      if (contact.phones.isNotEmpty) {
+        String phoneNumber = contact.phones.first.number;
+        if (phoneNumber.isNotEmpty) {
+          phoneController.text = phoneNumber;
         }
       }
-    } catch (e) {
-      debugPrint('Error picking contact: $e');
+
+      // Success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Contact picker error: $e'),
+            content: Text('$displayName add ho gaya'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Contact picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Contact error: $e'),
             backgroundColor: Colors.red,
           ),
         );
