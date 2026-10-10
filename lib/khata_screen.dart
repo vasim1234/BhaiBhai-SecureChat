@@ -312,6 +312,7 @@ class _KhataScreenState extends State<KhataScreen> {
       stream: FirebaseFirestore.instance
           .collection('hisab')
           .where('khataId', isEqualTo: khataId)
+          .orderBy('timestamp', descending: true)    // ✅
           .snapshots(),
       builder: (context, entriesSnapshot) {
         double totalDiya = 0;
