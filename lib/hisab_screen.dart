@@ -19,16 +19,32 @@ class HisabScreen extends StatefulWidget {
 class _HisabScreenState extends State<HisabScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // ============ PICK CONTACT ============
-  Future<void> _pickContact(TextEditingController phoneController) async {
+  // ============ PICK CONTACT (Naam + Number dono) ============
+  Future<void> _pickContact({
+    required TextEditingController nameController,
+    required TextEditingController phoneController,
+  }) async {
     try {
       final Contact? contact = await FlutterContacts.openExternalPick();
 
-      if (contact != null && contact.phones.isNotEmpty) {
-        phoneController.text = contact.phones.first.number;
+      if (contact != null) {
+        // Naam fill karo
+        if (contact.displayName.isNotEmpty) {
+          nameController.text = contact.displayName;
+        }
+
+        // Number fill karo
+        if (contact.phones.isNotEmpty) {
+          phoneController.text = contact.phones.first.number;
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${contact.displayName} ka number add hua')),
+            SnackBar(
+              content: Text('${contact.displayName} add ho gaya'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
           );
         }
       }
@@ -77,6 +93,7 @@ class _HisabScreenState extends State<HisabScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Type toggle
                     Row(
                       children: [
                         Expanded(
@@ -157,17 +174,30 @@ class _HisabScreenState extends State<HisabScreen> {
                       ],
                     ),
                     const SizedBox(height: 15),
+
+                    // Name field (with contact picker)
                     TextField(
                       controller: nameController,
                       decoration: InputDecoration(
                         labelText: 'Person ka Naam *',
                         prefixIcon: const Icon(Icons.person),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.contacts,
+                              color: Color(0xFF4A6CF7)),
+                          tooltip: 'Contact se select karo',
+                          onPressed: () => _pickContact(
+                            nameController: nameController,
+                            phoneController: phoneController,
+                          ),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Phone field
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
@@ -178,7 +208,10 @@ class _HisabScreenState extends State<HisabScreen> {
                           icon: const Icon(Icons.contacts,
                               color: Color(0xFF4A6CF7)),
                           tooltip: 'Contact se select karo',
-                          onPressed: () => _pickContact(phoneController),
+                          onPressed: () => _pickContact(
+                            nameController: nameController,
+                            phoneController: phoneController,
+                          ),
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -186,6 +219,8 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Amount
                     TextField(
                       controller: amountController,
                       keyboardType: TextInputType.number,
@@ -198,6 +233,8 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Date picker
                     InkWell(
                       onTap: () async {
                         final DateTime? picked = await showDatePicker(
@@ -244,6 +281,8 @@ class _HisabScreenState extends State<HisabScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Note
                     TextField(
                       controller: noteController,
                       maxLines: 2,
@@ -873,6 +912,8 @@ class _HisabScreenState extends State<HisabScreen> {
     }
 
     final TextEditingController phoneController = TextEditingController();
+    final TextEditingController nameController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -887,7 +928,10 @@ class _HisabScreenState extends State<HisabScreen> {
             prefixIcon: const Icon(Icons.phone),
             suffixIcon: IconButton(
               icon: const Icon(Icons.contacts, color: Color(0xFF4A6CF7)),
-              onPressed: () => _pickContact(phoneController),
+              onPressed: () => _pickContact(
+                nameController: nameController,
+                phoneController: phoneController,
+              ),
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
