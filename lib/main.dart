@@ -1179,29 +1179,40 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                // Group avatar
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFF667EEA)],
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      groupName.isNotEmpty
-                          ? groupName[0].toUpperCase()
-                          : 'G',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
+                // Group avatar (with photo support)
+Container(
+  width: 52,
+  height: 52,
+  decoration: BoxDecoration(
+    shape: BoxShape.circle,
+    gradient: group['groupPhoto'] == null
+        ? const LinearGradient(
+            colors: [Color(0xFF8B5CF6), Color(0xFF667EEA)],
+          )
+        : null,
+  ),
+  child: group['groupPhoto'] != null
+      ? ClipOval(
+          child: Image.memory(
+            base64Decode(group['groupPhoto']),
+            width: 52,
+            height: 52,
+            fit: BoxFit.cover,
+          ),
+        )
+      : Center(
+          child: Text(
+            groupName.isNotEmpty
+                ? groupName[0].toUpperCase()
+                : 'G',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1663,6 +1674,27 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   bool _isUploading = false;
+  Map<String, dynamic>? _groupData;
+
+  @override
+void initState() {
+  super.initState();
+  _loadGroupInfo();
+}
+
+Future<void> _loadGroupInfo() async {
+  try {
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupId)
+        .get();
+    if (doc.exists && mounted) {
+      setState(() => _groupData = doc.data() as Map<String, dynamic>);
+    }
+  } catch (e) {
+    debugPrint('Error loading group info: $e');
+  }
+}
 
   Future<void> _sendMessage({String? imageBase64}) async {
     if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
@@ -1771,10 +1803,15 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: Row(
           children: [
-            const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.group, color: Color(0xFF667EEA)),
-            ),
+            CircleAvatar(
+  backgroundColor: Colors.white,
+  backgroundImage: _groupData?['groupPhoto'] != null
+      ? MemoryImage(base64Decode(_groupData!['groupPhoto']))
+      : null,
+  child: _groupData?['groupPhoto'] == null
+      ? const Icon(Icons.group, color: Color(0xFF667EEA))
+      : null,
+),
             const SizedBox(width: 10),
             Text(widget.groupName,
                 style: const TextStyle(color: Colors.white)),
