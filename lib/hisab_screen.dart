@@ -3,6 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 // ============ HISAB KITAAB SCREEN ============
 class HisabScreen extends StatefulWidget {
@@ -15,16 +19,47 @@ class HisabScreen extends StatefulWidget {
 class _HisabScreenState extends State<HisabScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
+  // ============ PICK CONTACT ============
+  Future<void> _pickContact(TextEditingController phoneController) async {
+    try {
+      // Permission maango
+      if (!await FlutterContacts.requestPermission()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Contact permission chahiye'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Contact picker kholo
+      final Contact? contact = await FlutterContacts.openExternalPick();
+
+      if (contact != null && contact.phones.isNotEmpty) {
+        phoneController.text = contact.phones.first.number;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${contact.displayName} ka number add hua')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking contact: $e');
+    }
+  }
+
   // ============ ADD ENTRY DIALOG ============
-  void _showAddEntryDialog({Map<String, dynamic>? existingEntry, String? docId}) {
+  void _showAddEntryDialog(
+      {Map<String, dynamic>? existingEntry, String? docId}) {
     final TextEditingController nameController =
         TextEditingController(text: existingEntry?['personName'] ?? '');
     final TextEditingController phoneController =
         TextEditingController(text: existingEntry?['phoneNumber'] ?? '');
     final TextEditingController amountController = TextEditingController(
-        text: existingEntry != null
-            ? existingEntry['amount'].toString()
-            : '');
+        text: existingEntry != null ? existingEntry['amount'].toString() : '');
     final TextEditingController noteController =
         TextEditingController(text: existingEntry?['note'] ?? '');
 
@@ -42,7 +77,8 @@ class _HisabScreenState extends State<HisabScreen> {
             return AlertDialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
-              title: Text(existingEntry == null ? 'Naya Hisaab' : 'Edit Hisaab'),
+              title:
+                  Text(existingEntry == null ? 'Naya Hisaab' : 'Edit Hisaab'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -54,7 +90,8 @@ class _HisabScreenState extends State<HisabScreen> {
                           child: GestureDetector(
                             onTap: () => setDialogState(() => type = 'diya'),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: type == 'diya'
                                     ? Colors.green
@@ -91,7 +128,8 @@ class _HisabScreenState extends State<HisabScreen> {
                           child: GestureDetector(
                             onTap: () => setDialogState(() => type = 'liya'),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: type == 'liya'
                                     ? Colors.red
@@ -140,13 +178,19 @@ class _HisabScreenState extends State<HisabScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Phone
+                    // Phone (with contact picker)
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         labelText: 'Phone Number',
                         prefixIcon: const Icon(Icons.phone),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.contacts,
+                              color: Color(0xFF4A6CF7)),
+                          tooltip: 'Contact se select karo',
+                          onPressed: () => _pickContact(phoneController),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -200,14 +244,16 @@ class _HisabScreenState extends State<HisabScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today, color: Colors.grey),
+                            const Icon(Icons.calendar_today,
+                                color: Colors.grey),
                             const SizedBox(width: 12),
                             Text(
                               DateFormat('dd MMM yyyy').format(selectedDate),
                               style: const TextStyle(fontSize: 15),
                             ),
                             const Spacer(),
-                            const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                            const Icon(Icons.arrow_drop_down,
+                                color: Colors.grey),
                           ],
                         ),
                       ),
@@ -256,7 +302,8 @@ class _HisabScreenState extends State<HisabScreen> {
                               'userId': currentUserId,
                               'personName': nameController.text.trim(),
                               'phoneNumber': phoneController.text.trim(),
-                              'amount': double.parse(amountController.text.trim()),
+                              'amount': double.parse(
+                                  amountController.text.trim()),
                               'type': type,
                               'date': Timestamp.fromDate(selectedDate),
                               'note': noteController.text.trim(),
@@ -264,7 +311,8 @@ class _HisabScreenState extends State<HisabScreen> {
                             };
 
                             if (existingEntry == null) {
-                              data['createdAt'] = FieldValue.serverTimestamp();
+                              data['createdAt'] =
+                                  FieldValue.serverTimestamp();
                               await FirebaseFirestore.instance
                                   .collection('hisab')
                                   .add(data);
@@ -367,6 +415,214 @@ class _HisabScreenState extends State<HisabScreen> {
     }
   }
 
+  // ============ EXPORT PDF ============
+  Future<void> _exportPDF(List<Map<String, dynamic>> entries) async {
+    try {
+      double totalDiya = 0;
+      double totalLiya = 0;
+      for (var entry in entries) {
+        double amount = (entry['amount'] as num).toDouble();
+        if (entry['type'] == 'diya') {
+          totalDiya += amount;
+        } else {
+          totalLiya += amount;
+        }
+      }
+      double netBalance = totalDiya - totalLiya;
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return [
+              // Header
+              pw.Header(
+                level: 0,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Hisaab Kitaab',
+                      style: pw.TextStyle(
+                        fontSize: 26,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      'Generated: ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}',
+                      style: const pw.TextStyle(
+                        fontSize: 11,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Balance Summary
+              pw.Container(
+                padding: const pw.EdgeInsets.all(15),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.blue50,
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Total Balance: Rs. ${netBalance.abs().toStringAsFixed(0)}',
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: netBalance >= 0
+                            ? PdfColors.green700
+                            : PdfColors.red700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 5),
+                    pw.Text(
+                      netBalance >= 0 ? 'Aapko lena hai' : 'Aapko dena hai',
+                      style: const pw.TextStyle(
+                        fontSize: 12,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 10),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'Diya: Rs. ${totalDiya.toStringAsFixed(0)}',
+                          style: const pw.TextStyle(
+                            fontSize: 13,
+                            color: PdfColors.green700,
+                          ),
+                        ),
+                        pw.Text(
+                          'Liya: Rs. ${totalLiya.toStringAsFixed(0)}',
+                          style: const pw.TextStyle(
+                            fontSize: 13,
+                            color: PdfColors.red700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Table
+              pw.Table.fromTextArray(
+                headers: [
+                  'Naam',
+                  'Phone',
+                  'Type',
+                  'Amount',
+                  'Date',
+                  'Note'
+                ],
+                data: entries.map((entry) {
+                  DateTime date = (entry['date'] as Timestamp).toDate();
+                  return [
+                    entry['personName'] ?? '',
+                    entry['phoneNumber'] ?? '-',
+                    entry['type'] == 'diya' ? 'Diya' : 'Liya',
+                    'Rs. ${entry['amount'].toStringAsFixed(0)}',
+                    DateFormat('dd MMM yy').format(date),
+                    entry['note'] ?? '-',
+                  ];
+                }).toList(),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                  fontSize: 11,
+                ),
+                headerDecoration: const pw.BoxDecoration(
+                  color: PdfColors.blue700,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 10),
+              ),
+
+              pw.SizedBox(height: 20),
+              pw.Divider(),
+              pw.Text(
+                'Bhai Bhai Secure Chat - Hisaab Kitaab',
+                style: const pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ];
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'hisaab_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+    } catch (e) {
+      debugPrint('Error exporting PDF: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ SEND VIA WHATSAPP ============
+  Future<void> _sendHisabViaWhatsApp(
+      List<Map<String, dynamic>> entries, String phone) async {
+    try {
+      double totalDiya = 0;
+      double totalLiya = 0;
+      for (var entry in entries) {
+        double amount = (entry['amount'] as num).toDouble();
+        if (entry['type'] == 'diya') {
+          totalDiya += amount;
+        } else {
+          totalLiya += amount;
+        }
+      }
+
+      String message = '📋 *Hisaab Kitaab*\n\n';
+      message += '💰 *Total Diya:* ₹ ${totalDiya.toStringAsFixed(0)}\n';
+      message += '💰 *Total Liya:* ₹ ${totalLiya.toStringAsFixed(0)}\n';
+      message +=
+          '📊 *Balance:* ₹ ${(totalDiya - totalLiya).abs().toStringAsFixed(0)}\n';
+      message +=
+          '${(totalDiya - totalLiya) >= 0 ? "✅ Aapko lena hai" : "🔴 Aapko dena hai"}\n\n';
+      message += '--- *Details* ---\n';
+
+      for (var entry in entries) {
+        DateTime date = (entry['date'] as Timestamp).toDate();
+        String emoji = entry['type'] == 'diya' ? '🟢' : '🔴';
+        message +=
+            '$emoji ${entry['personName']} - ₹ ${entry['amount'].toStringAsFixed(0)} (${DateFormat('dd MMM').format(date)})\n';
+      }
+
+      String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+      if (!cleanPhone.startsWith('91')) cleanPhone = '91$cleanPhone';
+
+      final Uri url = Uri.parse(
+        'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('WhatsApp error: $e');
+    }
+  }
+
   // ============ ENTRY DETAIL SHEET ============
   void _showEntryDetail(Map<String, dynamic> entry, String docId) {
     bool isDiya = entry['type'] == 'diya';
@@ -400,8 +656,7 @@ class _HisabScreenState extends State<HisabScreen> {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor:
-                          isDiya ? Colors.green : Colors.red,
+                      backgroundColor: isDiya ? Colors.green : Colors.red,
                       child: Text(
                         entry['personName'][0].toUpperCase(),
                         style: const TextStyle(
@@ -440,7 +695,8 @@ class _HisabScreenState extends State<HisabScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: (isDiya ? Colors.green : Colors.red).withOpacity(0.1),
+                    color:
+                        (isDiya ? Colors.green : Colors.red).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -476,8 +732,8 @@ class _HisabScreenState extends State<HisabScreen> {
                   ),
                 ),
                 const SizedBox(height: 15),
-                _buildDetailRow(
-                    Icons.calendar_today, DateFormat('dd MMM yyyy').format(date)),
+                _buildDetailRow(Icons.calendar_today,
+                    DateFormat('dd MMM yyyy').format(date)),
                 if ((entry['note'] ?? '').isNotEmpty)
                   _buildDetailRow(Icons.note, entry['note']),
                 const SizedBox(height: 20),
@@ -490,7 +746,8 @@ class _HisabScreenState extends State<HisabScreen> {
                             Navigator.pop(context);
                             _makeCall(entry['phoneNumber']);
                           },
-                          icon: const Icon(Icons.call, color: Color(0xFF4A6CF7)),
+                          icon: const Icon(Icons.call,
+                              color: Color(0xFF4A6CF7)),
                           label: const Text('Call',
                               style: TextStyle(color: Color(0xFF4A6CF7))),
                           style: OutlinedButton.styleFrom(
@@ -531,7 +788,8 @@ class _HisabScreenState extends State<HisabScreen> {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          _showAddEntryDialog(existingEntry: entry, docId: docId);
+                          _showAddEntryDialog(
+                              existingEntry: entry, docId: docId);
                         },
                         icon: const Icon(Icons.edit),
                         label: const Text('Edit'),
@@ -593,6 +851,93 @@ class _HisabScreenState extends State<HisabScreen> {
     );
   }
 
+  // ============ FETCH ALL ENTRIES ============
+  Future<List<Map<String, dynamic>>> _fetchAllEntries() async {
+    QuerySnapshot snap = await FirebaseFirestore.instance
+        .collection('hisab')
+        .where('userId', isEqualTo: currentUserId)
+        .get();
+
+    List<Map<String, dynamic>> entries =
+        snap.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+    entries.sort((a, b) {
+      Timestamp ta = a['date'] as Timestamp;
+      Timestamp tb = b['date'] as Timestamp;
+      return tb.compareTo(ta);
+    });
+    return entries;
+  }
+
+  // ============ PDF BUTTON HANDLER ============
+  Future<void> _handlePDFExport() async {
+    List<Map<String, dynamic>> entries = await _fetchAllEntries();
+    if (entries.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Koi hisaab nahi hai')),
+        );
+      }
+      return;
+    }
+    await _exportPDF(entries);
+  }
+
+  // ============ WHATSAPP SHARE BUTTON ============
+  Future<void> _handleWhatsAppShare() async {
+    List<Map<String, dynamic>> entries = await _fetchAllEntries();
+    if (entries.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Koi hisaab nahi hai')),
+        );
+      }
+      return;
+    }
+
+    final TextEditingController phoneController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('WhatsApp Number'),
+        content: TextField(
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: InputDecoration(
+            labelText: 'Phone Number',
+            prefixIcon: const Icon(Icons.phone),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.contacts, color: Color(0xFF4A6CF7)),
+              onPressed: () => _pickContact(phoneController),
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (phoneController.text.trim().isEmpty) return;
+              Navigator.pop(context);
+              _sendHisabViaWhatsApp(entries, phoneController.text.trim());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -601,6 +946,20 @@ class _HisabScreenState extends State<HisabScreen> {
         title: const Text('Hisaab Kitaab'),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          // PDF Export
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF4A6CF7)),
+            tooltip: 'PDF Save',
+            onPressed: _handlePDFExport,
+          ),
+          // WhatsApp Send
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.green),
+            tooltip: 'WhatsApp pe bhejo',
+            onPressed: _handleWhatsAppShare,
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -622,14 +981,12 @@ class _HisabScreenState extends State<HisabScreen> {
             return data;
           }).toList();
 
-          // Sort by date (latest first)
           allEntries.sort((a, b) {
             Timestamp ta = a['date'] as Timestamp;
             Timestamp tb = b['date'] as Timestamp;
             return tb.compareTo(ta);
           });
 
-          // Calculate totals
           double totalDiya = 0;
           double totalLiya = 0;
           for (var entry in allEntries) {
@@ -642,7 +999,6 @@ class _HisabScreenState extends State<HisabScreen> {
           }
           double netBalance = totalDiya - totalLiya;
 
-          // Separate by type
           List<Map<String, dynamic>> diyaList =
               allEntries.where((e) => e['type'] == 'diya').toList();
           List<Map<String, dynamic>> liyaList =
@@ -651,11 +1007,8 @@ class _HisabScreenState extends State<HisabScreen> {
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              // Balance Card
               _buildBalanceCard(totalDiya, totalLiya, netBalance),
               const SizedBox(height: 20),
-
-              // Maine Diya Section
               if (diyaList.isNotEmpty) ...[
                 const Text(
                   '🟢 MAINE DIYA',
@@ -670,8 +1023,6 @@ class _HisabScreenState extends State<HisabScreen> {
                 ...diyaList.map((entry) => _buildEntryTile(entry)).toList(),
                 const SizedBox(height: 20),
               ],
-
-              // Maine Liya Section
               if (liyaList.isNotEmpty) ...[
                 const Text(
                   '🔴 MAINE LIYA',
@@ -694,7 +1045,8 @@ class _HisabScreenState extends State<HisabScreen> {
         onPressed: () => _showAddEntryDialog(),
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Naya Hisaab',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            style:
+                TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -734,7 +1086,6 @@ class _HisabScreenState extends State<HisabScreen> {
   Widget _buildBalanceCard(
       double totalDiya, double totalLiya, double netBalance) {
     bool isPositive = netBalance >= 0;
-    Color netColor = isPositive ? Colors.green : Colors.red;
 
     return Container(
       padding: const EdgeInsets.all(20),
