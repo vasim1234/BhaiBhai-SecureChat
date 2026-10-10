@@ -3297,16 +3297,16 @@ class _ChatScreenState extends State<ChatScreen> {
   final Map<String, Uint8List> _imageCache = {};
 
   // ============ VOICE MESSAGE VARIABLES ============
-final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
-final FlutterSoundPlayer _audioPlayer = FlutterSoundPlayer();
-bool _recorderInitialized = false;
-bool _playerInitialized = false;
-bool _isRecording = false;
-Duration _recordDuration = Duration.zero;
-Timer? _recordTimer;
-final Map<String, bool> _isPlayingMap = {};
-final Map<String, Duration> _playPositionMap = {};
-final Map<String, Duration> _playDurationMap = {};
+  final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
+  final FlutterSoundPlayer _audioPlayer = FlutterSoundPlayer();
+  bool _recorderInitialized = false;
+  bool _playerInitialized = false;
+  bool _isRecording = false;
+  Duration _recordDuration = Duration.zero;
+  Timer? _recordTimer;
+  final Map<String, bool> _isPlayingMap = {};
+  final Map<String, Duration> _playPositionMap = {};
+  final Map<String, Duration> _playDurationMap = {};
 
   static const String ONESIGNAL_APP_ID =
       '05bee600-4a45-44e5-b35e-5328544c25c1';
@@ -3322,213 +3322,213 @@ final Map<String, Duration> _playDurationMap = {};
   }
 
   @override
-void initState() {
-  super.initState();
-  _checkBlockStatus();
-  _checkFriendStatus();
-  _loadReceiverAvatar();
-  _markMessagesAsRead();
-  _listenToTypingStatus();
-  _listenToOnlineStatus();
-  _initRecorder();
-  _initPlayer();
-}
-
-Future<void> _initRecorder() async {
-  if (_recorderInitialized) return;
-  try {
-    await _audioRecorder.openRecorder();
-    _recorderInitialized = true;
-  } catch (e) {
-    debugPrint('Recorder init error: $e');
+  void initState() {
+    super.initState();
+    _checkBlockStatus();
+    _checkFriendStatus();
+    _loadReceiverAvatar();
+    _markMessagesAsRead();
+    _listenToTypingStatus();
+    _listenToOnlineStatus();
+    _initRecorder();
+    _initPlayer();
   }
-}
 
-Future<void> _initPlayer() async {
-  if (_playerInitialized) return;
-  try {
-    await _audioPlayer.openPlayer();
-    _playerInitialized = true;
-  } catch (e) {
-    debugPrint('Player init error: $e');
+  Future<void> _initRecorder() async {
+    if (_recorderInitialized) return;
+    try {
+      await _audioRecorder.openRecorder();
+      _recorderInitialized = true;
+    } catch (e) {
+      debugPrint('Recorder init error: $e');
+    }
   }
-}
+
+  Future<void> _initPlayer() async {
+    if (_playerInitialized) return;
+    try {
+      await _audioPlayer.openPlayer();
+      _playerInitialized = true;
+    } catch (e) {
+      debugPrint('Player init error: $e');
+    }
+  }
 
   @override
-void dispose() {
-  _setTypingStatus(false);
-  _recordTimer?.cancel();
-  if (_recorderInitialized) _audioRecorder.closeRecorder();
-  if (_playerInitialized) _audioPlayer.closePlayer();
-  super.dispose();
-}
+  void dispose() {
+    _setTypingStatus(false);
+    _recordTimer?.cancel();
+    if (_recorderInitialized) _audioRecorder.closeRecorder();
+    if (_playerInitialized) _audioPlayer.closePlayer();
+    super.dispose();
+  }
 
   // ============ VOICE RECORDING ============
- Future<void> _startRecording() async {
-  // 🎯 Turant UI update karo — red dot + timer dikhe
-  setState(() {
-    _isRecording = true;
-    _recordDuration = Duration.zero;
-  });
-
-  try {
-    // 1️⃣ Permission check
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) {
-      setState(() => _isRecording = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Mic permission denied')),
-        );
-      }
-      return;
-    }
-
-    // 2️⃣ Recorder init karo
-    await _initRecorder();
-    if (!_recorderInitialized) {
-      setState(() => _isRecording = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Recorder init failed')),
-        );
-      }
-      return;
-    }
-
-    // 3️⃣ Path banao
-    final dir = await getTemporaryDirectory();
-    final path =
-        '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-    // 4️⃣ Recording start karo
-    await _audioRecorder.startRecorder(
-      toFile: path,
-      codec: Codec.aacADTS,
-    );
-
-    // 5️⃣ Timer start karo
-    _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted && _isRecording) {
-        setState(() {
-          _recordDuration = Duration(seconds: timer.tick);
-        });
-        if (timer.tick >= 300) _stopRecording(send: true);
-      }
+  Future<void> _startRecording() async {
+    // 🎯 Turant UI update karo — red dot + timer dikhe
+    setState(() {
+      _isRecording = true;
+      _recordDuration = Duration.zero;
     });
-  } catch (e) {
-    // ❌ Error screen pe dikhao
-    setState(() => _isRecording = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Recording Error: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 10),
-        ),
-      );
-    }
-    debugPrint('Recording error: $e');
-  }
- }
 
-Future<void> _stopRecording({bool send = false}) async {
-  try {
-    _recordTimer?.cancel();
-    final path = await _audioRecorder.stopRecorder(); 
-
-    setState(() => _isRecording = false);
-
-    if (path == null || !send) {
-      if (path != null) {
-        final file = File(path);
-        if (await file.exists()) await file.delete();
+    try {
+      // 1️⃣ Permission check
+      final status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        setState(() => _isRecording = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Mic permission denied')),
+          );
+        }
+        return;
       }
-      setState(() => _recordDuration = Duration.zero);
-      return;
-    }
 
-    final file = File(path);
-    final fileSize = await file.length();
+      // 2️⃣ Recorder init karo
+      await _initRecorder();
+      if (!_recorderInitialized) {
+        setState(() => _isRecording = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Recorder init failed')),
+          );
+        }
+        return;
+      }
 
-    if (fileSize > 900000) {
+      // 3️⃣ Path banao — .mp4 (aacMP4 ke liye)
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+      // 4️⃣ Recording start karo — aacMP4 (sabse compatible)
+      await _audioRecorder.startRecorder(
+        toFile: path,
+        codec: Codec.aacMP4,
+      );
+
+      // 5️⃣ Timer start karo
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted && _isRecording) {
+          setState(() {
+            _recordDuration = Duration(seconds: timer.tick);
+          });
+          if (timer.tick >= 300) _stopRecording(send: true);
+        }
+      });
+    } catch (e) {
+      // ❌ Error screen pe dikhao
+      setState(() => _isRecording = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Voice bahut lambi hai')),
+          SnackBar(
+            content: Text('Recording Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 10),
+          ),
         );
       }
-      await file.delete();
-      setState(() => _recordDuration = Duration.zero);
-      return;
+      debugPrint('Recording error: $e');
     }
-
-    final bytes = await file.readAsBytes();
-    final base64Audio = base64Encode(bytes);
-
-    await _sendMessage(voiceBase64: base64Audio);
-    await file.delete();
-
-    setState(() => _recordDuration = Duration.zero);
-  } catch (e) {
-    debugPrint('Stop recording error: $e');
   }
-}
 
-Future<void> _cancelRecording() async {
-  await _stopRecording(send: false);
-}
+  Future<void> _stopRecording({bool send = false}) async {
+    try {
+      _recordTimer?.cancel();
+      final path = await _audioRecorder.stopRecorder();
+
+      setState(() => _isRecording = false);
+
+      if (path == null || !send) {
+        if (path != null) {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        }
+        setState(() => _recordDuration = Duration.zero);
+        return;
+      }
+
+      final file = File(path);
+      final fileSize = await file.length();
+
+      if (fileSize > 900000) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Voice bahut lambi hai')),
+          );
+        }
+        await file.delete();
+        setState(() => _recordDuration = Duration.zero);
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      final base64Audio = base64Encode(bytes);
+
+      await _sendMessage(voiceBase64: base64Audio);
+      await file.delete();
+
+      setState(() => _recordDuration = Duration.zero);
+    } catch (e) {
+      debugPrint('Stop recording error: $e');
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    await _stopRecording(send: false);
+  }
 
   // ============ VOICE PLAYBACK ============
   Future<void> _playVoice(String messageId, String base64Audio) async {
-  try {
-    if (_isPlayingMap[messageId] == true) {
-      await _audioPlayer.stopPlayer();
-      setState(() {
-        _isPlayingMap[messageId] = false;
-        _playPositionMap[messageId] = Duration.zero;
-      });
-      return;
-    }
-
-    await _audioPlayer.stopPlayer();
-    await _initPlayer();
-
-    final bytes = base64Decode(base64Audio);
-    final dir = await getTemporaryDirectory();
-    final path =
-        '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    final file = File(path);
-    await file.writeAsBytes(bytes);
-
-    _audioPlayer.setSubscriptionDuration(const Duration(milliseconds: 100));
-
-    _audioPlayer.onProgress?.listen((e) {
-      if (mounted) {
+    try {
+      if (_isPlayingMap[messageId] == true) {
+        await _audioPlayer.stopPlayer();
         setState(() {
-          _playPositionMap[messageId] = e.position;
-          _playDurationMap[messageId] = e.duration;
+          _isPlayingMap[messageId] = false;
+          _playPositionMap[messageId] = Duration.zero;
         });
+        return;
       }
-    });
 
-    await _audioPlayer.startPlayer(
-      fromURI: path,
-      codec: Codec.aacADTS,
-      whenFinished: () {
+      await _audioPlayer.stopPlayer();
+      await _initPlayer();
+
+      final bytes = base64Decode(base64Audio);
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final file = File(path);
+      await file.writeAsBytes(bytes);
+
+      _audioPlayer.setSubscriptionDuration(const Duration(milliseconds: 100));
+
+      _audioPlayer.onProgress?.listen((e) {
         if (mounted) {
           setState(() {
-            _isPlayingMap[messageId] = false;
-            _playPositionMap[messageId] = Duration.zero;
+            _playPositionMap[messageId] = e.position;
+            _playDurationMap[messageId] = e.duration;
           });
         }
-        file.delete();
-      },
-    );
+      });
 
-    setState(() => _isPlayingMap[messageId] = true);
-  } catch (e) {
-    debugPrint('Playback error: $e');
-  }
+      await _audioPlayer.startPlayer(
+        fromURI: path,
+        codec: Codec.aacMP4,
+        whenFinished: () {
+          if (mounted) {
+            setState(() {
+              _isPlayingMap[messageId] = false;
+              _playPositionMap[messageId] = Duration.zero;
+            });
+          }
+          file.delete();
+        },
+      );
+
+      setState(() => _isPlayingMap[messageId] = true);
+    } catch (e) {
+      debugPrint('Playback error: $e');
+    }
   }
 
   String _formatDuration(Duration d) {
@@ -4544,44 +4544,54 @@ Future<void> _cancelRecording() async {
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-  // 🎤 Mic pe ungli dabao — turant recording start
-  onTapDown: (_isBlocked || !_areFriends || _msgController.text.trim().isNotEmpty)
-      ? null
-      : (_) => _startRecording(),
-  // 📤 Ungli uthao — voice send
-  onTapUp: (_isBlocked || !_areFriends || _msgController.text.trim().isNotEmpty)
-      ? null
-      : (_) => _stopRecording(send: true),
-  // ❌ Cancel
-  onTapCancel: (_isBlocked || !_areFriends || _msgController.text.trim().isNotEmpty)
-      ? null
-      : () => _cancelRecording(),
-  // 📨 Text bhejo (agar text likha hai)
-  onTap: (_isBlocked || !_areFriends || _msgController.text.trim().isEmpty)
-      ? null
-      : () async {
-          await _sendMessage(replyTo: _replyToData);
-          setState(() => _replyToData = null);
-        },
-  child: Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: (_isBlocked || !_areFriends)
-          ? null
-          : const LinearGradient(
-              colors: [
-                Color(0xFF667EEA),
-                Color(0xFF764BA2)
-              ],
-            ),
-      color: (_isBlocked || !_areFriends) ? Colors.grey : null,
-    ),
-    child: _msgController.text.trim().isEmpty
-        ? const Icon(Icons.mic, color: Colors.white)
-        : const Icon(Icons.send, color: Colors.white),
-  ),
-),
+                        // 🎤 Mic pe ungli dabao — turant recording start
+                        onTapDown: (_isBlocked ||
+                                !_areFriends ||
+                                _msgController.text.trim().isNotEmpty)
+                            ? null
+                            : (_) => _startRecording(),
+                        // 📤 Ungli uthao — voice send
+                        onTapUp: (_isBlocked ||
+                                !_areFriends ||
+                                _msgController.text.trim().isNotEmpty)
+                            ? null
+                            : (_) => _stopRecording(send: true),
+                        // ❌ Cancel
+                        onTapCancel: (_isBlocked ||
+                                !_areFriends ||
+                                _msgController.text.trim().isNotEmpty)
+                            ? null
+                            : () => _cancelRecording(),
+                        // 📨 Text bhejo (agar text likha hai)
+                        onTap: (_isBlocked ||
+                                !_areFriends ||
+                                _msgController.text.trim().isEmpty)
+                            ? null
+                            : () async {
+                                await _sendMessage(replyTo: _replyToData);
+                                setState(() => _replyToData = null);
+                              },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: (_isBlocked || !_areFriends)
+                                ? null
+                                : const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                  ),
+                            color: (_isBlocked || !_areFriends)
+                                ? Colors.grey
+                                : null,
+                          ),
+                          child: _msgController.text.trim().isEmpty
+                              ? const Icon(Icons.mic, color: Colors.white)
+                              : const Icon(Icons.send, color: Colors.white),
+                        ),
+                      ),
                     ],
                   ),
               ],
