@@ -24,6 +24,7 @@ import 'status_screen.dart';
 import 'hisab_screen.dart';
 import 'khata_screen.dart';
 import 'chat_screen.dart';
+import 'khata_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -897,29 +898,18 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.group_add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CreateGroupScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfileScreen(),
-                ),
-              );
-            },
-          ),
-        ],
+  IconButton(
+    icon: const Icon(Icons.group_add),
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CreateGroupScreen(),
+        ),
+      );
+    },
+  ),
+],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(110),
           child: Column(
@@ -2966,44 +2956,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           children: [
                             _buildStatItem(
-                              Icons.people,
-                              '$contacts',
-                              'Contacts',
-                              const Color(0xFF3B82F6),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const FriendsListScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildDivider(),
-                            _buildStatItem(
-                              Icons.chat_bubble,
-                              '$chats',
-                              'Chats',
-                              const Color(0xFF8B5CF6),
-                              onTap: () {},
-                            ),
-                            _buildDivider(),
-                            _buildStatItem(
-                              Icons.lock,
-                              '$blocked',
-                              'Blocked',
-                              const Color(0xFFEF4444),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const BlockedUsersScreen(),
-                                  ),
-                                );
-                              },
-                            ),
+  Icons.people,
+  '$contacts',
+  'Contacts',
+  const Color(0xFF3B82F6),
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const FriendsListScreen(),
+      ),
+    );
+  },
+),
+_buildDivider(),
+_buildStatItem(
+  Icons.receipt_long,          // ✅ Hisaab icon
+  'Hisaab',                    // ✅ Hisaab label
+  'Hisaab',
+  const Color(0xFF10B981),
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const KhataScreen(),    // ✅ KhataScreen
+      ),
+    );
+  },
+),
+_buildDivider(),
+_buildStatItem(
+  Icons.lock,
+  '$blocked',
+  'Blocked',
+  const Color(0xFFEF4444),
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BlockedUsersScreen(),
+      ),
+    );
+  },
+),
                           ],
                         ),
                       );
