@@ -1,4 +1,8 @@
 
+📝 Poora Updated PROJECT_INFO.md
+
+Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete karo → ye paste karo:
+
 ```markdown
 # Bhai Bhai Secure Chat - Project Info
 
@@ -27,8 +31,8 @@
 - ✅ Status/Quote field (50 characters)
 - ✅ Birthday (date picker)
 - ✅ My QR Code (UID based)
-- ✅ Stats — Contacts, Chats, Blocked counts
-- ✅ Account Settings — Privacy, Notifications, Storage, Help
+- ✅ Stats — Contacts, Hisaab, Blocked counts
+- ✅ Account Settings — Privacy, Notifications, App Update, App Share, iPhone App, Logout
 - ✅ Modern Edit Profile dialog
 - ✅ Camera icon on avatar for quick photo change
 
@@ -85,8 +89,8 @@
 - ✅ "Recent Updates" (green ring)
 - ✅ Time ago ("Just now", "5m ago")
 
-### Hisaab Kitaab (Khata Book) — NEW ✅
-- ✅ **Khata List** — bande ki list (jinka khata bana hai)
+### Hisaab Kitaab (Khata Book)
+- ✅ **Khata List** — bande ki list
 - ✅ **Per-Person Khata** — har bande ka pura hisaab
 - ✅ **Add Entry** — Diya / Liya (amount, note, date)
 - ✅ **Balance Calculation** — automatic
@@ -98,6 +102,7 @@
 - ✅ **Call / WhatsApp** — bande ke phone number pe
 - ✅ **Settled Entries** — grey ho jati hain
 - ✅ **No 24h delete** — permanent rahega
+- ✅ **Access:** Profile → Hisaab stat
 
 ### Notifications
 - ✅ Push Notifications (OneSignal)
@@ -177,16 +182,49 @@ File Structure
 
 ```
 lib/
-├── main.dart                  (Main app - login, chat list, profile, home, groups)
+├── main.dart                  (Main app - login, chat list, home, profile, search)
 ├── friend_request.dart        (Friend request system + FriendsListScreen)
 ├── user_profile.dart          (User profile screen - doosre user ki)
 ├── avatar_builder.dart        (2D avatar builder + AvatarWidget)
-├── chat_screen.dart           (ChatScreen + GroupChatScreen) — NEW
+├── chat_screen.dart           (ChatScreen + GroupChatScreen + CreateGroupScreen)
 ├── status_screen.dart         (Status/Stories feature)
 ├── group_info.dart            (Group info + admin controls)
-├── khata_screen.dart          (Hisaab Kitaab - khata list) — NEW
-└── khata_detail_screen.dart   (Bande ka khata - ledger) — NEW
+├── khata_screen.dart          (Hisaab Kitaab - khata list)
+└── khata_detail_screen.dart   (Bande ka khata - ledger)
 ```
+
+---
+
+🎨 App Navigation Structure
+
+Bottom Navigation (4 tabs)
+
+Icon Tab Kya Dikhta Hai
+💬 Chats Chat list + Groups
+📊 Updates Status/Stories
+📞 Calls Call history (placeholder)
+👤 Profile Apni profile + Settings
+
+Profile Screen Stats (3 stats)
+
+Stat Tap Karo Kya Khulega
+👥 Contacts Tap FriendsListScreen
+📒 Hisaab Tap KhataScreen
+🚫 Blocked Tap BlockedUsersScreen
+
+Chats List Top-Right
+
+· 👥 Group Add — naya group banao
+
+Profile Screen Settings
+
+Option Tap Karo Kya Hoga
+🛡️ Privacy Bottom sheet Last Seen, Profile Photo, Read Receipts, Blocked
+🔔 Notifications Bottom sheet 5 toggle switches
+⬆️ App Update Play Store khulega Update check
+🔗 App Share WhatsApp khulega Download link bhejo
+📱 iPhone App Dialog iOS jald aa raha hai
+🚪 Logout Sign out 
 
 ---
 
@@ -410,12 +448,12 @@ status Collection
 
 · timestamp — Descending
 
-khate Collection — NEW
+khate Collection
 
 · userId — Ascending
 · createdAt — Descending
 
-hisab Collection — NEW
+hisab Collection
 
 · khataId — Ascending
 · timestamp — Descending
@@ -532,6 +570,22 @@ Fix: hisab collection pe composite index banaya (khataId ASC + timestamp DESC).
 Issue 20: friends Collection Mein Random UID
 
 Fix: Purane documents delete karke, app se naya friend add kiya.
+
+Issue 21: ChatScreen + GroupChatScreen Duplicate
+
+Fix: chat_screen.dart mein move kiye, main.dart se delete kiya.
+
+Issue 22: khata_screen.dart Duplicate Import
+
+Fix: Duplicate import hata diya.
+
+Issue 23: ChatScreen Codec Mismatch (Playback)
+
+Fix: _playVoice() mein Codec.aacADTS → Codec.aacMP4.
+
+Issue 24: Hisaab Tab Slow Khul Raha Tha
+
+Fix: FutureBuilder use kiya, StreamBuilder ki jagah.
 
 ---
 
@@ -652,9 +706,12 @@ Phase 1 (Completed ✅)
 · ☑ Modern Login Screen
 · ☑ Modern Chat List
 · ☑ Filter Chips
-· ☑ Hisaab Kitaab (Khata Book) — NEW
-· ☑ PDF Export + WhatsApp Send — NEW
+· ☑ Hisaab Kitaab (Khata Book)
+· ☑ PDF Export + WhatsApp Send
 · ☑ chat_screen.dart — Alag file
+· ☑ Bottom nav: Chats, Updates, Calls, Profile
+· ☑ Profile stats: Contacts, Hisaab, Blocked
+· ☑ Functional Settings: Privacy, Notifications, App Update, App Share, iPhone App
 
 Phase 2 (Next)
 
@@ -709,7 +766,7 @@ Last Updated: October 2026
 | 3 | **Ctrl + A** → **Delete** (poora content) |
 | 4 | **Upar wala naya content paste karo** |
 | 5 | **Commit changes** dabao |
-| 6 | **Message:** `Update PROJECT_INFO.md with Hisaab Kitaab features` |
+| 6 | **Message:** `Update PROJECT_INFO.md with latest changes` |
 | 7 | **Green `Commit changes`** dabao |
 
 ---
@@ -718,13 +775,12 @@ Last Updated: October 2026
 
 | # | Section | Naya |
 |---|---------|------|
-| 1 | **Hisaab Kitaab** | Poora feature document |
-| 2 | **chat_screen.dart** | Alag file — structure update |
-| 3 | **khate + hisab** collections | Firestore structure |
-| 4 | **PDF + WhatsApp** | Features |
-| 5 | **New indexes** | `khate` + `hisab` |
-| 6 | **5 new issues** | Known issues (15-20) |
-| 7 | **Roadmap** | Updated |
+| 1 | **Profile Settings** | Privacy, Notifications, App Update, App Share, iPhone App |
+| 2 | **Navigation** | Bottom nav: Chats, Updates, Calls, Profile |
+| 3 | **Profile Stats** | Contacts, Hisaab, Blocked |
+| 4 | **File Structure** | `chat_screen.dart` alag file |
+| 5 | **New Issues** | Issue 21, 22, 23, 24 |
+| 6 | **Roadmap** | Updated |
 
 ---
 
