@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'user_profile.dart';          // 👈 Ye zaroori hai
-import 'avatar_builder.dart';        // 👈 Ye bhi
+import 'user_profile.dart';
+import 'avatar_builder.dart';
 
 // ============ FRIEND REQUEST SYSTEM ============
 // Ye file handle karti hai:
@@ -142,7 +142,8 @@ class FriendRequestsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   const Text(
                     'Koi friend request nahi hai',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 5),
                   const Text(
@@ -170,9 +171,12 @@ class FriendRequestsScreen extends StatelessWidget {
                 builder: (context, userSnap) {
                   String username = 'User';
                   String email = '';
+                  String? avatarUrl;
+
                   if (userSnap.hasData && userSnap.data!.exists) {
                     username = userSnap.data!['username'] ?? 'User';
                     email = userSnap.data!['email'] ?? '';
+                    avatarUrl = userSnap.data!['avatarUrl'];
                   }
 
                   return Card(
@@ -185,17 +189,10 @@ class FriendRequestsScreen extends StatelessWidget {
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 15, vertical: 5),
-                      leading: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: const Color(0xFF667EEA),
-                        child: Text(
-                          username[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      leading: AvatarWidget(
+                        avatarUrl: avatarUrl,
+                        username: username,
+                        size: 50,
                       ),
                       title: Text(
                         username,
@@ -226,8 +223,8 @@ class FriendRequestsScreen extends StatelessWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content:
-                                          Text('Friend request reject kar di')),
+                                      content: Text(
+                                          'Friend request reject kar di')),
                                 );
                               }
                             },
@@ -287,7 +284,8 @@ class FriendsListScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   const Text(
                     'Abhi koi friend nahi hai',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 5),
                   const Text(
@@ -303,7 +301,8 @@ class FriendsListScreen extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
-              var data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+              var data =
+                  snapshot.data!.docs[index].data() as Map<String, dynamic>;
               String friendId = data['uid2'];
 
               return FutureBuilder<DocumentSnapshot>(
@@ -313,67 +312,51 @@ class FriendsListScreen extends StatelessWidget {
                     .get(),
                 builder: (context, userSnap) {
                   String username = 'User';
+                  String email = '';
+                  String? avatarUrl;
+
                   if (userSnap.hasData && userSnap.data!.exists) {
                     username = userSnap.data!['username'] ?? 'User';
+                    email = userSnap.data!['email'] ?? '';
+                    avatarUrl = userSnap.data!['avatarUrl'];
                   }
-                  child: ListTile(
-  contentPadding: const EdgeInsets.symmetric(
-      horizontal: 15, vertical: 5),
-  leading: AvatarWidget(
-    avatarUrl: (userSnap.hasData && userSnap.data!.exists)
-        ? userSnap.data!['avatarUrl']
-        : null,
-    username: username,
-    size: 50,
-  ),
-  title: Text(
-    username,
-    style: const TextStyle(fontWeight: FontWeight.bold),
-  ),
-  subtitle: Text(
-    (userSnap.hasData && userSnap.data!.exists)
-        ? (userSnap.data!['email'] ?? '')
-        : '',
-    style: const TextStyle(fontSize: 12, color: Colors.grey),
-  ),
-  trailing: const Icon(Icons.chat_bubble_outline,
-      color: Color(0xFF667EEA)),
-  // 👇 Ye add karo — tap pe profile khule
-  onTap: () async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UserProfileScreen(
-          userId: friendId,
-          username: username,
-        ),
-      ),
-    );
 
-    // Agar profile se "Message" dabaya, toh chat khule
-    if (result != null &&
-        result is Map &&
-        result['action'] == 'chat') {
-      if (context.mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(
-              receiverUid: result['uid'],
-              receiverName: result['name'],
-            ),
-          ),
-        );
-      }
-    }
-  },
-),
                   return Card(
                     elevation: 0,
                     margin: const EdgeInsets.symmetric(
                         vertical: 5, horizontal: 5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 5),
+                      leading: AvatarWidget(
+                        avatarUrl: avatarUrl,
+                        username: username,
+                        size: 50,
+                      ),
+                      title: Text(
+                        username,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(email),
+                      trailing: const Icon(
+                        Icons.chat_bubble_outline,
+                        color: Color(0xFF667EEA),
+                      ),
+                      // 👇 Tap pe user profile khule
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfileScreen(
+                              userId: friendId,
+                              username: username,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   );
                 },
@@ -385,6 +368,7 @@ class FriendsListScreen extends StatelessWidget {
     );
   }
 }
+
 // ============ UNFRIEND ============
 Future<void> unFriend(String otherUid) async {
   String currentUid = FirebaseAuth.instance.currentUser!.uid;
