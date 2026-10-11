@@ -1,9 +1,4 @@
 
-📝 Poora Updated PROJECT_INFO.md
-
-Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete karo → ye paste karo:
-
-```markdown
 # Bhai Bhai Secure Chat - Project Info
 
 ## 📱 App Overview
@@ -11,8 +6,6 @@ Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete ka
 **Bhai Bhai Secure Chat** ek modern, secure messaging app hai jo WhatsApp jaisi features deti hai. Ye Flutter mein bani hai aur Firebase backend use karti hai.
 
 **App ka Main Feature:** 24-hour ephemeral messaging — yani har message 24 ghante baad automatically delete ho jata hai.
-
----
 
 ## ✅ Core Features (Jo Ab Tak Complete Hain)
 
@@ -50,7 +43,7 @@ Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete ka
 - ✅ Chat List with 4 Filter Chips (All, Unread, Favourites, Groups)
 - ✅ Pin Chat
 - ✅ Modern Chat Cards (rounded, shadow)
-- ✅ **Voice Message** — code ready, mic test pending
+- ✅ Voice Message — code ready, mic test pending
 
 ### Social Features
 - ✅ Search Users (username se)
@@ -59,8 +52,8 @@ Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete ka
 - ✅ Unfriend option
 - ✅ Block/Unblock Users
 - ✅ Blocked Users List
-- ✅ **Friends List** — tap pe user profile khulti hai
-- ✅ **Profile → Message → Chat** — direct chat khulti hai
+- ✅ Friends List — tap pe user profile khulti hai
+- ✅ Profile → Message → Chat — direct chat khulti hai
 
 ### Group Features (Complete)
 - ✅ Group Chat (multiple users)
@@ -90,36 +83,34 @@ Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete ka
 - ✅ Time ago ("Just now", "5m ago")
 
 ### Hisaab Kitaab (Khata Book)
-- ✅ **Khata List** — bande ki list
-- ✅ **Per-Person Khata** — har bande ka pura hisaab
-- ✅ **Add Entry** — Diya / Liya (amount, note, date)
-- ✅ **Balance Calculation** — automatic
-- ✅ **Settle / Unsettle** — entry settle kar sakte ho
-- ✅ **Edit / Delete** — entries
-- ✅ **Total Balance** — top pe (lena/dena)
-- ✅ **PDF Export** — hisaab ki PDF save karo
-- ✅ **WhatsApp Send** — hisaab WhatsApp pe bhejo
-- ✅ **Call / WhatsApp** — bande ke phone number pe
-- ✅ **Settled Entries** — grey ho jati hain
-- ✅ **No 24h delete** — permanent rahega
-- ✅ **Access:** Profile → Hisaab stat
+- ✅ Khata List — bande ki list
+- ✅ Per-Person Khata — har bande ka pura hisaab
+- ✅ Add Entry — Diya / Liya (amount, note, date)
+- ✅ Balance Calculation — automatic
+- ✅ Settle / Unsettle — entry settle kar sakte ho
+- ✅ Edit / Delete — entries
+- ✅ Total Balance — top pe (lena/dena)
+- ✅ PDF Export — hisaab ki PDF save karo
+- ✅ WhatsApp Send — hisaab WhatsApp pe bhejo
+- ✅ Call / WhatsApp — bande ke phone number pe
+- ✅ Settled Entries — grey ho jati hain
+- ✅ No 24h delete — permanent rahega
+- ✅ Access: Profile → Hisaab stat
 
 ### Notifications
 - ✅ Push Notifications (OneSignal)
 - ✅ App se notification (REST API)
 - ✅ Manual notification (OneSignal Dashboard)
 
----
-
 ## 🚧 Features Jo Baaki Hain
 
 ### Priority 1
-- ⏳ **Voice Message** — code ready, mic test pending
-- ⏳ **Chat List Search** — search bar hai, filter logic pending
+- ⏳ Voice Message — code ready, mic test pending
+- ⏳ Chat List Search — search bar hai, filter logic pending
 
 ### Priority 2
-- ⏳ **Communities Tab** — currently "jald aa raha hai"
-- ⏳ **Link Share** — Instagram/YouTube/Facebook link clickable + preview
+- ⏳ Communities Tab — currently "jald aa raha hai"
+- ⏳ Link Share — Instagram/YouTube/Facebook link clickable + preview
 
 ### Priority 3
 - ⏳ Voice/Video Calling (WebRTC + TURN server)
@@ -131,25 +122,23 @@ Bhai, GitHub pe PROJECT_INFO.md kholo → Edit dabao → poora content delete ka
 - ⏳ Chat Wallpaper
 - ⏳ Chat Statistics
 
----
-
 ## 🛠️ Technology Stack
 
 ### Frontend
-- **Flutter** (Dart)
-- **Material 3** design
-- **Provider/StreamBuilder** state management
+- Flutter (Dart)
+- Material 3 design
+- Provider/StreamBuilder state management
 
 ### Backend
-- **Firebase Core** (initialization)
-- **Firebase Auth** (Email/Password)
-- **Cloud Firestore** (real-time database)
-- **Firebase Storage** — HATA DIYA (Base64 use kar rahe hain)
+- Firebase Core (initialization)
+- Firebase Auth (Email/Password)
+- Cloud Firestore (real-time database)
+- Firebase Storage — HATA DIYA (Base64 use kar rahe hain)
 
 ### Notifications
-- **OneSignal** (Push Notifications)
-- **OneSignal REST API** (app se notification)
-- **Firebase Service Account JSON** (OneSignal mein upload)
+- OneSignal (Push Notifications)
+- OneSignal REST API (app se notification)
+- Firebase Service Account JSON (OneSignal mein upload)
 
 ### Key Packages (pubspec.yaml)
 ```yaml
@@ -193,8 +182,6 @@ lib/
 └── khata_detail_screen.dart   (Bande ka khata - ledger)
 ```
 
----
-
 🎨 App Navigation Structure
 
 Bottom Navigation (4 tabs)
@@ -225,8 +212,6 @@ Option Tap Karo Kya Hoga
 🔗 App Share WhatsApp khulega Download link bhejo
 📱 iPhone App Dialog iOS jald aa raha hai
 🚪 Logout Sign out 
-
----
 
 🔥 Firestore Database Structure
 
@@ -389,8 +374,6 @@ typing/{chatId}
 }
 ```
 
----
-
 🔐 Firestore Rules
 
 ```
@@ -422,8 +405,6 @@ service cloud.firestore {
 }
 ```
 
----
-
 🔥 Firestore Indexes
 
 chats Collection
@@ -431,7 +412,7 @@ chats Collection
 · chatId — Ascending
 · timestamp — Descending
 · members — Array contains
-· __name__ — Ascending
+· name — Ascending
 
 friend_requests Collection
 
@@ -457,8 +438,6 @@ hisab Collection
 
 · khataId — Ascending
 · timestamp — Descending
-
----
 
 📲 OneSignal Notifications
 
@@ -486,8 +465,6 @@ Important Files
 · chat_screen.dart — App ID + REST API Key
 · LoginScreen — OneSignal.login()
 · ProfileScreen — OneSignal.logout()
-
----
 
 🐛 Known Issues / Fixes
 
@@ -587,8 +564,6 @@ Issue 24: Hisaab Tab Slow Khul Raha Tha
 
 Fix: FutureBuilder use kiya, StreamBuilder ki jagah.
 
----
-
 🚀 Build & Deploy
 
 GitHub Actions (Automatic APK Build)
@@ -647,8 +622,6 @@ GitHub Secrets Required
 · GOOGLE_SERVICES_JSON — Firebase config file ka content
 · ONESIGNAL_REST_API_KEY — OneSignal REST API Key
 
----
-
 👨‍💻 Developer Notes
 
 Firebase Project
@@ -680,8 +653,6 @@ Code Conventions
 · PascalCase for classes
 · camelCase for variables and functions
 · Private functions start with _
-
----
 
 📝 Roadmap (Future Features)
 
@@ -731,8 +702,6 @@ Phase 3 (Future)
 · ☐ Chat Wallpaper
 · ☐ Chat Statistics
 
----
-
 🎯 Important Notes for New Developers
 
 1. Firebase Storage hata diya — sab Base64 use kar rahe hain
@@ -744,46 +713,3 @@ Phase 3 (Future)
 7. ChatScreen — chat_screen.dart mein hai (main.dart mein nahi)
 8. Hisaab Kitaab — khate + hisab collections
 9. PROJECT_INFO.md — sensitive info hide ki hui hai
-
----
-
-📄 License
-
-MIT License — Free to use, modify, and distribute.
-
-Last Updated: October 2026
-
-```
-
----
-
-## 📋 Ab Kya Karo
-
-| Step | Kaam |
-|------|------|
-| 1 | GitHub pe `PROJECT_INFO.md` kholo |
-| 2 | **Edit** (pencil icon) dabao |
-| 3 | **Ctrl + A** → **Delete** (poora content) |
-| 4 | **Upar wala naya content paste karo** |
-| 5 | **Commit changes** dabao |
-| 6 | **Message:** `Update PROJECT_INFO.md with latest changes` |
-| 7 | **Green `Commit changes`** dabao |
-
----
-
-## 🎯 Kya Naya Add Hua
-
-| # | Section | Naya |
-|---|---------|------|
-| 1 | **Profile Settings** | Privacy, Notifications, App Update, App Share, iPhone App |
-| 2 | **Navigation** | Bottom nav: Chats, Updates, Calls, Profile |
-| 3 | **Profile Stats** | Contacts, Hisaab, Blocked |
-| 4 | **File Structure** | `chat_screen.dart` alag file |
-| 5 | **New Issues** | Issue 21, 22, 23, 24 |
-| 6 | **Roadmap** | Updated |
-
----
-
-**Bhai, ye poora content paste karo aur commit karo — PROJECT_INFO.md fully updated!** 💪
-
-**Ab naye chat mein mujhe sab pata hoga!** 🎯🚀
