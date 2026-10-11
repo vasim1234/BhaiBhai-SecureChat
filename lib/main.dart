@@ -2246,7 +2246,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (base64Image.length > 900000) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Photo bahut badi hai, chhoti photo try karein')),
+              content:
+                  Text('Photo bahut badi hai, chhoti photo try karein')),
         );
         setState(() => _isLoadingAvatar = false);
         return;
@@ -2273,6 +2274,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ============ EDIT PROFILE DIALOG ============
   Future<void> _showEditProfileDialog(
       BuildContext context, String currentUsername) async {
     String uid = FirebaseAuth.instance.currentUser!.uid;
@@ -2515,6 +2517,233 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ============ APP UPDATE ============
+  Future<void> _checkAppUpdate() async {
+    // Play Store kholo
+    final Uri url = Uri.parse(
+        'https://play.google.com/store/apps/details?id=com.example.bhaibhai_securechat');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Play Store nahi khul paya')),
+        );
+      }
+    }
+  }
+
+  // ============ APP SHARE ============
+  Future<void> _shareApp() async {
+    String message = '🔥 *Bhai Bhai Secure Chat* download karo!\n\n'
+        '📱 WhatsApp jaisa messaging app —\n'
+        '✅ 24-hour auto-delete messages\n'
+        '✅ Group chat + Status updates\n'
+        '✅ Hisaab Kitaab feature\n\n'
+        '🔗 Download: https://play.google.com/store/apps/details?id=com.example.bhaibhai_securechat\n\n'
+        '_Bhai Bhai — Secure Community_';
+
+    final Uri url = Uri.parse(
+      'https://wa.me/?text=${Uri.encodeComponent(message)}',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('WhatsApp nahi khul paya')),
+        );
+      }
+    }
+  }
+
+  // ============ iPHONE APP ============
+  Future<void> _showIPhoneAppDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.phone_iphone, color: Color(0xFF4A6CF7)),
+            SizedBox(width: 10),
+            Text('iPhone App'),
+          ],
+        ),
+        content: const Text(
+            'Bhai Bhai iPhone app jald aa raha hai!\n\nApp Store pe launch hone pe aapko notification milegi.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============ PRIVACY SHEET ============
+  void _showPrivacySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.shield,
+                          color: Color(0xFF10B981), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Privacy Settings',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildPrivacyOption(
+                    Icons.visibility, 'Last Seen', 'Everyone'),
+                _buildPrivacyOption(
+                    Icons.person, 'Profile Photo', 'Everyone'),
+                _buildPrivacyOption(
+                    Icons.check_circle, 'Read Receipts', 'ON'),
+                _buildPrivacyOption(
+                    Icons.block, 'Blocked Users', 'Manage'),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivacyOption(
+      IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[600], size: 22),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(title,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w500)),
+          ),
+          Text(value,
+              style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  // ============ NOTIFICATIONS SHEET ============
+  void _showNotificationsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B)
+                                .withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.notifications,
+                              color: Color(0xFFF59E0B), size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Notifications',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    _buildNotifSwitch('Message Notifications',
+                        'Naye message par notification', true, (val) {}),
+                    _buildNotifSwitch('Friend Requests',
+                        'Friend request par notification', true, (val) {}),
+                    _buildNotifSwitch('Group Messages',
+                        'Group message par notification', true, (val) {}),
+                    _buildNotifSwitch(
+                        'Sound', 'Notification sound', true, (val) {}),
+                    _buildNotifSwitch('Vibration',
+                        'Notification vibration', true, (val) {}),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNotifSwitch(String title, String subtitle, bool value,
+      Function(bool) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w500)),
+                Text(subtitle,
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: const Color(0xFF4A6CF7),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -2553,6 +2782,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return SingleChildScrollView(
             child: Column(
               children: [
+                // ============ HEADER ============
                 Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.topCenter,
@@ -2956,49 +3186,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           children: [
                             _buildStatItem(
-  Icons.people,
-  '$contacts',
-  'Contacts',
-  const Color(0xFF3B82F6),
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const FriendsListScreen(),
-      ),
-    );
-  },
-),
-_buildDivider(),
-_buildStatItem(
-  Icons.receipt_long,          // ✅ Hisaab icon
-  'Hisaab',                    // ✅ Hisaab label
-  'Hisaab',
-  const Color(0xFF10B981),
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const KhataScreen(),    // ✅ KhataScreen
-      ),
-    );
-  },
-),
-_buildDivider(),
-_buildStatItem(
-  Icons.lock,
-  '$blocked',
-  'Blocked',
-  const Color(0xFFEF4444),
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const BlockedUsersScreen(),
-      ),
-    );
-  },
-),
+                              Icons.people,
+                              '$contacts',
+                              'Contacts',
+                              const Color(0xFF3B82F6),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const FriendsListScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildDivider(),
+                            _buildStatItem(
+                              Icons.receipt_long,
+                              'Hisaab',
+                              'Hisaab',
+                              const Color(0xFF10B981),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const KhataScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildDivider(),
+                            _buildStatItem(
+                              Icons.lock,
+                              '$blocked',
+                              'Blocked',
+                              const Color(0xFFEF4444),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const BlockedUsersScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                           ],
                         ),
                       );
@@ -3061,37 +3293,31 @@ _buildStatItem(
                           Icons.shield,
                           'Privacy',
                           const Color(0xFF10B981),
-                          () {
-                            _showSimpleSheet(context, 'Privacy',
-                                'Privacy settings jald aa rahi hain!');
-                          },
+                          () => _showPrivacySheet(context),
                         ),
                         _buildSettingsItem(
                           Icons.notifications,
                           'Notifications',
                           const Color(0xFFF59E0B),
-                          () {
-                            _showSimpleSheet(context, 'Notifications',
-                                'Notification settings jald aa rahi hain!');
-                          },
+                          () => _showNotificationsSheet(context),
                         ),
                         _buildSettingsItem(
-                          Icons.storage,
-                          'Storage',
+                          Icons.system_update,
+                          'App Update',
                           const Color(0xFF8B5CF6),
-                          () {
-                            _showSimpleSheet(context, 'Storage',
-                                'Storage info jald aa rahi hai!');
-                          },
+                          () => _checkAppUpdate(),
                         ),
                         _buildSettingsItem(
-                          Icons.help_outline,
-                          'Help',
+                          Icons.share,
+                          'App Share',
                           const Color(0xFF3B82F6),
-                          () {
-                            _showSimpleSheet(context, 'Help & Support',
-                                'Email: support@bhaibhai.com');
-                          },
+                          () => _shareApp(),
+                        ),
+                        _buildSettingsItem(
+                          Icons.phone_iphone,
+                          'iPhone App',
+                          const Color(0xFF6B7280),
+                          () => _showIPhoneAppDialog(),
                         ),
                         _buildSettingsItem(
                           Icons.logout,
@@ -3116,39 +3342,6 @@ _buildStatItem(
           );
         },
       ),
-    );
-  }
-
-  void _showSimpleSheet(BuildContext context, String title, String message) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  message,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -3245,19 +3438,18 @@ _buildStatItem(
     int blocked = 0;
 
     try {
-    // Contacts — friends collection se
-QuerySnapshot friendsSnap = await FirebaseFirestore.instance
-    .collection('friends')
-    .where('uid1', isEqualTo: uid)
-    .get();
-contacts = friendsSnap.docs.length;
+      QuerySnapshot friendsSnap = await FirebaseFirestore.instance
+          .collection('friends')
+          .where('uid1', isEqualTo: uid)
+          .get();
+      contacts = friendsSnap.docs.length;
 
-// Chats — chats collection se
-QuerySnapshot chatsSnap = await FirebaseFirestore.instance
-    .collection('chats')
-    .where('members', arrayContains: uid)
-    .get();
-chats = chatsSnap.docs.length;
+      QuerySnapshot chatsSnap = await FirebaseFirestore.instance
+          .collection('chats')
+          .where('members', arrayContains: uid)
+          .get();
+      chats = chatsSnap.docs.length;
+
       QuerySnapshot blockedSnap = await FirebaseFirestore.instance
           .collection('blocked')
           .where('blockerId', isEqualTo: uid)
