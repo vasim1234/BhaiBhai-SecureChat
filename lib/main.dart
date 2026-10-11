@@ -23,6 +23,7 @@ import 'group_info.dart';
 import 'status_screen.dart';
 import 'hisab_screen.dart';
 import 'khata_screen.dart';
+import 'chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
