@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'friend_request.dart';
 import 'avatar_builder.dart';
+import 'chat_screen.dart';
 
 // ============ USER PROFILE SCREEN ============
 class UserProfileScreen extends StatefulWidget {
@@ -586,12 +587,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
+              // ✅ YEH CHANGE KIYA — Navigator.push se ChatScreen kholo
               onPressed: () {
-                Navigator.pop(context, {
-                  'action': 'chat',
-                  'uid': widget.userId,
-                  'name': widget.username,
-                });
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      receiverUid: widget.userId,
+                      receiverName: widget.username,
+                    ),
+                  ),
+                );
               },
               icon: const Icon(Icons.chat_bubble, color: Colors.white),
               label: const Text('Message',
@@ -632,7 +638,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // Block button
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
