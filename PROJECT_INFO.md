@@ -16,7 +16,7 @@
 - ✅ Email/Password se Login/Signup (modern gradient UI)
 - ✅ Unique Username system (jaise `vasim1234`)
 - ✅ Forgot Password (email reset link)
-- ✅ Google Sign-In button (placeholder, jald aa raha hai)
+- ✅ Google Sign-In button (placeholder)
 - ✅ Online/Offline status (real-time green dot)
 - ✅ Last Seen time
 
@@ -34,18 +34,19 @@
 
 ### Chat Features
 - ✅ Real-time messaging (Firestore)
-- ✅ 24-Hour Auto-Delete (har message 24h baad gayab)
+- ✅ 24-Hour Auto-Delete
 - ✅ Read Receipts (✓ single tick, ✓✓ blue double tick)
-- ✅ Typing Indicator ("typing..." dikhta hai)
-- ✅ Reply to Message (long press karke)
-- ✅ Message Edit/Delete (apne message ko)
-- ✅ Photo Bhejna (Base64 format - bilkul free)
-- ✅ Image Caching (flicker fix)
-- ✅ Fast Message Send (Instant UI update)
-- ✅ Unread Badge (chat list mein green circle count)
+- ✅ Typing Indicator
+- ✅ Reply to Message
+- ✅ Message Edit/Delete
+- ✅ Photo Bhejna (Base64 format)
+- ✅ Image Caching
+- ✅ Fast Message Send (Instant UI)
+- ✅ Unread Badge (green circle count)
 - ✅ Chat List with 4 Filter Chips (All, Unread, Favourites, Groups)
-- ✅ Pin Chat (important chat top par)
-- ✅ Modern Chat Cards (rounded, shadow, smooth tap)
+- ✅ Pin Chat
+- ✅ Modern Chat Cards (rounded, shadow)
+- ✅ **Voice Message** — code ready, mic test pending
 
 ### Social Features
 - ✅ Search Users (username se)
@@ -54,55 +55,71 @@
 - ✅ Unfriend option
 - ✅ Block/Unblock Users
 - ✅ Blocked Users List
+- ✅ **Friends List** — tap pe user profile khulti hai
+- ✅ **Profile → Message → Chat** — direct chat khulti hai
 
 ### Group Features (Complete)
-- ✅ Group Chat (multiple users ke saath)
+- ✅ Group Chat (multiple users)
 - ✅ Group Info Screen with modern UI
-- ✅ Group Photo (Base64 format, chat list + header + info mein dikhti hai)
+- ✅ Group Photo (Base64 format)
 - ✅ Group Bio (150 characters)
 - ✅ Admin Controls:
   - ✅ Change Group Name (sirf admin)
   - ✅ Change Group Bio (sirf admin)
   - ✅ Delete Group (sirf admin)
-- ✅ Add Members (admin existing users ko add kar sakta hai)
-- ✅ Exit Group (sab members ke liye)
-- ✅ Group Unread Badge (chat list mein green count)
+- ✅ Add Members (admin)
+- ✅ Exit Group
+- ✅ Group Unread Badge
 - ✅ Members List (admin badge ke saath)
-- ✅ "GROUPS" section chat list mein top pe
+- ✅ "GROUPS" section chat list mein
 - ✅ Group chat list with unread count
 
-### Status Updates (Stories) — NEW ✅
+### Status Updates (Stories)
 - ✅ Text Status (6 colors mein)
 - ✅ Photo Status (Base64 format)
 - ✅ 24-hour auto-delete
-- ✅ Full-screen viewer (tap karke dekho)
-- ✅ Progress bars (multiple status)
+- ✅ Full-screen viewer
+- ✅ Progress bars
 - ✅ Viewers tracking
-- ✅ "My Status" tile with + icon
-- ✅ "Recent Updates" (friends ke status, green ring)
+- ✅ "My Status" tile
+- ✅ "Recent Updates" (green ring)
 - ✅ Time ago ("Just now", "5m ago")
+
+### Hisaab Kitaab (Khata Book) — NEW ✅
+- ✅ **Khata List** — bande ki list (jinka khata bana hai)
+- ✅ **Per-Person Khata** — har bande ka pura hisaab
+- ✅ **Add Entry** — Diya / Liya (amount, note, date)
+- ✅ **Balance Calculation** — automatic
+- ✅ **Settle / Unsettle** — entry settle kar sakte ho
+- ✅ **Edit / Delete** — entries
+- ✅ **Total Balance** — top pe (lena/dena)
+- ✅ **PDF Export** — hisaab ki PDF save karo
+- ✅ **WhatsApp Send** — hisaab WhatsApp pe bhejo
+- ✅ **Call / WhatsApp** — bande ke phone number pe
+- ✅ **Settled Entries** — grey ho jati hain
+- ✅ **No 24h delete** — permanent rahega
 
 ### Notifications
 - ✅ Push Notifications (OneSignal)
-- ✅ App se bheji gayi notification (REST API se)
-- ✅ Manual notification (OneSignal Dashboard se)
+- ✅ App se notification (REST API)
+- ✅ Manual notification (OneSignal Dashboard)
 
 ---
 
 ## 🚧 Features Jo Baaki Hain
 
 ### Priority 1
-- ⏳ Voice Message (code ready, mic test pending)
-- ⏳ Chat List Search (search bar already hai, filter logic pending)
+- ⏳ **Voice Message** — code ready, mic test pending
+- ⏳ **Chat List Search** — search bar hai, filter logic pending
 
 ### Priority 2
-- ⏳ Communities Tab (currently "jald aa raha hai")
-- ⏳ Pinned Messages (important message top pe)
+- ⏳ **Communities Tab** — currently "jald aa raha hai"
+- ⏳ **Link Share** — Instagram/YouTube/Facebook link clickable + preview
 
 ### Priority 3
-- ⏳ Voice/Video Calling (WebRTC, TURN server chahiye)
-- ⏳ Video Status (Firebase Storage setup chahiye)
-- ⏳ Photo + Song Status (Firebase Storage setup chahiye)
+- ⏳ Voice/Video Calling (WebRTC + TURN server)
+- ⏳ Video Status (Firebase Storage)
+- ⏳ Photo + Song Status (Firebase Storage)
 - ⏳ End-to-End Encryption
 - ⏳ Two-Factor Auth
 - ⏳ Message Forwarding
@@ -114,20 +131,20 @@
 ## 🛠️ Technology Stack
 
 ### Frontend
-- Flutter (Dart)
-- Material 3 design
-- Provider/StreamBuilder state management
+- **Flutter** (Dart)
+- **Material 3** design
+- **Provider/StreamBuilder** state management
 
 ### Backend
-- Firebase Core (project initialization)
-- Firebase Auth (Email/Password login)
-- Cloud Firestore (real-time database)
-- Firebase Storage — HATA DIYA (Base64 use kar rahe hain)
+- **Firebase Core** (initialization)
+- **Firebase Auth** (Email/Password)
+- **Cloud Firestore** (real-time database)
+- **Firebase Storage** — HATA DIYA (Base64 use kar rahe hain)
 
 ### Notifications
-- OneSignal (Push Notifications)
-- OneSignal REST API (app se notification bhejne ke liye)
-- Firebase Service Account JSON (OneSignal mein upload hai)
+- **OneSignal** (Push Notifications)
+- **OneSignal REST API** (app se notification)
+- **Firebase Service Account JSON** (OneSignal mein upload)
 
 ### Key Packages (pubspec.yaml)
 ```yaml
@@ -150,19 +167,25 @@ dependencies:
   http: ^1.2.0
   onesignal_flutter: ^5.3.0
   flutter_sound: ^9.2.13
-  permission_handler: 11.0.1
+  permission_handler: 12.0.0
+  url_launcher: ^6.3.0
+  pdf: ^3.11.1
+  printing: ^5.13.1
 ```
 
 File Structure
 
 ```
 lib/
-├── main.dart              (Main app - login, chat, profile, home, groups, status)
-├── friend_request.dart    (Friend request system)
-├── user_profile.dart      (User profile screen - doosre user ki)
-├── avatar_builder.dart    (2D avatar builder + AvatarWidget)
-├── status_screen.dart     (Status/Stories feature) — NEW
-└── group_info.dart        (Group info + admin controls) — NEW
+├── main.dart                  (Main app - login, chat list, profile, home, groups)
+├── friend_request.dart        (Friend request system + FriendsListScreen)
+├── user_profile.dart          (User profile screen - doosre user ki)
+├── avatar_builder.dart        (2D avatar builder + AvatarWidget)
+├── chat_screen.dart           (ChatScreen + GroupChatScreen) — NEW
+├── status_screen.dart         (Status/Stories feature)
+├── group_info.dart            (Group info + admin controls)
+├── khata_screen.dart          (Hisaab Kitaab - khata list) — NEW
+└── khata_detail_screen.dart   (Bande ka khata - ledger) — NEW
 ```
 
 ---
@@ -290,6 +313,35 @@ status/{statusId}
 }
 ```
 
+khate/{khataId} — Hisaab Kitaab
+
+```json
+{
+  "userId": "uid1",
+  "personName": "Raju",
+  "phoneNumber": "9876543210",
+  "createdAt": "timestamp"
+}
+```
+
+hisab/{entryId} — Hisaab Entries
+
+```json
+{
+  "userId": "uid1",
+  "khataId": "khataId_of_Raju",
+  "personName": "Raju",
+  "phoneNumber": "9876543210",
+  "amount": 300,
+  "type": "diya|liya",
+  "date": "timestamp",
+  "note": "Gym fees",
+  "isSettled": false,
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
+}
+```
+
 typing/{chatId}
 
 ```json
@@ -310,9 +362,23 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
+    match /users/{document} {
+      allow read, write: if request.auth != null;
+    }
+    match /friends/{document} {
+      allow read, write: if request.auth != null;
+    }
     match /status/{document} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
+    }
+    match /hisab/{document} {
+      allow read, write: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+    }
+    match /khate/{document} {
+      allow read, write: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
     }
   }
 }
@@ -326,7 +392,7 @@ chats Collection
 
 · chatId — Ascending
 · timestamp — Descending
-· members — Array contains (arrayConfig: CONTAINS)
+· members — Array contains
 · __name__ — Ascending
 
 friend_requests Collection
@@ -344,19 +410,27 @@ status Collection
 
 · timestamp — Descending
 
+khate Collection — NEW
+
+· userId — Ascending
+· createdAt — Descending
+
+hisab Collection — NEW
+
+· khataId — Ascending
+· timestamp — Descending
+
 ---
 
 📲 OneSignal Notifications
 
 OneSignal App ID
 
-```
-0.......
-```
+Note: Ye GitHub Secrets mein hai — ONESIGNAL_APP_ID.
 
 OneSignal REST API Key
 
-Note: Ye GitHub par public nahi karni chahiye. --......... ke through inject hoti hai GitHub Secret se.
+Note: Ye GitHub Secrets mein hai — ONESIGNAL_REST_API_KEY.
 
 Firebase Service Account JSON
 
@@ -370,8 +444,8 @@ Notification Kaise Kaam Karti Hai
 
 Important Files
 
-· main.dart line 22 — OneSignal initialize
-· ChatScreen — App ID + REST API Key
+· main.dart — OneSignal initialize
+· chat_screen.dart — App ID + REST API Key
 · LoginScreen — OneSignal.login()
 · ProfileScreen — OneSignal.logout()
 
@@ -381,7 +455,7 @@ Important Files
 
 Issue 1: Photo Bhejne Par Firebase Storage Error
 
-Fix: Firebase Storage hata diya, ab Base64 use kar rahe hain.
+Fix: Firebase Storage hata diya, Base64 use kar rahe hain.
 
 Issue 2: Read Receipts Real-Time Update Nahi Ho Rahe
 
@@ -409,15 +483,15 @@ Fix: _msgController.clear() ko message save karne se pehle call kiya.
 
 Issue 8: OneSignal 401 Error
 
-Fix: Nayi REST API Key banayi, aur --dart-define ke through GitHub Secret se inject kiya.
+Fix: Nayi REST API Key banayi, GitHub Secret se inject kiya.
 
-Issue 9: Group Chat Messages Load Nahi Ho Rahe (FAILED_PRECONDITION)
+Issue 9: Group Chat Messages Load Nahi Ho Rahe
 
-Fix: Firestore Composite Index banaya — group_messages collection pe groupId (ASC) + timestamp (DESC).
+Fix: group_messages collection pe composite index banaya.
 
 Issue 10: record Package Build Fail
 
-Fix: record package hata diya, flutter_sound use kiya.
+Fix: record hata diya, flutter_sound use kiya.
 
 Issue 11: audioplayers Build Fail
 
@@ -425,15 +499,39 @@ Fix: audioplayers hata diya, flutter_sound use kiya.
 
 Issue 12: permission_handler Build Fail (v1 embedding)
 
-Fix: permission_handler: 11.0.1 → 12.0.0 kiya.
+Fix: permission_handler: 11.0.1 → 12.0.0.
 
 Issue 13: Voice Recording _CodecNotSupportedException
 
-Fix: Codec.aacADTS → Codec.aacMP4 kiya (recording + playback).
+Fix: Codec.aacADTS → Codec.aacMP4.
 
-Issue 14: Voice Playback - Audio Nahi Aa Rahi (mic test pending)
+Issue 14: Voice Playback Audio Nahi Aa Rahi
 
-Status: Mic hardware issue hai, dusre phone pe test karna hai.
+Status: Mic hardware issue hai, dusre phone pe test pending.
+
+Issue 15: Friend Request Screen Crash
+
+Fix: flutter_contacts hata diya, manual phone number entry.
+
+Issue 16: Message Button Se Chat Nahi Khul Rahi
+
+Fix: ChatScreen alag chat_screen.dart file mein move kiya, aur Navigator.push use kiya.
+
+Issue 17: Contacts Count Galat Dikha Raha
+
+Fix: _loadStats() — chats collection ki jagah friends collection se count kiya.
+
+Issue 18: khate Index Missing
+
+Fix: khate collection pe composite index banaya (userId ASC + createdAt DESC).
+
+Issue 19: hisab Index Missing
+
+Fix: hisab collection pe composite index banaya (khataId ASC + timestamp DESC).
+
+Issue 20: friends Collection Mein Random UID
+
+Fix: Purane documents delete karke, app se naya friend add kiya.
 
 ---
 
@@ -501,32 +599,33 @@ GitHub Secrets Required
 
 Firebase Project
 
-Firebase Project
 · Project Name: [Firebase Console se lo]
 · Project ID: [Firebase Console se lo]
 · Package Name: com.example.bhaibhai_securechat
 
 Important Functions
 
-· areFriends(uid1, uid2) — Check karein ki dono friend hain
+· areFriends(uid1, uid2) — Check friends
 · sendFriendRequest(receiverUid) — Friend request bhejein
 · acceptFriendRequest(requestId, senderId) — Accept karein
 · unFriend(otherUid) — Unfriend karein
-· _setOnlineStatus(bool) — Online status update
-· _setTypingStatus(bool) — Typing status update
+· _setOnlineStatus(bool) — Online status
+· _setTypingStatus(bool) — Typing status
 · _buildCachedImage(base64String) — Cached image widget
-· _sendNotification(message) — OneSignal notification bhejein
+· _sendNotification(message) — OneSignal notification
 · _getUnreadCount(chatId) — Unread messages count
 · _getGroupUnreadCount(groupId) — Group unread count
-· _saveStatus({type, content, bgColor}) — Status save karein
-· _markGroupAsRead() — Group ko read mark karein
+· _saveStatus({type, content, bgColor}) — Status save
+· _markGroupAsRead() — Group read mark
+· _exportPDF() — PDF export (khata detail)
+· _sendViaWhatsApp() — WhatsApp share (khata detail)
 
 Code Conventions
 
 · Snake_case for file names
 · PascalCase for classes
 · camelCase for variables and functions
-· Private functions start with _ (underscore)
+· Private functions start with _
 
 ---
 
@@ -552,18 +651,21 @@ Phase 1 (Completed ✅)
 · ☑ Status Updates (Stories)
 · ☑ Modern Login Screen
 · ☑ Modern Chat List
-· ☑ Filter Chips (All, Unread, Favourites, Groups)
+· ☑ Filter Chips
+· ☑ Hisaab Kitaab (Khata Book) — NEW
+· ☑ PDF Export + WhatsApp Send — NEW
+· ☑ chat_screen.dart — Alag file
 
 Phase 2 (Next)
 
 · ☐ Voice Message (mic test pending)
-· ☐ Chat List Search Function
+· ☐ Chat List Search
 · ☐ Communities Tab
-· ☐ Pinned Messages
+· ☐ Link Share (Instagram/YouTube/Facebook)
 
 Phase 3 (Future)
 
-· ☐ Voice/Video Calling (WebRTC + TURN server)
+· ☐ Voice/Video Calling (WebRTC + TURN)
 · ☐ Video Status (Firebase Storage)
 · ☐ Photo + Song Status (Firebase Storage)
 · ☐ End-to-End Encryption
@@ -576,12 +678,15 @@ Phase 3 (Future)
 
 🎯 Important Notes for New Developers
 
-1. Firebase Storage hata diya — sab Base64 use kar rahe hain (photo, voice, status, group photo)
-2. Voice Message — flutter_sound use kar rahe hain, Codec.aacMP4
-3. Firestore 1 MB limit — chhoti files hi Base64 mein store karo
-4. Firestore Indexes — group_messages aur status collection pe composite index zaroori hai
-5. OneSignal REST API Key — GitHub Secret mein hai, code mein hardcode nahi
-6. GitHub Actions — har push pe APK automatically build hoti hai
+1. Firebase Storage hata diya — sab Base64 use kar rahe hain
+2. Voice Message — flutter_sound use, Codec.aacMP4
+3. Firestore 1 MB limit — chhoti files hi Base64 mein
+4. Firestore Indexes — group_messages, status, khate, hisab pe composite index
+5. OneSignal REST API Key — GitHub Secret mein
+6. GitHub Actions — har push pe APK automatically build
+7. ChatScreen — chat_screen.dart mein hai (main.dart mein nahi)
+8. Hisaab Kitaab — khate + hisab collections
+9. PROJECT_INFO.md — sensitive info hide ki hui hai
 
 ---
 
@@ -601,12 +706,28 @@ Last Updated: October 2026
 |------|------|
 | 1 | GitHub pe `PROJECT_INFO.md` kholo |
 | 2 | **Edit** (pencil icon) dabao |
-| 3 | **Poora content delete karo** (Ctrl+A → Delete) |
+| 3 | **Ctrl + A** → **Delete** (poora content) |
 | 4 | **Upar wala naya content paste karo** |
 | 5 | **Commit changes** dabao |
-| 6 | **Message:** `Update PROJECT_INFO.md with all new features` |
+| 6 | **Message:** `Update PROJECT_INFO.md with Hisaab Kitaab features` |
 | 7 | **Green `Commit changes`** dabao |
 
 ---
 
-**Bhai, ye poora content paste karo `PROJECT_INFO.md` mein aur commit karo — phir naye chat mein mujhe sab pata hoga!** 💪🚀
+## 🎯 Kya Naya Add Hua
+
+| # | Section | Naya |
+|---|---------|------|
+| 1 | **Hisaab Kitaab** | Poora feature document |
+| 2 | **chat_screen.dart** | Alag file — structure update |
+| 3 | **khate + hisab** collections | Firestore structure |
+| 4 | **PDF + WhatsApp** | Features |
+| 5 | **New indexes** | `khate` + `hisab` |
+| 6 | **5 new issues** | Known issues (15-20) |
+| 7 | **Roadmap** | Updated |
+
+---
+
+**Bhai, ye poora content paste karo aur commit karo — PROJECT_INFO.md fully updated!** 💪
+
+**Ab naye chat mein mujhe sab pata hoga!** 🎯🚀
