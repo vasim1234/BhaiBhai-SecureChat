@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'user_profile.dart';          // 👈 Ye zaroori hai
+import 'avatar_builder.dart';        // 👈 Ye bhi
 
 // ============ FRIEND REQUEST SYSTEM ============
 // Ye file handle karti hai:
@@ -314,35 +316,64 @@ class FriendsListScreen extends StatelessWidget {
                   if (userSnap.hasData && userSnap.data!.exists) {
                     username = userSnap.data!['username'] ?? 'User';
                   }
+                  child: ListTile(
+  contentPadding: const EdgeInsets.symmetric(
+      horizontal: 15, vertical: 5),
+  leading: AvatarWidget(
+    avatarUrl: (userSnap.hasData && userSnap.data!.exists)
+        ? userSnap.data!['avatarUrl']
+        : null,
+    username: username,
+    size: 50,
+  ),
+  title: Text(
+    username,
+    style: const TextStyle(fontWeight: FontWeight.bold),
+  ),
+  subtitle: Text(
+    (userSnap.hasData && userSnap.data!.exists)
+        ? (userSnap.data!['email'] ?? '')
+        : '',
+    style: const TextStyle(fontSize: 12, color: Colors.grey),
+  ),
+  trailing: const Icon(Icons.chat_bubble_outline,
+      color: Color(0xFF667EEA)),
+  // 👇 Ye add karo — tap pe profile khule
+  onTap: () async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(
+          userId: friendId,
+          username: username,
+        ),
+      ),
+    );
 
+    // Agar profile se "Message" dabaya, toh chat khule
+    if (result != null &&
+        result is Map &&
+        result['action'] == 'chat') {
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              receiverUid: result['uid'],
+              receiverName: result['name'],
+            ),
+          ),
+        );
+      }
+    }
+  },
+),
                   return Card(
                     elevation: 0,
                     margin: const EdgeInsets.symmetric(
                         vertical: 5, horizontal: 5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 15, vertical: 5),
-                      leading: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: const Color(0xFF667EEA),
-                        child: Text(
-                          username[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        username,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      trailing: const Icon(Icons.chat_bubble_outline,
-                          color: Color(0xFF667EEA)),
                     ),
                   );
                 },
