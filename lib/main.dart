@@ -738,15 +738,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: const [
-  ChatsListScreen(),
-  UpdatesScreen(),
-  KhataScreen(),              // 👈 Ye
-  CallsScreen(),
-],
-      ),
+     body: IndexedStack(
+  index: _currentIndex,
+  children: const [
+    ChatsListScreen(),
+    UpdatesScreen(),
+    CallsScreen(),              // ✅ Calls
+    ProfileScreen(),            // ✅ Profile (naya)
+  ],
+),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -769,9 +769,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   BottomNavigationBarItem(
       icon: Icon(Icons.update), label: 'Updates'),
   BottomNavigationBarItem(
-      icon: Icon(Icons.receipt_long_outlined), label: 'Hisaab'),
+      icon: Icon(Icons.call_outlined), label: 'Calls'),           // ✅
   BottomNavigationBarItem(
-      icon: Icon(Icons.call_outlined), label: 'Calls'),
+      icon: Icon(Icons.person_outline), label: 'Profile'),        // ✅
 ],
         ),
       ),
