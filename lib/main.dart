@@ -3249,25 +3249,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     int blocked = 0;
 
     try {
-      QuerySnapshot chatsSnap = await FirebaseFirestore.instance
-          .collection('chats')
-          .where('members', arrayContains: uid)
-          .get();
+    // Contacts — friends collection se
+QuerySnapshot friendsSnap = await FirebaseFirestore.instance
+    .collection('friends')
+    .where('uid1', isEqualTo: uid)
+    .get();
+contacts = friendsSnap.docs.length;
 
-      Set<String> contactIds = {};
-      for (var doc in chatsSnap.docs) {
-        var data = doc.data() as Map<String, dynamic>;
-        String? chatId = data['chatId'];
-        if (chatId != null) {
-          List<String> uids = chatId.split('_');
-          for (String id in uids) {
-            if (id != uid) contactIds.add(id);
-          }
-        }
-      }
-      contacts = contactIds.length;
-      chats = chatsSnap.docs.length;
-
+// Chats — chats collection se
+QuerySnapshot chatsSnap = await FirebaseFirestore.instance
+    .collection('chats')
+    .where('members', arrayContains: uid)
+    .get();
+chats = chatsSnap.docs.length;
       QuerySnapshot blockedSnap = await FirebaseFirestore.instance
           .collection('blocked')
           .where('blockerId', isEqualTo: uid)
