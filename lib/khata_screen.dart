@@ -186,13 +186,11 @@ class _KhataScreenState extends State<KhataScreen> {
 
     if (!confirm) return;
 
-    // Khata delete karo
     await FirebaseFirestore.instance
         .collection('khate')
         .doc(khataId)
         .delete();
 
-    // Uski saari entries bhi delete karo
     QuerySnapshot entries = await FirebaseFirestore.instance
         .collection('hisab')
         .where('khataId', isEqualTo: khataId)
@@ -221,7 +219,7 @@ class _KhataScreenState extends State<KhataScreen> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('khate')
-            .where('userId', isEqualTo: currentUserId) 
+            .where('userId', isEqualTo: currentUserId)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -232,8 +230,7 @@ class _KhataScreenState extends State<KhataScreen> {
             return _buildEmptyState();
           }
 
-          List<Map<String, dynamic>> khateList =
-              snapshot.data!.docs.map((doc) {
+          List<Map<String, dynamic>> khateList = snapshot.data!.docs.map((doc) {
             var data = doc.data() as Map<String, dynamic>;
             data['khataId'] = doc.id;
             return data;
@@ -264,8 +261,8 @@ class _KhataScreenState extends State<KhataScreen> {
         onPressed: _showAddKhataDialog,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Naya Khata',
-            style: TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w600)),
+            style:
+                TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -302,18 +299,18 @@ class _KhataScreenState extends State<KhataScreen> {
     );
   }
 
+  // ============ KHATA TILE (Optimized) ============
   Widget _buildKhataTile(Map<String, dynamic> khata) {
     String khataId = khata['khataId'];
     String personName = khata['personName'] ?? 'User';
     String phoneNumber = khata['phoneNumber'] ?? '';
 
-    // Us khate ki saari entries fetch karo
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+    // ✅ FutureBuilder — ek baar fetch, fast
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
           .collection('hisab')
           .where('khataId', isEqualTo: khataId)
-          .orderBy('timestamp', descending: true)    // ✅
-          .snapshots(),
+          .get(),
       builder: (context, entriesSnapshot) {
         double totalDiya = 0;
         double totalLiya = 0;
@@ -365,7 +362,6 @@ class _KhataScreenState extends State<KhataScreen> {
             ),
             child: Row(
               children: [
-                // Avatar
                 CircleAvatar(
                   radius: 26,
                   backgroundColor: hasBalance
@@ -381,7 +377,6 @@ class _KhataScreenState extends State<KhataScreen> {
                   ),
                 ),
                 const SizedBox(width: 14),
-                // Name + Phone
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +402,6 @@ class _KhataScreenState extends State<KhataScreen> {
                     ],
                   ),
                 ),
-                // Balance
                 if (hasBalance)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
