@@ -5,10 +5,6 @@ import 'user_profile.dart';
 import 'avatar_builder.dart';
 
 // ============ FRIEND REQUEST SYSTEM ============
-// Ye file handle karti hai:
-// 1. Friend request bhejna
-// 2. Request accept/reject karna
-// 3. Friends list dikhana
 
 // ============ SEND FRIEND REQUEST ============
 Future<String> sendFriendRequest(String receiverUid) async {
@@ -18,7 +14,6 @@ Future<String> sendFriendRequest(String receiverUid) async {
     return 'Aap khud ko request nahi bhej sakte';
   }
 
-  // Check karein ki pehle se request hai ya nahi
   QuerySnapshot existing = await FirebaseFirestore.instance
       .collection('friend_requests')
       .where('senderId', isEqualTo: senderUid)
@@ -29,7 +24,6 @@ Future<String> sendFriendRequest(String receiverUid) async {
     return 'Aapne pehle hi request bhej rakhi hai';
   }
 
-  // Check karein ki wo pehle se friend hai ya nahi
   DocumentSnapshot friendship = await FirebaseFirestore.instance
       .collection('friends')
       .doc('${senderUid}_$receiverUid')
@@ -39,7 +33,6 @@ Future<String> sendFriendRequest(String receiverUid) async {
     return 'Ye pehle se aapka friend hai';
   }
 
-  // Request bhejein
   await FirebaseFirestore.instance.collection('friend_requests').add({
     'senderId': senderUid,
     'receiverId': receiverUid,
@@ -54,13 +47,11 @@ Future<String> sendFriendRequest(String receiverUid) async {
 Future<void> acceptFriendRequest(String requestId, String senderId) async {
   String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
-  // Request ka status update karein
   await FirebaseFirestore.instance
       .collection('friend_requests')
       .doc(requestId)
       .update({'status': 'accepted'});
 
-  // Friends collection mein add karein (dono taraf)
   await FirebaseFirestore.instance
       .collection('friends')
       .doc('${currentUid}_$senderId')
@@ -181,8 +172,8 @@ class FriendRequestsScreen extends StatelessWidget {
 
                   return Card(
                     elevation: 0,
-                    margin: const EdgeInsets.symmetric(
-                        vertical: 5, horizontal: 5),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
@@ -323,8 +314,8 @@ class FriendsListScreen extends StatelessWidget {
 
                   return Card(
                     elevation: 0,
-                    margin: const EdgeInsets.symmetric(
-                        vertical: 5, horizontal: 5),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
@@ -345,7 +336,7 @@ class FriendsListScreen extends StatelessWidget {
                         Icons.chat_bubble_outline,
                         color: Color(0xFF667EEA),
                       ),
-                      // 👇 Tap pe user profile khule
+                      // ✅ Tap pe user profile khule
                       onTap: () {
                         Navigator.push(
                           context,
@@ -373,7 +364,6 @@ class FriendsListScreen extends StatelessWidget {
 Future<void> unFriend(String otherUid) async {
   String currentUid = FirebaseAuth.instance.currentUser!.uid;
 
-  // Friends collection se dono documents delete karein
   await FirebaseFirestore.instance
       .collection('friends')
       .doc('${currentUid}_$otherUid')
@@ -383,7 +373,6 @@ Future<void> unFriend(String otherUid) async {
       .doc('${otherUid}_$currentUid')
       .delete();
 
-  // Friend requests bhi clean kar dein
   QuerySnapshot requests = await FirebaseFirestore.instance
       .collection('friend_requests')
       .where('senderId', whereIn: [currentUid, otherUid])
