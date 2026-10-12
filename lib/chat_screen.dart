@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +14,8 @@ import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:linkify/linkify.dart';
 import 'friend_request.dart';
 import 'user_profile.dart';
 import 'avatar_builder.dart';
@@ -113,6 +116,264 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_recorderInitialized) _audioRecorder.closeRecorder();
     if (_playerInitialized) _audioPlayer.closePlayer();
     super.dispose();
+  }
+
+  // ============ OPEN LINK ============
+  Future<void> _openLink(String url) async {
+    try {
+      String finalUrl = url;
+      if (!finalUrl.startsWith('http://') &&
+          !finalUrl.startsWith('https://')) {
+        finalUrl = 'https://$finalUrl';
+      }
+
+      final Uri uri = Uri.parse(finalUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Link nahi khul paya')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Link error: $e');
+    }
+  }
+
+  // ============ FETCH LINK PREVIEW ============
+  Future<Map<String, dynamic>?> _fetchLinkPreview(String text) async {
+    final urlRegex = RegExp(r'(https?://[^\s]+)', caseSensitive: false);
+    final match = urlRegex.firstMatch(text);
+    if (match == null) return null;
+
+    String url = match.group(0)!;
+
+    try {
+      // YouTube
+      if (url.contains('youtube.com') || url.contains('youtu.be')) {
+        String? videoId;
+        if (url.contains('youtu.be/')) {
+          videoId = url.split('youtu.be/').last.split('?').first;
+        } else if (url.contains('v=')) {
+          videoId = url.split('v=').last.split('&').first;
+        } else if (url.contains('/shorts/')) {
+          videoId = url.split('/shorts/').last.split('?').first;
+        }
+
+        if (videoId != null && videoId.isNotEmpty) {
+          try {
+            final response = await http.get(
+              Uri.parse(
+                  'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=$videoId&format=json'),
+            );
+
+            if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              return {
+                'linkUrl': url,
+                'linkTitle': data['title'] ?? 'YouTube Video',
+                'linkThumbnail':
+                    'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+                'linkType': 'youtube',
+              };
+            }
+          } catch (e) {
+            debugPrint('YouTube oEmbed error: $e');
+          }
+
+          // Fallback — thumbnail to hai hi
+          return {
+            'linkUrl': url,
+            'linkTitle': 'YouTube Video',
+            'linkThumbnail':
+                'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+            'linkType': 'youtube',
+          };
+        }
+      }
+
+      // Instagram
+      if (url.contains('instagram.com')) {
+        return {
+          'linkUrl': url,
+          'linkTitle': 'Instagram Post',
+          'linkThumbnail': null,
+          'linkType': 'instagram',
+        };
+      }
+
+      // Generic
+      return {
+        'linkUrl': url,
+        'linkTitle': url,
+        'linkThumbnail': null,
+        'linkType': 'other',
+      };
+    } catch (e) {
+      debugPrint('Link preview error: $e');
+      return null;
+    }
+  }
+
+  // ============ BUILD MESSAGE WITH CLICKABLE LINKS ============
+  Widget _buildMessageWithLinks(String text, bool isMe, bool isDeleted) {
+    final linkifyElements = linkify(
+      text,
+      options: const LinkifyOptions(humanize: false),
+    );
+
+    List<InlineSpan> spans = [];
+    for (var element in linkifyElements) {
+      if (element is LinkifyElement) {
+        spans.add(
+          TextSpan(
+            text: element.text,
+            style: TextStyle(
+              color: isMe ? Colors.white : const Color(0xFF2196F3),
+              decoration: TextDecoration.underline,
+              decorationColor:
+                  isMe ? Colors.white : const Color(0xFF2196F3),
+              fontWeight: FontWeight.w500,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => _openLink(element.url ?? element.text),
+          ),
+        );
+      } else {
+        spans.add(
+          TextSpan(
+            text: element.text,
+            style: TextStyle(
+              color: isDeleted
+                  ? Colors.grey[600]
+                  : (isMe ? Colors.white : Colors.black87),
+              fontSize: 16,
+              fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
+            ),
+          ),
+        );
+      }
+    }
+
+    return RichText(text: TextSpan(children: spans));
+  }
+
+  // ============ BUILD LINK PREVIEW ============
+  Widget _buildLinkPreview({
+    required String url,
+    required String title,
+    String? thumbnail,
+    required String type,
+    required bool isMe,
+  }) {
+    return GestureDetector(
+      onTap: () => _openLink(url),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color:
+              isMe ? Colors.white.withOpacity(0.15) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isMe
+                ? Colors.white.withOpacity(0.2)
+                : Colors.grey[300]!,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (thumbnail != null && thumbnail.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                ),
+                child: Image.network(
+                  thumbnail,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 80,
+                      color: isMe
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey[200],
+                      child: Center(
+                        child: Icon(
+                          type == 'youtube'
+                              ? Icons.play_circle_fill
+                              : Icons.link,
+                          color: type == 'youtube'
+                              ? Colors.red
+                              : Colors.grey,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Icon(
+                    type == 'youtube'
+                        ? Icons.play_circle_fill
+                        : type == 'instagram'
+                            ? Icons.camera_alt
+                            : Icons.link,
+                    color: type == 'youtube'
+                        ? Colors.red
+                        : type == 'instagram'
+                            ? const Color(0xFFE1306C)
+                            : (isMe ? Colors.white70 : Colors.grey[600]),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          type == 'youtube'
+                              ? 'YouTube'
+                              : type == 'instagram'
+                                  ? 'Instagram'
+                                  : 'Link',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isMe
+                                ? Colors.white70
+                                : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isMe ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ============ VOICE RECORDING ============
@@ -444,6 +705,14 @@ class _ChatScreenState extends State<ChatScreen> {
     _msgController.clear();
     _setTypingStatus(false);
 
+    // 👇 LINK PREVIEW FETCH
+    Map<String, dynamic>? linkPreview;
+    if (messageText.isNotEmpty &&
+        (messageText.contains('http://') ||
+            messageText.contains('https://'))) {
+      linkPreview = await _fetchLinkPreview(messageText);
+    }
+
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
     List<String> members = [currentUserId, widget.receiverUid];
     members.sort();
@@ -458,6 +727,10 @@ class _ChatScreenState extends State<ChatScreen> {
         'imageBase64': imageBase64,
         'voiceBase64': voiceBase64,
         'replyTo': replyTo,
+        'linkUrl': linkPreview?['linkUrl'],
+        'linkTitle': linkPreview?['linkTitle'],
+        'linkThumbnail': linkPreview?['linkThumbnail'],
+        'linkType': linkPreview?['linkType'],
         'timestamp': FieldValue.serverTimestamp(),
         'expiresAt': Timestamp.fromDate(expiryTime),
         'isEdited': false,
@@ -980,6 +1253,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     String? imageBase64 = data['imageBase64'];
                     String? voiceBase64 = data['voiceBase64'];
                     Map<String, dynamic>? replyTo = data['replyTo'];
+                    String? linkUrl = data['linkUrl'];
 
                     return GestureDetector(
                       onLongPress: isDeleted
@@ -1073,6 +1347,17 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ],
                                   ),
                                 ),
+
+                              // 👇 LINK PREVIEW
+                              if (linkUrl != null && !isDeleted)
+                                _buildLinkPreview(
+                                  url: linkUrl,
+                                  title: data['linkTitle'] ?? '',
+                                  thumbnail: data['linkThumbnail'],
+                                  type: data['linkType'] ?? 'other',
+                                  isMe: isMe,
+                                ),
+
                               if (imageBase64 != null && !isDeleted)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
@@ -1080,23 +1365,16 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               if (voiceBase64 != null && !isDeleted)
                                 _buildVoicePlayer(doc.id, voiceBase64, isMe),
+
+                              // 👇 MESSAGE WITH CLICKABLE LINKS
                               if (data['message'] != null &&
                                   (data['message'] as String).isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 5),
-                                  child: Text(
+                                  child: _buildMessageWithLinks(
                                     data['message'],
-                                    style: TextStyle(
-                                      color: isDeleted
-                                          ? Colors.grey[600]
-                                          : (isMe
-                                              ? Colors.white
-                                              : Colors.black87),
-                                      fontSize: 16,
-                                      fontStyle: isDeleted
-                                          ? FontStyle.italic
-                                          : FontStyle.normal,
-                                    ),
+                                    isMe,
+                                    isDeleted,
                                   ),
                                 ),
                               const SizedBox(height: 4),
@@ -1359,7 +1637,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final Map<String, String?> _senderAvatarCache = {};
   final Map<String, Color> _senderColorCache = {};
 
-  // Sender colors (WhatsApp jaisa)
   final List<Color> _senderColors = [
     const Color(0xFFE91E63),
     const Color(0xFF9C27B0),
@@ -1413,16 +1690,270 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
+  // ============ OPEN LINK ============
+  Future<void> _openLink(String url) async {
+    try {
+      String finalUrl = url;
+      if (!finalUrl.startsWith('http://') &&
+          !finalUrl.startsWith('https://')) {
+        finalUrl = 'https://$finalUrl';
+      }
+      final Uri uri = Uri.parse(finalUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Link error: $e');
+    }
+  }
+
+  // ============ FETCH LINK PREVIEW ============
+  Future<Map<String, dynamic>?> _fetchLinkPreview(String text) async {
+    final urlRegex = RegExp(r'(https?://[^\s]+)', caseSensitive: false);
+    final match = urlRegex.firstMatch(text);
+    if (match == null) return null;
+
+    String url = match.group(0)!;
+
+    try {
+      if (url.contains('youtube.com') || url.contains('youtu.be')) {
+        String? videoId;
+        if (url.contains('youtu.be/')) {
+          videoId = url.split('youtu.be/').last.split('?').first;
+        } else if (url.contains('v=')) {
+          videoId = url.split('v=').last.split('&').first;
+        } else if (url.contains('/shorts/')) {
+          videoId = url.split('/shorts/').last.split('?').first;
+        }
+
+        if (videoId != null && videoId.isNotEmpty) {
+          try {
+            final response = await http.get(
+              Uri.parse(
+                  'https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=$videoId&format=json'),
+            );
+            if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              return {
+                'linkUrl': url,
+                'linkTitle': data['title'] ?? 'YouTube Video',
+                'linkThumbnail':
+                    'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+                'linkType': 'youtube',
+              };
+            }
+          } catch (e) {
+            debugPrint('YouTube oEmbed error: $e');
+          }
+          return {
+            'linkUrl': url,
+            'linkTitle': 'YouTube Video',
+            'linkThumbnail':
+                'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+            'linkType': 'youtube',
+          };
+        }
+      }
+
+      if (url.contains('instagram.com')) {
+        return {
+          'linkUrl': url,
+          'linkTitle': 'Instagram Post',
+          'linkThumbnail': null,
+          'linkType': 'instagram',
+        };
+      }
+
+      return {
+        'linkUrl': url,
+        'linkTitle': url,
+        'linkThumbnail': null,
+        'linkType': 'other',
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ============ BUILD MESSAGE WITH LINKS ============
+  Widget _buildMessageWithLinks(String text, bool isMe) {
+    final linkifyElements = linkify(
+      text,
+      options: const LinkifyOptions(humanize: false),
+    );
+
+    List<InlineSpan> spans = [];
+    for (var element in linkifyElements) {
+      if (element is LinkifyElement) {
+        spans.add(
+          TextSpan(
+            text: element.text,
+            style: TextStyle(
+              color: isMe ? Colors.white : const Color(0xFF2196F3),
+              decoration: TextDecoration.underline,
+              decorationColor:
+                  isMe ? Colors.white : const Color(0xFF2196F3),
+              fontWeight: FontWeight.w500,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => _openLink(element.url ?? element.text),
+          ),
+        );
+      } else {
+        spans.add(
+          TextSpan(
+            text: element.text,
+            style: TextStyle(
+              color: isMe ? Colors.white : Colors.black87,
+              fontSize: 16,
+            ),
+          ),
+        );
+      }
+    }
+    return RichText(text: TextSpan(children: spans));
+  }
+
+  // ============ BUILD LINK PREVIEW ============
+  Widget _buildLinkPreview({
+    required String url,
+    required String title,
+    String? thumbnail,
+    required String type,
+    required bool isMe,
+  }) {
+    return GestureDetector(
+      onTap: () => _openLink(url),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color:
+              isMe ? Colors.white.withOpacity(0.15) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isMe
+                ? Colors.white.withOpacity(0.2)
+                : Colors.grey[300]!,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (thumbnail != null && thumbnail.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                ),
+                child: Image.network(
+                  thumbnail,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 80,
+                      color: isMe
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey[200],
+                      child: Center(
+                        child: Icon(
+                          type == 'youtube'
+                              ? Icons.play_circle_fill
+                              : Icons.link,
+                          color: type == 'youtube'
+                              ? Colors.red
+                              : Colors.grey,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Icon(
+                    type == 'youtube'
+                        ? Icons.play_circle_fill
+                        : type == 'instagram'
+                            ? Icons.camera_alt
+                            : Icons.link,
+                    color: type == 'youtube'
+                        ? Colors.red
+                        : type == 'instagram'
+                            ? const Color(0xFFE1306C)
+                            : (isMe ? Colors.white70 : Colors.grey[600]),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          type == 'youtube'
+                              ? 'YouTube'
+                              : type == 'instagram'
+                                  ? 'Instagram'
+                                  : 'Link',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isMe
+                                ? Colors.white70
+                                : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isMe ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _sendMessage({String? imageBase64}) async {
     if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
+
+    String messageText = _msgController.text.trim();
+
+    // 👇 LINK PREVIEW FETCH
+    Map<String, dynamic>? linkPreview;
+    if (messageText.isNotEmpty &&
+        (messageText.contains('http://') ||
+            messageText.contains('https://'))) {
+      linkPreview = await _fetchLinkPreview(messageText);
+    }
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
     await FirebaseFirestore.instance.collection('group_messages').add({
       'groupId': widget.groupId,
       'senderId': currentUserId,
-      'message': _msgController.text.trim(),
+      'message': messageText,
       'imageBase64': imageBase64,
+      'linkUrl': linkPreview?['linkUrl'],
+      'linkTitle': linkPreview?['linkTitle'],
+      'linkThumbnail': linkPreview?['linkThumbnail'],
+      'linkType': linkPreview?['linkType'],
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
     });
@@ -1621,6 +2152,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     String senderId = data['senderId'];
                     String? imageBase64 = data['imageBase64'];
                     Timestamp? msgTime = data['timestamp'];
+                    String? linkUrl = data['linkUrl'];
 
                     String senderName =
                         _senderNameCache[senderId] ?? 'User';
@@ -1706,6 +2238,17 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                         ),
                                       ),
                                     ),
+
+                                  // 👇 LINK PREVIEW
+                                  if (linkUrl != null)
+                                    _buildLinkPreview(
+                                      url: linkUrl,
+                                      title: data['linkTitle'] ?? '',
+                                      thumbnail: data['linkThumbnail'],
+                                      type: data['linkType'] ?? 'other',
+                                      isMe: isMe,
+                                    ),
+
                                   if (imageBase64 != null)
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(10),
@@ -1724,19 +2267,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                         ),
                                       ),
                                     ),
+
+                                  // 👇 MESSAGE WITH LINKS
                                   if (data['message'] != null &&
                                       (data['message'] as String)
                                           .isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 5),
-                                      child: Text(
+                                      child: _buildMessageWithLinks(
                                         data['message'],
-                                        style: TextStyle(
-                                          color: isMe
-                                              ? Colors.white
-                                              : Colors.black87,
-                                          fontSize: 16,
-                                        ),
+                                        isMe,
                                       ),
                                     ),
                                   const SizedBox(height: 4),
