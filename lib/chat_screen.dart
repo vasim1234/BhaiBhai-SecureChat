@@ -150,7 +150,6 @@ class _ChatScreenState extends State<ChatScreen> {
     String url = match.group(0)!;
 
     try {
-      // YouTube
       if (url.contains('youtube.com') || url.contains('youtu.be')) {
         String? videoId;
         if (url.contains('youtu.be/')) {
@@ -182,7 +181,6 @@ class _ChatScreenState extends State<ChatScreen> {
             debugPrint('YouTube oEmbed error: $e');
           }
 
-          // Fallback — thumbnail to hai hi
           return {
             'linkUrl': url,
             'linkTitle': 'YouTube Video',
@@ -193,7 +191,6 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
 
-      // Instagram
       if (url.contains('instagram.com')) {
         return {
           'linkUrl': url,
@@ -203,7 +200,6 @@ class _ChatScreenState extends State<ChatScreen> {
         };
       }
 
-      // Generic
       return {
         'linkUrl': url,
         'linkTitle': url,
@@ -217,34 +213,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ============ BUILD MESSAGE WITH CLICKABLE LINKS (Manual Regex) ============
-Widget _buildMessageWithLinks(String text, bool isMe, bool isDeleted) {
-  final urlRegex = RegExp(
-    r'(https?://[^\s]+)',
-    caseSensitive: false,
-  );
-
-  final matches = urlRegex.allMatches(text);
-
-  if (matches.isEmpty) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: isDeleted
-            ? Colors.grey[600]
-            : (isMe ? Colors.white : Colors.black87),
-        fontSize: 16,
-        fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
-      ),
+  Widget _buildMessageWithLinks(String text, bool isMe, bool isDeleted) {
+    final urlRegex = RegExp(
+      r'(https?://[^\s]+)',
+      caseSensitive: false,
     );
-  }
 
-  List<InlineSpan> spans = [];
-  int lastIndex = 0;
+    final matches = urlRegex.allMatches(text);
 
-  for (final match in matches) {
-    if (match.start > lastIndex) {
-      spans.add(TextSpan(
-        text: text.substring(lastIndex, match.start),
+    if (matches.isEmpty) {
+      return Text(
+        text,
         style: TextStyle(
           color: isDeleted
               ? Colors.grey[600]
@@ -252,103 +231,173 @@ Widget _buildMessageWithLinks(String text, bool isMe, bool isDeleted) {
           fontSize: 16,
           fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
         ),
-      ));
+      );
     }
 
-    final linkText = match.group(0)!;
-    spans.add(TextSpan(
-      text: linkText,
-      style: TextStyle(
-        color: isMe ? Colors.white : const Color(0xFF2196F3),
-        decoration: TextDecoration.underline,
-        decorationColor: isMe ? Colors.white : const Color(0xFF2196F3),
-        fontWeight: FontWeight.w500,
-        fontSize: 16,
-      ),
-      recognizer: TapGestureRecognizer()
-        ..onTap = () => _openLink(linkText),
-    ));
+    List<InlineSpan> spans = [];
+    int lastIndex = 0;
 
-    lastIndex = match.end;
-  }
+    for (final match in matches) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: TextStyle(
+            color: isDeleted
+                ? Colors.grey[600]
+                : (isMe ? Colors.white : Colors.black87),
+            fontSize: 16,
+            fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
+          ),
+        ));
+      }
 
-  if (lastIndex < text.length) {
-    spans.add(TextSpan(
-      text: text.substring(lastIndex),
-      style: TextStyle(
-        color: isDeleted
-            ? Colors.grey[600]
-            : (isMe ? Colors.white : Colors.black87),
-        fontSize: 16,
-      ),
-    ));
-  }
-
-  return RichText(text: TextSpan(children: spans));
-}
-
-  // ============ BUILD MESSAGE WITH CLICKABLE LINKS (Manual Regex) ============
-Widget _buildMessageWithLinks(String text, bool isMe) {
-  final urlRegex = RegExp(
-    r'(https?://[^\s]+)',
-    caseSensitive: false,
-  );
-
-  final matches = urlRegex.allMatches(text);
-
-  if (matches.isEmpty) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: isMe ? Colors.white : Colors.black87,
-        fontSize: 16,
-      ),
-    );
-  }
-
-  List<InlineSpan> spans = [];
-  int lastIndex = 0;
-
-  for (final match in matches) {
-    if (match.start > lastIndex) {
+      final linkText = match.group(0)!;
       spans.add(TextSpan(
-        text: text.substring(lastIndex, match.start),
+        text: linkText,
         style: TextStyle(
-          color: isMe ? Colors.white : Colors.black87,
+          color: isMe ? Colors.white : const Color(0xFF2196F3),
+          decoration: TextDecoration.underline,
+          decorationColor: isMe ? Colors.white : const Color(0xFF2196F3),
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => _openLink(linkText),
+      ));
+
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: TextStyle(
+          color: isDeleted
+              ? Colors.grey[600]
+              : (isMe ? Colors.white : Colors.black87),
           fontSize: 16,
         ),
       ));
     }
 
-    final linkText = match.group(0)!;
-    spans.add(TextSpan(
-      text: linkText,
-      style: TextStyle(
-        color: isMe ? Colors.white : const Color(0xFF2196F3),
-        decoration: TextDecoration.underline,
-        decorationColor: isMe ? Colors.white : const Color(0xFF2196F3),
-        fontWeight: FontWeight.w500,
-        fontSize: 16,
-      ),
-      recognizer: TapGestureRecognizer()
-        ..onTap = () => _openLink(linkText),
-    ));
-
-    lastIndex = match.end;
+    return RichText(text: TextSpan(children: spans));
   }
 
-  if (lastIndex < text.length) {
-    spans.add(TextSpan(
-      text: text.substring(lastIndex),
-      style: TextStyle(
-        color: isMe ? Colors.white : Colors.black87,
-        fontSize: 16,
+  // ============ BUILD LINK PREVIEW ============
+  Widget _buildLinkPreview({
+    required String url,
+    required String title,
+    String? thumbnail,
+    required String type,
+    required bool isMe,
+  }) {
+    return GestureDetector(
+      onTap: () => _openLink(url),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color:
+              isMe ? Colors.white.withOpacity(0.15) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isMe
+                ? Colors.white.withOpacity(0.2)
+                : Colors.grey[300]!,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (thumbnail != null && thumbnail.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
+                ),
+                child: Image.network(
+                  thumbnail,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 80,
+                      color: isMe
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey[200],
+                      child: Center(
+                        child: Icon(
+                          type == 'youtube'
+                              ? Icons.play_circle_fill
+                              : Icons.link,
+                          color: type == 'youtube'
+                              ? Colors.red
+                              : Colors.grey,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Icon(
+                    type == 'youtube'
+                        ? Icons.play_circle_fill
+                        : type == 'instagram'
+                            ? Icons.camera_alt
+                            : Icons.link,
+                    color: type == 'youtube'
+                        ? Colors.red
+                        : type == 'instagram'
+                            ? const Color(0xFFE1306C)
+                            : (isMe ? Colors.white70 : Colors.grey[600]),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          type == 'youtube'
+                              ? 'YouTube'
+                              : type == 'instagram'
+                                  ? 'Instagram'
+                                  : 'Link',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isMe
+                                ? Colors.white70
+                                : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isMe ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ));
+    );
   }
-
-  return RichText(text: TextSpan(children: spans));
-}
 
   // ============ VOICE RECORDING ============
   Future<void> _startRecording() async {
@@ -1749,42 +1798,66 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // ============ BUILD MESSAGE WITH LINKS ============
+  // ============ BUILD MESSAGE WITH CLICKABLE LINKS (Manual Regex) ============
   Widget _buildMessageWithLinks(String text, bool isMe) {
-    final linkifyElements = linkify(
-      text,
-      options: const LinkifyOptions(humanize: false),
+    final urlRegex = RegExp(
+      r'(https?://[^\s]+)',
+      caseSensitive: false,
     );
 
-    List<InlineSpan> spans = [];
-    for (var element in linkifyElements) {
-      if (element is LinkifyElement) {
-        spans.add(
-          TextSpan(
-            text: element.text,
-            style: TextStyle(
-              color: isMe ? Colors.white : const Color(0xFF2196F3),
-              decoration: TextDecoration.underline,
-              decorationColor:
-                  isMe ? Colors.white : const Color(0xFF2196F3),
-              fontWeight: FontWeight.w500,
-            ),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () => _openLink(element.url ?? element.text),
-          ),
-        );
-      } else {
-        spans.add(
-          TextSpan(
-            text: element.text,
-            style: TextStyle(
-              color: isMe ? Colors.white : Colors.black87,
-              fontSize: 16,
-            ),
-          ),
-        );
-      }
+    final matches = urlRegex.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: TextStyle(
+          color: isMe ? Colors.white : Colors.black87,
+          fontSize: 16,
+        ),
+      );
     }
+
+    List<InlineSpan> spans = [];
+    int lastIndex = 0;
+
+    for (final match in matches) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: TextStyle(
+            color: isMe ? Colors.white : Colors.black87,
+            fontSize: 16,
+          ),
+        ));
+      }
+
+      final linkText = match.group(0)!;
+      spans.add(TextSpan(
+        text: linkText,
+        style: TextStyle(
+          color: isMe ? Colors.white : const Color(0xFF2196F3),
+          decoration: TextDecoration.underline,
+          decorationColor: isMe ? Colors.white : const Color(0xFF2196F3),
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => _openLink(linkText),
+      ));
+
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: TextStyle(
+          color: isMe ? Colors.white : Colors.black87,
+          fontSize: 16,
+        ),
+      ));
+    }
+
     return RichText(text: TextSpan(children: spans));
   }
 
