@@ -782,6 +782,8 @@ class ChatsListScreen extends StatefulWidget {
 class _ChatsListScreenState extends State<ChatsListScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   List<String> _pinnedChats = [];
+  String _selectedFilter = 'All'; // 👈 FILTER STATE
+  Map<String, int> _unreadCounts = {}; // 👈 Unread cache
 
   @override
   void initState() {
@@ -945,10 +947,11 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   children: [
-                    _buildFilterChip('All', true),
-                    _buildFilterChip('Unread', false),
-                    _buildFilterChip('Favourites', false),
-                    _buildFilterChip('Groups', false),
+                    _buildFilterChip('All', _selectedFilter == 'All'),
+                    _buildFilterChip('Unread', _selectedFilter == 'Unread'),
+                    _buildFilterChip(
+                        'Favourites', _selectedFilter == 'Favourites'),
+                    _buildFilterChip('Groups', _selectedFilter == 'Groups'),
                   ],
                 ),
               ),
@@ -1062,46 +1065,89 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 });
               }
 
-              return ListView(
-                padding: const EdgeInsets.all(8),
-                children: [
-                  if (groupsList.isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
-                      child: Text(
-                        'GROUPS',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                    ...groupsList.map((group) {
-                      return _buildGroupTile(group);
-                    }).toList(),
-                  ],
-                  if (chatList.isNotEmpty) ...[
-                    if (groupsList.isNotEmpty)
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(12, 16, 12, 4),
-                        child: Text(
-                          'CHATS',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ),
-                    ...chatList.map((chat) {
-                      return _buildChatTile(chat);
-                    }).toList(),
-                  ],
-                ],
-              );
+              // ============ FILTER LOGIC ============
+
+              // 1. GROUPS → sirf groups
+              if (_selectedFilter == 'Groups') {
+                if (groupsList.isEmpty) {
+                  return _emptyState(
+                    Icons.group_outlined,
+                    'Koi group nahi hai',
+                    'Group banane ke liye top-right icon dabayein',
+                  );
+                }
+                return ListView(
+                  padding: const EdgeInsets.all(8),
+                  children:
+                      groupsList.map((g) => _buildGroupTile(g)).toList(),
+                );
+              }
+
+              // 2. ALL → sirf single user chats (groups nahi)
+              if (_selectedFilter == 'All') {
+                if (chatList.isEmpty) {
+                  return _emptyState(
+                    Icons.chat_bubble_outline,
+                    'Koi chat nahi hai',
+                    'Search se user dhundh kar chat karein',
+                  );
+                }
+                return ListView(
+                  padding: const EdgeInsets.all(8),
+                  children:
+                      chatList.map((c) => _buildChatTile(c)).toList(),
+                );
+              }
+
+              // 3. UNREAD → sirf unread wali chats
+              if (_selectedFilter == 'Unread') {
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _filterUnreadChats(chatList),
+                  builder: (context, unreadSnap) {
+                    if (!unreadSnap.hasData) {
+                      return const Center(
+                          child: CircularProgressIndicator());
+                    }
+                    List<Map<String, dynamic>> unreadList = unreadSnap.data!;
+                    if (unreadList.isEmpty) {
+                      return _emptyState(
+                        Icons.mark_chat_read_outlined,
+                        'Koi unread chat nahi',
+                        'Sab messages padh liye tumne 👍',
+                      );
+                    }
+                    return ListView(
+                      padding: const EdgeInsets.all(8),
+                      children: unreadList
+                          .map((c) => _buildChatTile(c))
+                          .toList(),
+                    );
+                  },
+                );
+              }
+
+              // 4. FAVOURITES → sirf pinned chats
+              if (_selectedFilter == 'Favourites') {
+                List<Map<String, dynamic>> favList = chatList
+                    .where((c) =>
+                        _pinnedChats.contains(c['chatId'] ?? ''))
+                    .toList();
+                if (favList.isEmpty) {
+                  return _emptyState(
+                    Icons.star_outline,
+                    'Koi favourite chat nahi',
+                    'Chat pe long press karke pin karein',
+                  );
+                }
+                return ListView(
+                  padding: const EdgeInsets.all(8),
+                  children:
+                      favList.map((c) => _buildChatTile(c)).toList(),
+                );
+              }
+
+              // Fallback
+              return const SizedBox.shrink();
             },
           );
         },
@@ -1115,6 +1161,52 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           );
         },
         child: const Icon(Icons.add_comment, color: Colors.white),
+      ),
+    );
+  }
+
+  // 👇 Unread chats nikalne ke liye helper
+  Future<List<Map<String, dynamic>>> _filterUnreadChats(
+      List<Map<String, dynamic>> chatList) async {
+    List<Map<String, dynamic>> result = [];
+    for (var chat in chatList) {
+      String chatId = chat['chatId'] ?? '';
+      if (chatId.isEmpty) continue;
+      int unread = await _getUnreadCount(chatId);
+      if (unread > 0) {
+        result.add(chat);
+      }
+    }
+    return result;
+  }
+
+  // 👇 Empty state widget
+  Widget _emptyState(IconData icon, String title, String subtitle) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: const Color(0xFF667EEA).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 60, color: const Color(0xFF667EEA)),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -1428,35 +1520,40 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   }
 
   Widget _buildFilterChip(String label, bool isSelected) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-      decoration: BoxDecoration(
-        gradient: isSelected
-            ? const LinearGradient(
-                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-              )
-            : null,
-        color: isSelected ? null : Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        border:
-            isSelected ? null : Border.all(color: Colors.grey[300]!, width: 1),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: const Color(0xFF667EEA).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.grey[700],
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          fontSize: 13,
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedFilter = label);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                )
+              : null,
+          color: isSelected ? null : Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          border:
+              isSelected ? null : Border.all(color: Colors.grey[300]!, width: 1),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF667EEA).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 13,
+          ),
         ),
       ),
     );
