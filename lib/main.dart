@@ -782,13 +782,20 @@ class ChatsListScreen extends StatefulWidget {
 class _ChatsListScreenState extends State<ChatsListScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   List<String> _pinnedChats = [];
-  String _selectedFilter = 'All'; // 👈 FILTER STATE
-  Map<String, int> _unreadCounts = {}; // 👈 Unread cache
+  String _selectedFilter = 'All';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadPinnedChats();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPinnedChats() async {
@@ -922,6 +929,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     ],
                   ),
                   child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() => _searchQuery = val.trim().toLowerCase());
+                    },
                     decoration: InputDecoration(
                       hintText: 'Search chats...',
                       hintStyle: TextStyle(
@@ -930,6 +941,16 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                       ),
                       prefixIcon: Icon(Icons.search,
                           color: Colors.grey[500], size: 22),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                FocusScope.of(context).unfocus();
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
@@ -989,35 +1010,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   groupSnapshot.hasData && groupSnapshot.data!.docs.isNotEmpty;
 
               if (!hasChats && !hasGroups) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(30),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF667EEA).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.chat_bubble_outline,
-                          size: 60,
-                          color: Color(0xFF667EEA),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Abhi koi chat nahi hai',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        'Search icon se user dhundhein!',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
+                return _emptyState(
+                  Icons.chat_bubble_outline,
+                  'Abhi koi chat nahi hai',
+                  'Search icon se user dhundhein!',
                 );
               }
 
@@ -1040,7 +1036,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 }
               }
 
-              List<Map<String, dynamic>> chatList = chats.values.toList();
+              var chatList = chats.values.toList();
               chatList.sort((a, b) {
                 Timestamp? ta = a['timestamp'];
                 Timestamp? tb = b['timestamp'];
@@ -1048,7 +1044,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 return tb.compareTo(ta);
               });
 
-              List<Map<String, dynamic>> groupsList = [];
+              var groupsList = <Map<String, dynamic>>[];
               if (groupSnapshot.hasData) {
                 groupsList = groupSnapshot.data!.docs
                     .map((doc) {
@@ -1065,15 +1061,36 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 });
               }
 
+              // ============ SEARCH FILTER ============
+              if (_searchQuery.isNotEmpty) {
+                // Groups filter — naam se
+                groupsList = groupsList.where((group) {
+                  String name =
+                      (group['name'] ?? '').toString().toLowerCase();
+                  return name.contains(_searchQuery);
+                }).toList();
+
+                // Chats filter — message se (aur username niche buildChatTile mein check hoga)
+                chatList = chatList.where((chat) {
+                  String lastMessage =
+                      (chat['message'] ?? '').toString().toLowerCase();
+                  return lastMessage.contains(_searchQuery);
+                }).toList();
+              }
+
               // ============ FILTER LOGIC ============
 
-              // 1. GROUPS → sirf groups
+              // 1. GROUPS
               if (_selectedFilter == 'Groups') {
                 if (groupsList.isEmpty) {
                   return _emptyState(
                     Icons.group_outlined,
-                    'Koi group nahi hai',
-                    'Group banane ke liye top-right icon dabayein',
+                    _searchQuery.isNotEmpty
+                        ? 'Koi group nahi mila'
+                        : 'Koi group nahi hai',
+                    _searchQuery.isNotEmpty
+                        ? '"$_searchQuery" naam ka koi group nahi'
+                        : 'Group banane ke liye top-right icon dabayein',
                   );
                 }
                 return ListView(
@@ -1083,13 +1100,17 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // 2. ALL → sirf single user chats (groups nahi)
+              // 2. ALL
               if (_selectedFilter == 'All') {
                 if (chatList.isEmpty) {
                   return _emptyState(
                     Icons.chat_bubble_outline,
-                    'Koi chat nahi hai',
-                    'Search se user dhundh kar chat karein',
+                    _searchQuery.isNotEmpty
+                        ? 'Koi chat nahi mili'
+                        : 'Koi chat nahi hai',
+                    _searchQuery.isNotEmpty
+                        ? '"$_searchQuery" se kuch match nahi hua'
+                        : 'Search se user dhundh kar chat karein',
                   );
                 }
                 return ListView(
@@ -1099,7 +1120,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // 3. UNREAD → sirf unread wali chats
+              // 3. UNREAD
               if (_selectedFilter == 'Unread') {
                 return FutureBuilder<List<Map<String, dynamic>>>(
                   future: _filterUnreadChats(chatList),
@@ -1126,7 +1147,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // 4. FAVOURITES → sirf pinned chats
+              // 4. FAVOURITES
               if (_selectedFilter == 'Favourites') {
                 List<Map<String, dynamic>> favList = chatList
                     .where((c) =>
@@ -1165,7 +1186,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 
-  // 👇 Unread chats nikalne ke liye helper
   Future<List<Map<String, dynamic>>> _filterUnreadChats(
       List<Map<String, dynamic>> chatList) async {
     List<Map<String, dynamic>> result = [];
@@ -1180,7 +1200,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     return result;
   }
 
-  // 👇 Empty state widget
   Widget _emptyState(IconData icon, String title, String subtitle) {
     return Center(
       child: Column(
@@ -1201,10 +1220,13 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 5),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Colors.grey),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              subtitle,
+              style: const TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -1368,6 +1390,13 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 ? userData['avatarUrl']
                 : null;
           }
+        }
+
+        // 👇 SEARCH: username se bhi filter karo
+        if (_searchQuery.isNotEmpty &&
+            !username.toLowerCase().contains(_searchQuery) &&
+            !lastMessage.toLowerCase().contains(_searchQuery)) {
+          return const SizedBox.shrink();
         }
 
         return FutureBuilder<int>(
