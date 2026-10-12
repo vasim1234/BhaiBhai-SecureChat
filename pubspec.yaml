@@ -29,7 +29,6 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.13.1
   url_launcher: ^6.3.0
-  linkify: ^5.0.0
 
 dev_dependencies:
   flutter_test:
