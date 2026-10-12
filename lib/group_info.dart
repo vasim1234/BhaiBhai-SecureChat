@@ -70,6 +70,14 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
 
     if (image == null) return;
 
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     try {
       final dir = await getTemporaryDirectory();
       final targetPath =
@@ -83,13 +91,17 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         minHeight: 800,
       );
 
-      if (compressedFile == null) return;
+      if (compressedFile == null) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
 
       final bytes = await compressedFile.readAsBytes();
       String base64Image = base64Encode(bytes);
 
       if (base64Image.length > 900000) {
         if (mounted) {
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Photo bahut badi hai')),
           );
@@ -103,15 +115,57 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
           .update({'groupPhoto': base64Image});
 
       if (mounted) {
+        Navigator.pop(context);
         setState(() {
           _groupData?['groupPhoto'] = base64Image;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Group photo update ho gayi!')),
+          const SnackBar(content: Text('Group photo update ho gayi! ✅')),
         );
       }
     } catch (e) {
-      debugPrint('Error: $e');
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ REMOVE MEMBER (Admin only) ============
+  Future<void> _removeMember(String memberId, String username) async {
+    bool confirm = await _showConfirmDialog(
+      'Remove Member',
+      '$username ko group se remove karna chahte ho?',
+    );
+
+    if (!confirm) return;
+
+    try {
+      List<String> members = List<String>.from(_groupData?['members'] ?? []);
+      members.remove(memberId);
+
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .update({'members': members});
+
+      setState(() {
+        _groupData?['members'] = members;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$username remove ho gaya')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 
@@ -314,7 +368,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     _groupData?['name'] = newName;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Group name update ho gaya!')),
+                    const SnackBar(
+                        content: Text('Group name update ho gaya! ✅')),
                   );
                 }
               },
@@ -378,7 +433,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     _groupData?['bio'] = bioController.text.trim();
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Group bio update ho gayi!')),
+                    const SnackBar(
+                        content: Text('Group bio update ho gayi! ✅')),
                   );
                 }
               },
@@ -486,97 +542,6 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         false;
   }
 
-  // ============ MEMBERS SHEET ============
-  void _showMembers() {
-    List<String> members = List<String>.from(_groupData?['members'] ?? []);
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 15),
-              Text(
-                '${members.length} Members',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    String memberId = members[index];
-                    return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(memberId)
-                          .get(),
-                      builder: (context, snap) {
-                        String username = 'User';
-                        String? avatarUrl;
-                        if (snap.hasData && snap.data!.exists) {
-                          username = snap.data!['username'] ?? 'User';
-                          avatarUrl = snap.data!['avatarUrl'];
-                        }
-                        bool isCreator = memberId == _groupData?['createdBy'];
-                        return ListTile(
-                          leading: AvatarWidget(
-                            avatarUrl: avatarUrl,
-                            username: username,
-                            size: 45,
-                          ),
-                          title: Text(username,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600)),
-                          trailing: isCreator
-                              ? Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF4A6CF7)
-                                        .withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'Admin',
-                                    style: TextStyle(
-                                      color: Color(0xFF4A6CF7),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                )
-                              : null,
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -608,7 +573,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Group Avatar + Name
+            // ============ GROUP AVATAR + NAME ============
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -629,8 +594,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     child: Stack(
                       children: [
                         Container(
-                          width: 100,
-                          height: 100,
+                          width: 110,
+                          height: 110,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: groupPhoto == null
@@ -646,8 +611,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                               ? ClipOval(
                                   child: Image.memory(
                                     base64Decode(groupPhoto),
-                                    width: 100,
-                                    height: 100,
+                                    width: 110,
+                                    height: 110,
                                     fit: BoxFit.cover,
                                   ),
                                 )
@@ -669,10 +634,12 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                             bottom: 0,
                             right: 0,
                             child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF4A6CF7),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4A6CF7),
                                 shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Colors.white, width: 2),
                               ),
                               child: const Icon(
                                 Icons.camera_alt,
@@ -695,27 +662,42 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                   ),
                   if (groupBio.isNotEmpty) ...[
                     const SizedBox(height: 10),
-                    Text(
-                      groupBio,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        height: 1.4,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        groupBio,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                   const SizedBox(height: 10),
-                  Text(
-                    '${members.length} members',
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${members.length} members',
+                      style: const TextStyle(
+                        color: Color(0xFF8B5CF6),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            // Options
+            // ============ MEMBERS LIST (Direct Screen) ============
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -730,27 +712,229 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               ),
               child: Column(
                 children: [
-                  _buildOption(
-                    Icons.people,
-                    'Members',
-                    const Color(0xFF3B82F6),
-                    '${members.length} log',
-                    () => _showMembers(),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.people,
+                              color: Color(0xFF3B82F6), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Members (${members.length})',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937),
+                            ),
+                          ),
+                        ),
+                        // Add button (admin)
+                        if (_isAdmin)
+                          GestureDetector(
+                            onTap: _showAddMembers,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981)
+                                    .withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.person_add,
+                                      color: Color(0xFF10B981), size: 16),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Add',
+                                    style: TextStyle(
+                                      color: Color(0xFF10B981),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // Members list
+                  ...members.map((memberId) {
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(memberId)
+                          .get(),
+                      builder: (context, snap) {
+                        String username = 'User';
+                        String? avatarUrl;
+                        if (snap.hasData && snap.data!.exists) {
+                          Map<String, dynamic> data =
+                              snap.data!.data() as Map<String, dynamic>;
+                          username = data['username'] ?? 'User';
+                          avatarUrl = data['avatarUrl'];
+                        }
+                        bool isCreator =
+                            memberId == _groupData?['createdBy'];
+                        bool isMe = memberId == currentUserId;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              AvatarWidget(
+                                avatarUrl: avatarUrl,
+                                username: username,
+                                size: 45,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            isMe
+                                                ? '$username (You)'
+                                                : username,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF1F2937),
+                                            ),
+                                            maxLines: 1,
+                                            overflow:
+                                                TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (isCreator) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF59E0B)
+                                                  .withOpacity(0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: const Row(
+                                              children: [
+                                                Text('👑',
+                                                    style: TextStyle(
+                                                        fontSize: 10)),
+                                                SizedBox(width: 2),
+                                                Text(
+                                                  'Admin',
+                                                  style: TextStyle(
+                                                    color:
+                                                        Color(0xFFF59E0B),
+                                                    fontSize: 10,
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Remove button (admin can remove others)
+                              if (_isAdmin && !isCreator && !isMe)
+                                GestureDetector(
+                                  onTap: () =>
+                                      _removeMember(memberId, username),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444)
+                                          .withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.remove_circle_outline,
+                                      color: Color(0xFFEF4444),
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ============ ADMIN OPTIONS ============
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.settings,
+                              color: Color(0xFF8B5CF6), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Group Settings',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const Divider(height: 1),
 
-                  // Add Members (admin only)
+                  // Change Name (admin only)
                   if (_isAdmin) ...[
-                    _buildOption(
-                      Icons.person_add,
-                      'Add Members',
-                      const Color(0xFF10B981),
-                      null,
-                      () => _showAddMembers(),
-                    ),
-                    const Divider(height: 1),
-
-                    // Change Name
                     _buildOption(
                       Icons.edit,
                       'Change Group Name',
@@ -760,7 +944,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     ),
                     const Divider(height: 1),
 
-                    // Change Bio
+                    // Change Bio (admin only)
                     _buildOption(
                       Icons.info_outline,
                       'Change Group Bio',
