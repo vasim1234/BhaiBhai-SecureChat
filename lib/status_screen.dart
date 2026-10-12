@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'avatar_builder.dart';
+import 'chat_screen.dart';
 
 // ============ STATUS SCREEN (Updates / Stories) ============
 class StatusScreen extends StatefulWidget {
@@ -451,7 +452,6 @@ class _StatusScreenState extends State<StatusScreen> {
       }
 
       if (!mounted) return;
-      // Loading dialog
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -478,7 +478,6 @@ class _StatusScreenState extends State<StatusScreen> {
       final bytes = await compressedFile.readAsBytes();
       String base64Image = base64Encode(bytes);
 
-      // Firestore 1MB limit
       if (base64Image.length > 900000) {
         if (mounted) {
           Navigator.pop(context);
@@ -784,7 +783,6 @@ class _StatusScreenState extends State<StatusScreen> {
     String username = firstStatus['username'] ?? 'User';
     String? avatarUrl = firstStatus['avatarUrl'];
 
-    // Check if all seen
     bool allSeen = userStatuses.every((s) {
       List viewers = s['viewers'] ?? [];
       return viewers.contains(currentUserId);
@@ -862,12 +860,20 @@ class StatusViewer extends StatefulWidget {
 class _StatusViewerState extends State<StatusViewer> {
   late int _currentIndex;
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  final TextEditingController _replyController = TextEditingController();
+  bool _isSending = false;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _markAsViewed();
+  }
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
   }
 
   Future<void> _markAsViewed() async {
@@ -895,6 +901,160 @@ class _StatusViewerState extends State<StatusViewer> {
       setState(() => _currentIndex--);
       _markAsViewed();
     }
+  }
+
+  // ============ SEND REPLY ============
+  Future<void> _sendReplyToStatus(Map<String, dynamic> status) async {
+    String message = _replyController.text.trim();
+    if (message.isEmpty) return;
+
+    setState(() => _isSending = true);
+
+    try {
+      String receiverId = status['userId'];
+      String receiverName = status['username'] ?? 'User';
+      String statusType = status['type'] ?? 'text';
+      String statusContent = status['content'] ?? '';
+
+      List<String> uids = [currentUserId, receiverId]..sort();
+      String chatId = '${uids[0]}_${uids[1]}';
+
+      String replyMessage;
+      if (statusType == 'text' && statusContent.isNotEmpty) {
+        replyMessage = '📸 Status reply: "$statusContent"\n\n$message';
+      } else {
+        replyMessage = '📸 Status reply: [Photo]\n\n$message';
+      }
+
+      await FirebaseFirestore.instance.collection('chats').add({
+        'chatId': chatId,
+        'members': [currentUserId, receiverId],
+        'senderId': currentUserId,
+        'receiverId': receiverId,
+        'message': replyMessage,
+        'timestamp': FieldValue.serverTimestamp(),
+        'expiresAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(hours: 24))),
+        'isRead': false,
+        'isEdited': false,
+        'isDeleted': false,
+      });
+
+      _replyController.clear();
+
+      if (mounted) {
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reply bhej diya $receiverName ko! ✅'),
+            backgroundColor: const Color(0xFF25D366),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ DELETE STATUS ============
+  Future<void> _deleteStatus(String docId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('status')
+          .doc(docId)
+          .delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Status delete ho gaya! 🗑️')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  void _showStatusMenu(Map<String, dynamic> status) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 15),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.red),
+                ),
+                title: const Text('Delete Status',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle:
+                    const Text('Ye status hamesha ke liye delete ho jayega'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      title: const Text('Delete Status?'),
+                      content: const Text(
+                          'Kya tum sach mein ye status delete karna chahte ho?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _deleteStatus(status['docId']);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -1039,6 +1199,13 @@ class _StatusViewerState extends State<StatusViewer> {
                           ],
                         ),
                       ),
+                      // 3-dot menu (sirf apne status pe)
+                      if (isMyStatus)
+                        IconButton(
+                          icon: const Icon(Icons.more_vert,
+                              color: Colors.white),
+                          onPressed: () => _showStatusMenu(status),
+                        ),
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
                         onPressed: () => Navigator.pop(context),
@@ -1077,6 +1244,54 @@ class _StatusViewerState extends State<StatusViewer> {
                       ),
                     ],
                   ),
+                ),
+              ),
+            ),
+
+          // ===== REPLY BAR (sirf dusre ke status pe) =====
+          if (!isMyStatus)
+            Positioned(
+              bottom: 20,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white30),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _replyController,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14),
+                        decoration: const InputDecoration(
+                          hintText: 'Reply to status...',
+                          hintStyle: TextStyle(
+                              color: Colors.white70, fontSize: 14),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    _isSending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.send,
+                                color: Colors.white, size: 22),
+                            onPressed: () => _sendReplyToStatus(status),
+                          ),
+                  ],
                 ),
               ),
             ),
