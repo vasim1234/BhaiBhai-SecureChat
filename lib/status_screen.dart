@@ -1,11 +1,14 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:convert';
 import 'avatar_builder.dart';
 
-// ============ STATUS SCREEN (WhatsApp Style) ============
+// ============ STATUS SCREEN (Updates / Stories) ============
 class StatusScreen extends StatefulWidget {
   const StatusScreen({super.key});
 
@@ -16,18 +19,546 @@ class StatusScreen extends StatefulWidget {
 class _StatusScreenState extends State<StatusScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
+  // ============ MY STATUS OPTIONS (Modern Bottom Sheet) ============
+  void _showMyStatusOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Add Status',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      // TEXT CARD
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            _addTextStatus();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 22),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF667EEA),
+                                  Color(0xFF764BA2)
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF667EEA)
+                                      .withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.text_fields,
+                                    color: Colors.white, size: 40),
+                                SizedBox(height: 10),
+                                Text(
+                                  'Text',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // PHOTO CARD
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            _addPhotoStatus();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 22),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF25D366),
+                                  Color(0xFF128C7E)
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF25D366)
+                                      .withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.photo_camera,
+                                    color: Colors.white, size: 40),
+                                SizedBox(height: 10),
+                                Text(
+                                  'Photo',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ============ TEXT STATUS (WhatsApp style Modern Dialog) ============
+  Future<void> _addTextStatus() async {
+    final TextEditingController controller = TextEditingController();
+    String selectedColor = '667EEA';
+
+    final List<Map<String, dynamic>> colors = [
+      {'value': '667EEA', 'color': const Color(0xFF667EEA)},
+      {'value': '8B5CF6', 'color': const Color(0xFF8B5CF6)},
+      {'value': 'EC4899', 'color': const Color(0xFFEC4899)},
+      {'value': 'EF4444', 'color': const Color(0xFFEF4444)},
+      {'value': '10B981', 'color': const Color(0xFF10B981)},
+      {'value': 'F59E0B', 'color': const Color(0xFFF59E0B)},
+      {'value': '06B6D4', 'color': const Color(0xFF06B6D4)},
+      {'value': '1F2937', 'color': const Color(0xFF1F2937)},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // HEADER
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF667EEA),
+                                  Color(0xFF764BA2)
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.text_fields,
+                                color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Text Status',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // LIVE PREVIEW BOX
+                      Container(
+                        height: 180,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(int.parse(
+                                  'FF$selectedColor', radix: 16)),
+                              Color(int.parse(
+                                      'FF$selectedColor', radix: 16))
+                                  .withOpacity(0.65),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(int.parse(
+                                      'FF$selectedColor', radix: 16))
+                                  .withOpacity(0.35),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text(
+                              controller.text.isEmpty
+                                  ? 'Type karein...'
+                                  : controller.text,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(
+                                    controller.text.isEmpty ? 0.6 : 1.0),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // TEXT FIELD
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F7FB),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: TextField(
+                          controller: controller,
+                          maxLines: 3,
+                          maxLength: 100,
+                          onChanged: (val) => setDialogState(() {}),
+                          style: const TextStyle(fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: 'Apna status likhein...',
+                            hintStyle: TextStyle(color: Colors.grey[500]),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            contentPadding: const EdgeInsets.all(16),
+                            counterStyle:
+                                TextStyle(color: Colors.grey[500]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // COLOR PICKER
+                      const Text(
+                        'Background Color',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 50,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: colors.length,
+                          itemBuilder: (context, index) {
+                            final c = colors[index];
+                            bool isSelected = selectedColor == c['value'];
+                            return GestureDetector(
+                              onTap: () {
+                                setDialogState(
+                                    () => selectedColor = c['value']);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.only(right: 10),
+                                width: isSelected ? 44 : 40,
+                                height: isSelected ? 44 : 40,
+                                decoration: BoxDecoration(
+                                  color: c['color'],
+                                  shape: BoxShape.circle,
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: Colors.black87, width: 3)
+                                      : Border.all(
+                                          color: Colors.grey[300]!,
+                                          width: 1),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: (c['color'] as Color)
+                                                .withOpacity(0.5),
+                                            blurRadius: 10,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: isSelected
+                                    ? const Icon(Icons.check,
+                                        color: Colors.white, size: 20)
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // BUTTONS
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text('Cancel',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (controller.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Status khali nahi ho sakta')),
+                                  );
+                                  return;
+                                }
+                                Navigator.pop(context);
+                                await _saveStatus(
+                                  type: 'text',
+                                  content: controller.text.trim(),
+                                  bgColor: selectedColor,
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('Status add ho gaya! ✅')),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                backgroundColor: const Color(0xFF667EEA),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text('Post',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============ PHOTO STATUS ============
+  Future<void> _addPhotoStatus() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxWidth: 1080,
+        maxHeight: 1080,
+      );
+
+      if (image == null) {
+        debugPrint('User cancelled image picker');
+        return;
+      }
+
+      if (!mounted) return;
+      // Loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final dir = await getTemporaryDirectory();
+      final targetPath =
+          '${dir.path}/status_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 40,
+        minWidth: 720,
+        minHeight: 720,
+      );
+
+      if (compressedFile == null) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+
+      final bytes = await compressedFile.readAsBytes();
+      String base64Image = base64Encode(bytes);
+
+      // Firestore 1MB limit
+      if (base64Image.length > 900000) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Photo bahut badi hai, chhoti try karein')),
+          );
+        }
+        return;
+      }
+
+      await _saveStatus(type: 'image', content: base64Image);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo status add ho gaya! ✅')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Photo status error: $e');
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  // ============ SAVE STATUS TO FIRESTORE ============
+  Future<void> _saveStatus({
+    required String type,
+    required String content,
+    String? bgColor,
+  }) async {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .get();
+
+    if (!userDoc.exists) return;
+
+    Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+
+    DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
+
+    await FirebaseFirestore.instance.collection('status').add({
+      'userId': currentUserId,
+      'username': userData['username'] ?? 'User',
+      'avatarUrl': userData['avatarUrl'],
+      'type': type,
+      'content': content,
+      'bgColor': bgColor,
+      'timestamp': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(expiryTime),
+      'viewers': [],
+    });
+  }
+
+  // ============ OPEN STATUS VIEWER ============
+  void _openStatusViewer(
+      List<Map<String, dynamic>> userStatuses, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StatusViewer(
+          statuses: userStatuses,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
       appBar: AppBar(
-        title: const Text(
-          'Status',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
+        title: const Text('Status'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -45,41 +576,39 @@ class _StatusScreenState extends State<StatusScreen> {
             return _buildEmptyState();
           }
 
-          // Current user ke status filter karo
-          List<Map<String, dynamic>> myStatuses = [];
-          Map<String, List<Map<String, dynamic>>> otherStatuses = {};
+          List<Map<String, dynamic>> activeStatuses = snapshot.data!.docs
+              .map((doc) {
+                var data = doc.data() as Map<String, dynamic>;
+                data['docId'] = doc.id;
+                return data;
+              })
+              .where((status) {
+                Timestamp? expiresAt = status['expiresAt'];
+                return expiresAt != null &&
+                    expiresAt.toDate().isAfter(DateTime.now());
+              })
+              .toList();
 
-          for (var doc in snapshot.data!.docs) {
-            var data = doc.data() as Map<String, dynamic>;
-            data['statusId'] = doc.id;
-
-            // Expired check
-            if (data['expiresAt'] != null) {
-              Timestamp exp = data['expiresAt'];
-              if (exp.toDate().isBefore(DateTime.now())) continue;
-            }
-
-            if (data['userId'] == currentUserId) {
-              myStatuses.add(data);
-            } else {
-              String uid = data['userId'];
-              if (!otherStatuses.containsKey(uid)) {
-                otherStatuses[uid] = [];
-              }
-              otherStatuses[uid]!.add(data);
-            }
+          if (activeStatuses.isEmpty) {
+            return _buildEmptyState();
           }
+
+          Map<String, List<Map<String, dynamic>>> groupedStatuses = {};
+          for (var status in activeStatuses) {
+            String userId = status['userId'];
+            groupedStatuses.putIfAbsent(userId, () => []).add(status);
+          }
+
+          List<Map<String, dynamic>> myStatuses =
+              groupedStatuses[currentUserId] ?? [];
+          groupedStatuses.remove(currentUserId);
 
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
-              // ===== MY STATUS TILE =====
               _buildMyStatusTile(myStatuses),
-
               const SizedBox(height: 12),
-
-              // ===== RECENT UPDATES HEADING =====
-              if (otherStatuses.isNotEmpty)
+              if (groupedStatuses.isNotEmpty) ...[
                 const Padding(
                   padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
                   child: Text(
@@ -92,24 +621,22 @@ class _StatusScreenState extends State<StatusScreen> {
                     ),
                   ),
                 ),
-
-              // ===== OTHER USERS STATUS =====
-              ...otherStatuses.entries.map((entry) {
-                return _buildUserStatusTile(entry.key, entry.value);
-              }).toList(),
+                ...groupedStatuses.entries.map((entry) {
+                  return _buildUserStatusTile(entry.value);
+                }).toList(),
+              ],
             ],
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF667EEA),
-        onPressed: () => _showStatusOptions(context),
+        onPressed: _showMyStatusOptions,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  // ===== EMPTY STATE =====
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -134,7 +661,7 @@ class _StatusScreenState extends State<StatusScreen> {
           ),
           const SizedBox(height: 5),
           const Text(
-            'Neeche + dabaao aur apna status add karo!',
+            'Neeche + dabao aur apna status add karo!',
             style: TextStyle(color: Colors.grey),
           ),
         ],
@@ -142,38 +669,31 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  // ===== MY STATUS TILE =====
+  // ============ MY STATUS TILE ============
   Widget _buildMyStatusTile(List<Map<String, dynamic>> myStatuses) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
           .collection('users')
           .doc(currentUserId)
-          .snapshots(),
-      builder: (context, userSnap) {
+          .get(),
+      builder: (context, snapshot) {
         String username = 'My Status';
         String? avatarUrl;
-        if (userSnap.hasData && userSnap.data!.exists) {
-          username = userSnap.data!['username'] ?? 'My Status';
-          avatarUrl = userSnap.data!['avatarUrl'];
+        if (snapshot.hasData && snapshot.data!.exists) {
+          Map<String, dynamic> data =
+              snapshot.data!.data() as Map<String, dynamic>;
+          username = data['username'] ?? 'My Status';
+          avatarUrl = data['avatarUrl'];
         }
+
+        bool hasStatus = myStatuses.isNotEmpty;
 
         return InkWell(
           onTap: () {
-            if (myStatuses.isEmpty) {
-              _showStatusOptions(context);
+            if (hasStatus) {
+              _openStatusViewer(myStatuses, 0);
             } else {
-              // Apna status dekho
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => StatusViewerScreen(
-                    userId: currentUserId,
-                    username: username,
-                    statuses: myStatuses,
-                    isMyStatus: true,
-                  ),
-                ),
-              );
+              _showMyStatusOptions();
             }
           },
           child: Padding(
@@ -182,22 +702,38 @@ class _StatusScreenState extends State<StatusScreen> {
               children: [
                 Stack(
                   children: [
-                    AvatarWidget(
-                      avatarUrl: avatarUrl,
-                      username: username,
-                      size: 56,
-                    ),
-                    // Plus icon
-                    if (myStatuses.isEmpty)
+                    hasStatus
+                        ? Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF25D366),
+                                width: 2.5,
+                              ),
+                            ),
+                            child: AvatarWidget(
+                              avatarUrl: avatarUrl,
+                              username: username,
+                              size: 52,
+                            ),
+                          )
+                        : AvatarWidget(
+                            avatarUrl: avatarUrl,
+                            username: username,
+                            size: 58,
+                          ),
+                    if (!hasStatus)
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: Container(
-                          padding: const EdgeInsets.all(2),
+                          padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
                             color: const Color(0xFF25D366),
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border:
+                                Border.all(color: Colors.white, width: 2),
                           ),
                           child: const Icon(
                             Icons.add,
@@ -223,9 +759,9 @@ class _StatusScreenState extends State<StatusScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        myStatuses.isEmpty
-                            ? 'Tap to add status update'
-                            : '${myStatuses.length} update${myStatuses.length > 1 ? 's' : ''}',
+                        hasStatus
+                            ? '${myStatuses.length} update${myStatuses.length > 1 ? 's' : ''}'
+                            : 'Tap to add status update',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[600],
@@ -242,444 +778,113 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  // ===== OTHER USER STATUS TILE =====
-  Widget _buildUserStatusTile(
-      String userId, List<Map<String, dynamic>> statuses) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .snapshots(),
-      builder: (context, userSnap) {
-        String username = 'User';
-        String? avatarUrl;
-        if (userSnap.hasData && userSnap.data!.exists) {
-          username = userSnap.data!['username'] ?? 'User';
-          avatarUrl = userSnap.data!['avatarUrl'];
-        }
+  // ============ OTHER USER STATUS TILE ============
+  Widget _buildUserStatusTile(List<Map<String, dynamic>> userStatuses) {
+    var firstStatus = userStatuses.first;
+    String username = firstStatus['username'] ?? 'User';
+    String? avatarUrl = firstStatus['avatarUrl'];
 
-        // Sabse recent status lo time ke liye
-        statuses.sort((a, b) {
-          Timestamp? ta = a['timestamp'];
-          Timestamp? tb = b['timestamp'];
-          if (ta == null || tb == null) return 0;
-          return tb.compareTo(ta);
-        });
+    // Check if all seen
+    bool allSeen = userStatuses.every((s) {
+      List viewers = s['viewers'] ?? [];
+      return viewers.contains(currentUserId);
+    });
 
-        Timestamp? latestTime = statuses.first['timestamp'];
-        String timeAgo = latestTime != null
-            ? _getTimeAgo(latestTime.toDate())
-            : '';
-
-        // Check karo ki user ne saare status dekhe ya nahi
-        bool allSeen = statuses.every((s) {
-          List viewers = s['viewers'] ?? [];
-          return viewers.contains(currentUserId);
-        });
-
-        return InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => StatusViewerScreen(
-                  userId: userId,
-                  username: username,
-                  statuses: statuses,
-                  isMyStatus: false,
+    return InkWell(
+      onTap: () => _openStatusViewer(userStatuses, 0),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: allSeen
+                      ? Colors.grey[400]!
+                      : const Color(0xFF25D366),
+                  width: 2.5,
                 ),
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                // Green ring (unseen) ya grey ring (seen)
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: allSeen
-                          ? Colors.grey[400]!
-                          : const Color(0xFF25D366),
-                      width: 2.5,
+              child: AvatarWidget(
+                avatarUrl: avatarUrl,
+                username: username,
+                size: 52,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    username,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF1F2937),
                     ),
                   ),
-                  child: AvatarWidget(
-                    avatarUrl: avatarUrl,
-                    username: username,
-                    size: 52,
+                  const SizedBox(height: 4),
+                  Text(
+                    '${userStatuses.length} update${userStatuses.length > 1 ? 's' : ''}',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        username,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1F2937),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        timeAgo,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ===== TIME AGO =====
-  String _getTimeAgo(DateTime date) {
-    Duration diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
-  // ===== STATUS OPTIONS (Text / Photo) =====
-  void _showStatusOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ],
+        ),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Add Status',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF667EEA).withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.text_fields,
-                        color: Color(0xFF667EEA)),
-                  ),
-                  title: const Text('Text Status',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Likh kar status lagao'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showTextStatusDialog(context);
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25D366).withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.photo_camera,
-                        color: Color(0xFF25D366)),
-                  ),
-                  title: const Text('Photo Status',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Photo lagao status mein'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              'Photo status ka code chat_screen mein hai — wahan se use karo')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
-  }
-
-  // ===== TEXT STATUS DIALOG (Modern) =====
-  void _showTextStatusDialog(BuildContext context) {
-    final TextEditingController controller = TextEditingController();
-    String selectedColor = '667EEA';
-
-    final List<Map<String, String>> colors = [
-      {'name': 'Blue', 'value': '667EEA'},
-      {'name': 'Purple', 'value': '8B5CF6'},
-      {'name': 'Pink', 'value': 'EC4899'},
-      {'name': 'Red', 'value': 'EF4444'},
-      {'name': 'Green', 'value': '10B981'},
-      {'name': 'Orange', 'value': 'F59E0B'},
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Text Status',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Preview box
-                    Container(
-                      height: 120,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(int.parse('FF$selectedColor', radix: 16)),
-                            Color(int.parse('FF$selectedColor', radix: 16))
-                                .withOpacity(0.7),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            controller.text.isEmpty
-                                ? 'Type karein...'
-                                : controller.text,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      maxLines: 3,
-                      maxLength: 100,
-                      onChanged: (val) => setDialogState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'Apna status likhein...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: Color(0xFF667EEA), width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Color picker
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: colors.map((c) {
-                        bool isSelected = selectedColor == c['value'];
-                        return GestureDetector(
-                          onTap: () {
-                            setDialogState(() => selectedColor = c['value']!);
-                          },
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Color(
-                                  int.parse('FF${c['value']}', radix: 16)),
-                              shape: BoxShape.circle,
-                              border: isSelected
-                                  ? Border.all(
-                                      color: Colors.black87, width: 2.5)
-                                  : null,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (controller.text.trim().isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Status khali nahi ho sakta')),
-                              );
-                              return;
-                            }
-                            Navigator.pop(context);
-                            await _saveTextStatus(
-                                controller.text.trim(), selectedColor);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF667EEA),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
-                          ),
-                          child: const Text('Post',
-                              style:
-                                  TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _saveTextStatus(String text, String bgColor) async {
-    try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUserId)
-          .get();
-      String username = userDoc['username'] ?? 'User';
-      String? avatarUrl = userDoc['avatarUrl'];
-
-      await FirebaseFirestore.instance.collection('status').add({
-        'userId': currentUserId,
-        'username': username,
-        'avatarUrl': avatarUrl,
-        'type': 'text',
-        'content': text,
-        'bgColor': bgColor,
-        'timestamp': FieldValue.serverTimestamp(),
-        'expiresAt': Timestamp.fromDate(
-            DateTime.now().add(const Duration(hours: 24))),
-        'viewers': [],
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Status lag gaya!')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
   }
 }
 
-// ============ STATUS VIEWER SCREEN (Full Screen) ============
-class StatusViewerScreen extends StatefulWidget {
-  final String userId;
-  final String username;
+// ============ STATUS VIEWER (Full Screen) ============
+class StatusViewer extends StatefulWidget {
   final List<Map<String, dynamic>> statuses;
-  final bool isMyStatus;
+  final int initialIndex;
 
-  const StatusViewerScreen({
+  const StatusViewer({
     super.key,
-    required this.userId,
-    required this.username,
     required this.statuses,
-    required this.isMyStatus,
+    required this.initialIndex,
   });
 
   @override
-  State<StatusViewerScreen> createState() => _StatusViewerScreenState();
+  State<StatusViewer> createState() => _StatusViewerState();
 }
 
-class _StatusViewerScreenState extends State<StatusViewerScreen>
-    with SingleTickerProviderStateMixin {
-  int _currentIndex = 0;
-  late AnimationController _progressController;
+class _StatusViewerState extends State<StatusViewer> {
+  late int _currentIndex;
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
     super.initState();
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 5),
-    )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          _nextStatus();
-        }
-      });
-    _startCurrent();
+    _currentIndex = widget.initialIndex;
+    _markAsViewed();
   }
 
-  void _startCurrent() {
-    _progressController.reset();
-    _progressController.forward();
-    _markAsViewed();
+  Future<void> _markAsViewed() async {
+    String docId = widget.statuses[_currentIndex]['docId'];
+    try {
+      await FirebaseFirestore.instance.collection('status').doc(docId).update({
+        'viewers': FieldValue.arrayUnion([currentUserId]),
+      });
+    } catch (e) {
+      debugPrint('Error marking viewed: $e');
+    }
   }
 
   void _nextStatus() {
     if (_currentIndex < widget.statuses.length - 1) {
       setState(() => _currentIndex++);
-      _startCurrent();
+      _markAsViewed();
     } else {
       Navigator.pop(context);
     }
@@ -688,208 +893,194 @@ class _StatusViewerScreenState extends State<StatusViewerScreen>
   void _prevStatus() {
     if (_currentIndex > 0) {
       setState(() => _currentIndex--);
-      _startCurrent();
+      _markAsViewed();
     }
-  }
-
-  Future<void> _markAsViewed() async {
-    if (widget.isMyStatus) return;
-    String statusId = widget.statuses[_currentIndex]['statusId'];
-    try {
-      await FirebaseFirestore.instance
-          .collection('status')
-          .doc(statusId)
-          .update({
-        'viewers': FieldValue.arrayUnion([currentUserId]),
-      });
-    } catch (e) {
-      debugPrint('Error marking viewed: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _progressController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final status = widget.statuses[_currentIndex];
+    var status = widget.statuses[_currentIndex];
     String type = status['type'] ?? 'text';
-    String bgColor = status['bgColor'] ?? '667EEA';
+    String content = status['content'] ?? '';
+    String? bgColor = status['bgColor'];
+    Timestamp? timestamp = status['timestamp'];
+    bool isMyStatus = status['userId'] == currentUserId;
+
+    Color bg = const Color(0xFF667EEA);
+    if (bgColor != null && bgColor.isNotEmpty) {
+      try {
+        bg = Color(int.parse('FF$bgColor', radix: 16));
+      } catch (_) {}
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTapDown: (details) {
-          final width = MediaQuery.of(context).size.width;
-          if (details.globalPosition.dx < width / 2) {
-            _prevStatus();
-          } else {
-            _nextStatus();
-          }
-        },
-        child: Stack(
-          children: [
-            // ===== STATUS CONTENT =====
-            Center(
-              child: type == 'text'
-                  ? Container(
-                      width: double.infinity,
-                      height: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(int.parse('FF$bgColor', radix: 16)),
-                            Color(int.parse('FF$bgColor', radix: 16))
-                                .withOpacity(0.7),
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(30),
-                          child: Text(
-                            status['content'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.black,
-                      child: Center(
-                        child: status['content'] != null
-                            ? Image.memory(
-                                base64Decode(status['content']),
-                                fit: BoxFit.contain,
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
-            ),
-
-            // ===== PROGRESS BARS =====
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              left: 10,
-              right: 10,
-              child: Row(
-                children: List.generate(widget.statuses.length, (index) {
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: AnimatedBuilder(
-                        animation: _progressController,
-                        builder: (context, child) {
-                          double value;
-                          if (index < _currentIndex) {
-                            value = 1.0;
-                          } else if (index == _currentIndex) {
-                            value = _progressController.value;
-                          } else {
-                            value = 0.0;
-                          }
-                          return LinearProgressIndicator(
-                            value: value,
-                            backgroundColor: Colors.white.withOpacity(0.3),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.white),
-                            minHeight: 3,
-                          );
-                        },
-                      ),
+      body: Stack(
+        children: [
+          // ===== CONTENT =====
+          if (type == 'image')
+            SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: Image.memory(
+                base64Decode(content),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Text(
+                      'Image load nahi ho payi',
+                      style: TextStyle(color: Colors.white),
                     ),
                   );
-                }),
+                },
               ),
-            ),
-
-            // ===== HEADER =====
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 25,
-              left: 10,
-              right: 10,
-              child: Row(
-                children: [
-                  AvatarWidget(
-                    avatarUrl: status['avatarUrl'],
-                    username: widget.username,
-                    size: 40,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.username,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (status['timestamp'] != null)
-                          Text(
-                            _getTimeAgo(
-                                (status['timestamp'] as Timestamp).toDate()),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+            )
+          else
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [bg, bg.withOpacity(0.65)],
+                ),
               ),
-            ),
-
-            // ===== VIEWERS COUNT (agar mera status hai) =====
-            if (widget.isMyStatus)
-              Positioned(
-                bottom: 30,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(20),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Text(
+                    content,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.visibility,
-                            color: Colors.white, size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${(status['viewers'] ?? []).length} viewers',
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 13),
-                        ),
-                      ],
-                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+
+          // ===== TAP AREAS =====
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _prevStatus,
+                  behavior: HitTestBehavior.translucent,
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: _nextStatus,
+                  behavior: HitTestBehavior.translucent,
+                ),
+              ),
+            ],
+          ),
+
+          // ===== TOP BAR =====
+          SafeArea(
+            child: Column(
+              children: [
+                // Progress bars
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: List.generate(widget.statuses.length, (i) {
+                      return Expanded(
+                        child: Container(
+                          height: 3,
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            color: i <= _currentIndex
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                // User info
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      AvatarWidget(
+                        avatarUrl: status['avatarUrl'],
+                        username: status['username'] ?? 'User',
+                        size: 40,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              status['username'] ?? 'User',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            if (timestamp != null)
+                              Text(
+                                _getTimeAgo(timestamp.toDate()),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ===== VIEWERS COUNT (only for my status) =====
+          if (isMyStatus)
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.visibility,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${(status['viewers'] ?? []).length} viewers',
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
