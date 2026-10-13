@@ -786,12 +786,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  // 👇 UNREAD COUNT VARIABLES
-  int _totalUnreadCount = 0;
-  int _unreadChatsCount = 0;
-  int _favouritesCount = 0;
-  int _groupsUnreadCount = 0;
-
   @override
   void initState() {
     super.initState();
@@ -928,52 +922,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     } catch (e) {
       debugPrint('Group unread error: $e');
       return 0;
-    }
-  }
-
-  // ============ UPDATE ALL UNREAD COUNTS ============
-  Future<void> _updateUnreadCounts(
-      List<Map<String, dynamic>> chatList,
-      List<Map<String, dynamic>> groupsList) async {
-    int totalUnread = 0;
-    int unreadChats = 0;
-    int groupsUnread = 0;
-
-    // Chats ka unread count
-    for (var chat in chatList) {
-      String chatId = chat['chatId'] ?? '';
-      if (chatId.isEmpty) continue;
-      int unread = await _getUnreadCount(chatId);
-      totalUnread += unread;
-      if (unread > 0) unreadChats++;
-    }
-
-    // Groups ka unread count
-    for (var group in groupsList) {
-      String groupId = group['groupId'] ?? '';
-      if (groupId.isEmpty) continue;
-      int unread = await _getGroupUnreadCount(groupId);
-      totalUnread += unread;
-      groupsUnread += unread;
-    }
-
-    // Favourites count (pinned chats mein unread)
-    int favCount = 0;
-    for (var chat in chatList) {
-      String chatId = chat['chatId'] ?? '';
-      if (_pinnedChats.contains(chatId)) {
-        int unread = await _getUnreadCount(chatId);
-        favCount += unread;
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _totalUnreadCount = totalUnread;
-        _unreadChatsCount = unreadChats;
-        _favouritesCount = favCount;
-        _groupsUnreadCount = groupsUnread;
-      });
     }
   }
 
@@ -1151,11 +1099,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   return tb.compareTo(ta);
                 });
               }
-
-              // 👇 UNREAD COUNTS UPDATE KARO
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _updateUnreadCounts(chatList, groupsList);
-              });
 
               // ============ SEARCH FILTER ============
               if (_searchQuery.isNotEmpty) {
@@ -1417,6 +1360,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     ],
                   ),
                 ),
+                // 👇 UNREAD COUNT YA "GROUP" BADGE
                 FutureBuilder<int>(
                   future: _getGroupUnreadCount(groupId),
                   builder: (context, unreadSnap) {
@@ -1663,25 +1607,13 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   }
 
   Widget _buildFilterChip(String label, bool isSelected) {
-    // 👇 Count nikalo label ke hisaab se
-    int count = 0;
-    if (label == 'All') count = _totalUnreadCount;
-    if (label == 'Unread') count = _unreadChatsCount;
-    if (label == 'Favourites') count = _favouritesCount;
-    if (label == 'Groups') count = _groupsUnreadCount;
-
     return GestureDetector(
       onTap: () {
         setState(() => _selectedFilter = label);
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding: EdgeInsets.only(
-          left: 16,
-          right: count > 0 ? 8 : 16,
-          top: 9,
-          bottom: 9,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
         decoration: BoxDecoration(
           gradient: isSelected
               ? const LinearGradient(
@@ -1702,43 +1634,13 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 ]
               : null,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                fontSize: 13,
-              ),
-            ),
-            if (count > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 2),
-                constraints: const BoxConstraints(minWidth: 20),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white
-                      : const Color(0xFF25D366),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  count > 99 ? '99+' : '$count',
-                  style: TextStyle(
-                    color: isSelected
-                        ? const Color(0xFF667EEA)
-                        : Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 13,
+          ),
         ),
       ),
     );
