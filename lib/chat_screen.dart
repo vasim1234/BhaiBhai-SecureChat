@@ -518,7 +518,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ============ BUILD MESSAGE WITH CLICKABLE LINKS (Manual Regex) ============
+  // ============ BUILD MESSAGE WITH CLICKABLE LINKS ============
   Widget _buildMessageWithLinks(String text, bool isMe, bool isDeleted) {
     final urlRegex = RegExp(
       r'(https?://[^\s]+)',
@@ -1067,6 +1067,24 @@ class _ChatScreenState extends State<ChatScreen> {
         'isStarred': false,
       });
 
+      // 👇 NOTIFICATION BACKGROUND MEIN BHEJO (await nahi karo)
+      _sendNotificationInBackground(
+        messageText.isNotEmpty
+            ? messageText
+            : (voiceBase64 != null ? '🎤 Voice message' : 'Photo bheji'),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Message send nahi hua: $e')),
+        );
+      }
+    }
+  }
+
+  // 👇 BACKGROUND NOTIFICATION (mute check ke saath)
+  Future<void> _sendNotificationInBackground(String message) async {
+    try {
       DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.receiverUid)
@@ -1074,19 +1092,11 @@ class _ChatScreenState extends State<ChatScreen> {
           .doc(chatId)
           .get();
 
-      if (!mutedDoc.exists) {
-        await _sendNotification(
-          messageText.isNotEmpty
-              ? messageText
-              : (voiceBase64 != null ? '🎤 Voice message' : 'Photo bheji'),
-        );
-      }
+      if (mutedDoc.exists) return;
+
+      await _sendNotification(message);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Message send nahi hua: $e')),
-        );
-      }
+      debugPrint('Background notif error: $e');
     }
   }
 
@@ -2753,6 +2763,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
+  // ============ SEND MESSAGE (INSTANT + BACKGROUND NOTIF) ============
   Future<void> _sendMessage({String? imageBase64}) async {
     if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
 
@@ -2767,6 +2778,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
+    // 👇 MESSAGE SAVE KARO (fast)
     await FirebaseFirestore.instance.collection('group_messages').add({
       'groupId': widget.groupId,
       'senderId': currentUserId,
@@ -2783,58 +2795,93 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'isDeleted': false,
     });
 
-    // 👇 GROUP NOTIFICATION BHEJO
-    try {
-      DocumentSnapshot groupDoc = await FirebaseFirestore.instance
-          .collection('groups')
-          .doc(widget.groupId)
-          .get();
-
-      if (groupDoc.exists) {
-        List<String> members =
-            List<String>.from(groupDoc['members'] ?? []);
-        String groupName = groupDoc['name'] ?? 'Group';
-
-        DocumentSnapshot senderDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUserId)
-            .get();
-        String senderName = senderDoc.exists
-            ? (senderDoc['username'] ?? 'User')
-            : 'User';
-
-        for (String memberId in members) {
-          if (memberId == currentUserId) continue;
-
-          try {
-            DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
-                .collection('users')
-                .doc(memberId)
-                .collection('muted_groups')
-                .doc(widget.groupId)
-                .get();
-
-            if (mutedDoc.exists) continue;
-
-            await _sendGroupNotification(
-              memberId: memberId,
-              groupName: groupName,
-              senderName: senderName,
-              message: messageText,
-              hasImage: imageBase64 != null,
-            );
-          } catch (e) {
-            debugPrint('Error sending notif to $memberId: $e');
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Group notification error: $e');
-    }
+    // 👇 NOTIFICATIONS BACKGROUND MEIN BHEJO (await NAHI karo)
+    _sendGroupNotificationsInBackground(
+      groupId: widget.groupId,
+      messageText: messageText,
+      hasImage: imageBase64 != null,
+    );
 
     _msgController.clear();
     if (mounted) {
       setState(() => _groupReplyToData = null);
+    }
+  }
+
+  // 👇 BACKGROUND NOTIFICATION FUNCTION
+  Future<void> _sendGroupNotificationsInBackground({
+    required String groupId,
+    required String messageText,
+    required bool hasImage,
+  }) async {
+    try {
+      DocumentSnapshot groupDoc = await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(groupId)
+          .get();
+
+      if (!groupDoc.exists) return;
+
+      List<String> members = List<String>.from(groupDoc['members'] ?? []);
+      String groupName = groupDoc['name'] ?? 'Group';
+
+      DocumentSnapshot senderDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+      String senderName =
+          senderDoc.exists ? (senderDoc['username'] ?? 'User') : 'User';
+
+      // Sabhi members ko PARALLEL mein notification bhejo
+      List<Future> notifFutures = [];
+      for (String memberId in members) {
+        if (memberId == currentUserId) continue;
+
+        notifFutures.add(_sendNotifToMember(
+          memberId: memberId,
+          groupId: groupId,
+          groupName: groupName,
+          senderName: senderName,
+          messageText: messageText,
+          hasImage: hasImage,
+        ));
+      }
+
+      // Sabhi notifications parallel mein — wait karo but UI block nahi
+      await Future.wait(notifFutures);
+    } catch (e) {
+      debugPrint('Group notif background error: $e');
+    }
+  }
+
+  Future<void> _sendNotifToMember({
+    required String memberId,
+    required String groupId,
+    required String groupName,
+    required String senderName,
+    required String messageText,
+    required bool hasImage,
+  }) async {
+    try {
+      // Mute check
+      DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(memberId)
+          .collection('muted_groups')
+          .doc(groupId)
+          .get();
+
+      if (mutedDoc.exists) return;
+
+      await _sendGroupNotification(
+        memberId: memberId,
+        groupName: groupName,
+        senderName: senderName,
+        message: messageText,
+        hasImage: hasImage,
+      );
+    } catch (e) {
+      debugPrint('Notif error to $memberId: $e');
     }
   }
 
