@@ -47,6 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _replyToData;
   bool _isReceiverTyping = false;
   bool _isReceiverOnline = false;
+  bool _isChatMuted = false;
 
   // ============ WALLPAPER ============
   String? _chatWallpaper;
@@ -101,6 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _initRecorder();
     _initPlayer();
     _loadWallpaper();
+    _loadMuteStatus();
   }
 
   Future<void> _initRecorder() async {
@@ -130,6 +132,57 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_recorderInitialized) _audioRecorder.closeRecorder();
     if (_playerInitialized) _audioPlayer.closePlayer();
     super.dispose();
+  }
+
+  // ============ MUTE ============
+  Future<void> _loadMuteStatus() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .collection('muted_chats')
+          .doc(chatId)
+          .get();
+      if (mounted) {
+        setState(() => _isChatMuted = doc.exists);
+      }
+    } catch (e) {
+      debugPrint('Mute load error: $e');
+    }
+  }
+
+  Future<void> _toggleMute() async {
+    try {
+      if (_isChatMuted) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .collection('muted_chats')
+            .doc(chatId)
+            .delete();
+        setState(() => _isChatMuted = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notifications ON 🔔')),
+          );
+        }
+      } else {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .collection('muted_chats')
+            .doc(chatId)
+            .set({'mutedAt': FieldValue.serverTimestamp()});
+        setState(() => _isChatMuted = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notifications MUTE 🔕')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Mute toggle error: $e');
+    }
   }
 
   // ============ WALLPAPER ============
@@ -981,7 +1034,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _msgController.clear();
     _setTypingStatus(false);
 
-    // 👇 LINK PREVIEW FETCH
     Map<String, dynamic>? linkPreview;
     if (messageText.isNotEmpty &&
         (messageText.contains('http://') ||
@@ -1012,13 +1064,23 @@ class _ChatScreenState extends State<ChatScreen> {
         'isEdited': false,
         'isDeleted': false,
         'isRead': false,
+        'isStarred': false,
       });
 
-      await _sendNotification(
-        messageText.isNotEmpty
-            ? messageText
-            : (voiceBase64 != null ? '🎤 Voice message' : 'Photo bheji'),
-      );
+      DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.receiverUid)
+          .collection('muted_chats')
+          .doc(chatId)
+          .get();
+
+      if (!mutedDoc.exists) {
+        await _sendNotification(
+          messageText.isNotEmpty
+              ? messageText
+              : (voiceBase64 != null ? '🎤 Voice message' : 'Photo bheji'),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1080,6 +1142,24 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // ============ TOGGLE STAR ============
+  Future<void> _toggleStarMessage(String docId, bool isStarred) async {
+    await FirebaseFirestore.instance
+        .collection('chats')
+        .doc(docId)
+        .update({'isStarred': !isStarred});
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              isStarred ? 'Star hata diya' : 'Message star kar diya ⭐'),
+          backgroundColor: const Color(0xFFF59E0B),
+        ),
+      );
+    }
+  }
+
   void _showMessageOptions(
       String docId, String message, bool isMe, Map<String, dynamic> data) {
     showModalBottomSheet(
@@ -1118,7 +1198,23 @@ class _ChatScreenState extends State<ChatScreen> {
                     });
                   },
                 ),
-              // 👇 FORWARD
+              ListTile(
+                leading: Icon(
+                  (data['isStarred'] ?? false)
+                      ? Icons.star
+                      : Icons.star_border,
+                  color: const Color(0xFFF59E0B),
+                ),
+                title: Text(
+                  (data['isStarred'] ?? false)
+                      ? 'Unstar Message'
+                      : 'Star Message',
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleStarMessage(docId, data['isStarred'] ?? false);
+                },
+              ),
               ListTile(
                 leading:
                     const Icon(Icons.forward, color: Color(0xFF10B981)),
@@ -1190,69 +1286,51 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('chats')
-                        .where('members', arrayContains: currentUserId)
+                        .collection('users')
                         .snapshots(),
-                    builder: (context, chatSnap) {
-                      Map<String, Map<String, dynamic>> partners = {};
-                      if (chatSnap.hasData) {
-                        for (var doc in chatSnap.data!.docs) {
-                          var cd = doc.data() as Map<String, dynamic>;
-                          String cid = cd['chatId'] ?? '';
-                          List<String> uids = cid.split('_');
-                          String other = uids.firstWhere(
-                            (uid) => uid != currentUserId,
-                            orElse: () => '',
-                          );
-                          if (other.isNotEmpty &&
-                              other != widget.receiverUid) {
-                            partners[other] = cd;
-                          }
-                        }
+                    builder: (context, userSnap) {
+                      if (!userSnap.hasData) {
+                        return const Center(
+                            child: CircularProgressIndicator());
                       }
 
-                      if (partners.isEmpty) {
+                      final users = userSnap.data!.docs.where((doc) {
+                        return doc.id != currentUserId;
+                      }).toList();
+
+                      if (users.isEmpty) {
                         return const Center(
-                            child: Text('Koi aur chat nahi hai'));
+                            child: Text('Koi dusra user nahi hai'));
                       }
 
                       return ListView.builder(
                         controller: scrollController,
-                        itemCount: partners.length,
+                        itemCount: users.length,
                         itemBuilder: (context, index) {
-                          String otherUid =
-                              partners.keys.elementAt(index);
-                          return FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(otherUid)
-                                .get(),
-                            builder: (context, userSnap) {
-                              String username = 'User';
-                              String? avatarUrl;
-                              if (userSnap.hasData &&
-                                  userSnap.data!.exists) {
-                                username = userSnap.data!['username'] ??
-                                    'User';
-                                avatarUrl = userSnap.data!['avatarUrl'];
-                              }
-                              return ListTile(
-                                leading: AvatarWidget(
-                                  avatarUrl: avatarUrl,
-                                  username: username,
-                                  size: 45,
-                                ),
-                                title: Text(username,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600)),
-                                trailing: const Icon(Icons.send,
-                                    color: Color(0xFF10B981)),
-                                onTap: () async {
-                                  Navigator.pop(context);
-                                  await _forwardMessage(
-                                      otherUid, message, data);
-                                },
-                              );
+                          final userDoc = users[index];
+                          final userData =
+                              userDoc.data() as Map<String, dynamic>;
+                          String username =
+                              userData['username'] ?? 'User';
+                          String? avatarUrl = userData['avatarUrl'];
+                          String otherUid = userDoc.id;
+
+                          return ListTile(
+                            leading: AvatarWidget(
+                              avatarUrl: avatarUrl,
+                              username: username,
+                              size: 45,
+                            ),
+                            title: Text(username,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: Text(userData['email'] ?? ''),
+                            trailing: const Icon(Icons.send,
+                                color: Color(0xFF10B981)),
+                            onTap: () async {
+                              Navigator.pop(context);
+                              await _forwardMessage(
+                                  otherUid, message, data);
                             },
                           );
                         },
@@ -1303,6 +1381,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'isEdited': false,
         'isDeleted': false,
         'isRead': false,
+        'isStarred': false,
       });
 
       if (mounted) {
@@ -1594,6 +1673,15 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
+            icon: Icon(
+              _isChatMuted
+                  ? Icons.notifications_off
+                  : Icons.notifications_active,
+              color: Colors.white,
+            ),
+            onPressed: _toggleMute,
+          ),
+          IconButton(
             icon: const Icon(Icons.call),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1682,8 +1770,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           if (_isUploading) const LinearProgressIndicator(),
-
-          // ============ CHAT AREA WITH WALLPAPER ============
           Expanded(
             child: Stack(
               children: [
@@ -1727,6 +1813,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         String? voiceBase64 = data['voiceBase64'];
                         Map<String, dynamic>? replyTo = data['replyTo'];
                         String? linkUrl = data['linkUrl'];
+                        bool isStarred = data['isStarred'] ?? false;
 
                         return GestureDetector(
                           onLongPress: isDeleted
@@ -1876,6 +1963,15 @@ class _ChatScreenState extends State<ChatScreen> {
                                         data['message'],
                                         isMe,
                                         isDeleted,
+                                      ),
+                                    ),
+                                  if (isStarred && !isDeleted)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Icon(
+                                        Icons.star,
+                                        size: 14,
+                                        color: Color(0xFFF59E0B),
                                       ),
                                     ),
                                   const SizedBox(height: 4),
@@ -2153,6 +2249,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
   bool _isUploading = false;
   String? _groupPhoto;
+  Map<String, dynamic>? _groupReplyToData;
   final Map<String, String> _senderNameCache = {};
   final Map<String, String?> _senderAvatarCache = {};
   final Map<String, Color> _senderColorCache = {};
@@ -2208,6 +2305,128 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     } catch (e) {
       debugPrint('Error loading sender: $e');
     }
+  }
+
+  // ============ GROUP MESSAGE OPTIONS ============
+  void _showGroupMessageOptions(
+      String docId, String message, bool isMe, Map<String, dynamic> data) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (message.isNotEmpty)
+                ListTile(
+                  leading:
+                      const Icon(Icons.reply, color: Color(0xFF667EEA)),
+                  title: const Text('Reply'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _groupReplyToData = {
+                        'message': message,
+                        'senderName': data['senderName'] ?? 'User',
+                        'senderId': data['senderId'],
+                      };
+                    });
+                  },
+                ),
+              if (isMe && message.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.blue),
+                  title: const Text('Edit Message'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _editGroupMessage(docId, message);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Message'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteGroupMessage(docId);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _editGroupMessage(String docId, String oldMessage) async {
+    TextEditingController editController =
+        TextEditingController(text: oldMessage);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Edit Message'),
+          content: TextField(
+            controller: editController,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Naya message',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (editController.text.trim().isNotEmpty) {
+                  await FirebaseFirestore.instance
+                      .collection('group_messages')
+                      .doc(docId)
+                      .update({
+                    'message': editController.text.trim(),
+                    'isEdited': true,
+                  });
+                }
+                if (mounted) Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A6CF7),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteGroupMessage(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('group_messages')
+        .doc(docId)
+        .update({
+      'isDeleted': true,
+      'message': 'Ye message delete kar diya gaya hai',
+      'imageBase64': null,
+    });
   }
 
   Future<void> _openLink(String url) async {
@@ -2497,11 +2716,17 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'linkTitle': linkPreview?['linkTitle'],
       'linkThumbnail': linkPreview?['linkThumbnail'],
       'linkType': linkPreview?['linkType'],
+      'replyTo': _groupReplyToData,
       'timestamp': FieldValue.serverTimestamp(),
       'expiresAt': Timestamp.fromDate(expiryTime),
+      'isEdited': false,
+      'isDeleted': false,
     });
 
     _msgController.clear();
+    if (mounted) {
+      setState(() => _groupReplyToData = null);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -2695,13 +2920,17 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   padding: const EdgeInsets.all(10),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
+                    var doc = docs[index];
                     var data =
-                        docs[index].data() as Map<String, dynamic>;
+                        doc.data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
                     String senderId = data['senderId'];
                     String? imageBase64 = data['imageBase64'];
                     Timestamp? msgTime = data['timestamp'];
                     String? linkUrl = data['linkUrl'];
+                    bool isDeleted = data['isDeleted'] ?? false;
+                    bool isEdited = data['isEdited'] ?? false;
+                    Map<String, dynamic>? replyTo = data['replyTo'];
 
                     String senderName =
                         _senderNameCache[senderId] ?? 'User';
@@ -2710,7 +2939,19 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     Color senderColor = _senderColorCache[senderId] ??
                         const Color(0xFF667EEA);
 
-                    return Padding(
+                    return GestureDetector(
+                      onLongPress: isDeleted
+                          ? null
+                          : () {
+                              data['senderName'] = senderName;
+                              _showGroupMessageOptions(
+                                doc.id,
+                                data['message'] ?? '',
+                                isMe,
+                                data,
+                              );
+                            },
+                      child: Padding(
                       padding: const EdgeInsets.symmetric(
                           vertical: 4, horizontal: 8),
                       child: Row(
@@ -2758,7 +2999,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                         ],
                                       )
                                     : null,
-                                color: isMe ? null : Colors.white,
+                                color: isDeleted
+                                    ? Colors.grey[200]
+                                    : (isMe ? null : Colors.white),
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(15),
                                   topRight: const Radius.circular(15),
@@ -2780,7 +3023,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                  if (!isMe)
+                                  if (!isMe && !isDeleted)
                                     Padding(
                                       padding: const EdgeInsets.only(
                                           bottom: 4),
@@ -2794,7 +3037,63 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       ),
                                     ),
 
-                                  if (linkUrl != null)
+                                  if (replyTo != null)
+                                    Container(
+                                      padding:
+                                          const EdgeInsets.all(8),
+                                      margin: const EdgeInsets.only(
+                                          bottom: 5),
+                                      decoration: BoxDecoration(
+                                        color: isMe
+                                            ? Colors.white
+                                                .withOpacity(0.2)
+                                            : Colors.grey[200],
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: isMe
+                                                ? Colors.white
+                                                : const Color(
+                                                    0xFF667EEA),
+                                            width: 3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            replyTo['senderName'] ??
+                                                'User',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              color: isMe
+                                                  ? Colors.white
+                                                  : const Color(
+                                                      0xFF667EEA),
+                                            ),
+                                          ),
+                                          Text(
+                                            replyTo['message'] ?? '',
+                                            maxLines: 2,
+                                            overflow: TextOverflow
+                                                .ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isMe
+                                                  ? Colors.white70
+                                                  : Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  if (linkUrl != null && !isDeleted)
                                     _buildLinkPreview(
                                       url: linkUrl,
                                       title:
@@ -2806,7 +3105,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       isMe: isMe,
                                     ),
 
-                                  if (imageBase64 != null)
+                                  if (imageBase64 != null &&
+                                      !isDeleted)
                                     ClipRRect(
                                       borderRadius:
                                           BorderRadius.circular(10),
@@ -2844,6 +3144,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      if (isEdited && !isDeleted)
+                                        Text(
+                                          'edited • ',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isMe
+                                                ? Colors.white70
+                                                : Colors.grey,
+                                          ),
+                                        ),
                                       Text(
                                         'Auto-delete in 24h',
                                         style: TextStyle(
@@ -2882,6 +3192,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                           ],
                         ],
                       ),
+                    ),
                     );
                   },
                 );
@@ -2891,41 +3202,94 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           Container(
             padding: const EdgeInsets.all(8.0),
             color: Colors.white,
-            child: Row(
+            child: Column(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.attach_file,
-                      color: Color(0xFF667EEA)),
-                  onPressed:
-                      _isUploading ? null : _showAttachmentOptions,
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _msgController,
-                    decoration: InputDecoration(
-                      hintText: 'Message likhein...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
+                if (_groupReplyToData != null)
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(bottom: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(10),
+                      border: const Border(
+                        left: BorderSide(
+                          color: Color(0xFF667EEA),
+                          width: 3,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      filled: true,
-                      fillColor: const Color(0xFFF5F7FB),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _groupReplyToData!['senderName'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF667EEA),
+                                ),
+                              ),
+                              Text(
+                                _groupReplyToData!['message'] ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () {
+                            setState(() => _groupReplyToData = null);
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.attach_file,
+                          color: Color(0xFF667EEA)),
+                      onPressed:
+                          _isUploading ? null : _showAttachmentOptions,
                     ),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: () => _sendMessage(),
-                  ),
+                    Expanded(
+                      child: TextField(
+                        controller: _msgController,
+                        decoration: InputDecoration(
+                          hintText: 'Message likhein...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F7FB),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                        ),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.send, color: Colors.white),
+                        onPressed: () => _sendMessage(),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
