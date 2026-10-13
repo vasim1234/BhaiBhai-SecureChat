@@ -2756,55 +2756,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           SafeArea(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.arrow_back,
-                                          color: Colors.white),
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
-                                  ),
-                                  const Text(
-                                    'BHAI BHAI',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.settings,
-                                          color: Colors.white),
-                                      onPressed: () {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                              content: Text(
-                                                  'Settings jald aa raha hai!')),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+  child: Padding(
+    padding: const EdgeInsets.symmetric(
+        horizontal: 16, vertical: 12),
+    child: Row(
+      mainAxisAlignment:
+          MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'BHAI BHAI',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.settings,
+                color: Colors.white),
+            onPressed: () {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(
+                const SnackBar(
+                    content: Text(
+                        'Settings jald aa raha hai!')),
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  ),
+),
                         ],
                       ),
                     ),
