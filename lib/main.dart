@@ -792,9 +792,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   int _favouritesCount = 0;
   int _groupsUnreadCount = 0;
 
-  // 👇 FLICKER FIX — DEBOUNCE
+  // 👇 FLICKER FIX
   Timer? _unreadUpdateTimer;
   bool _isUpdatingCounts = false;
+  DateTime? _lastCountUpdate;
 
   @override
   void initState() {
@@ -936,41 +937,59 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     }
   }
 
-  // ============ UPDATE ALL UNREAD COUNTS (WITH FLICKER FIX) ============
+  // ============ UPDATE ALL UNREAD COUNTS ============
   Future<void> _updateUnreadCounts(
       List<Map<String, dynamic>> chatList,
       List<Map<String, dynamic>> groupsList) async {
+    // 👇 3 second cache — dobara query nahi chalegi
+    if (_lastCountUpdate != null &&
+        DateTime.now().difference(_lastCountUpdate!).inSeconds < 3) {
+      return;
+    }
+    _lastCountUpdate = DateTime.now();
+
     int totalUnread = 0;
     int unreadChats = 0;
     int groupsUnread = 0;
 
-    // Chats ka unread count
+    // Chats ka unread count — PARALLEL
+    List<Future<int>> chatFutures = [];
     for (var chat in chatList) {
       String chatId = chat['chatId'] ?? '';
       if (chatId.isEmpty) continue;
-      int unread = await _getUnreadCount(chatId);
+      chatFutures.add(_getUnreadCount(chatId));
+    }
+    List<int> chatUnreads = await Future.wait(chatFutures);
+    for (int unread in chatUnreads) {
       totalUnread += unread;
       if (unread > 0) unreadChats++;
     }
 
-    // Groups ka unread count
+    // Groups ka unread count — PARALLEL
+    List<Future<int>> groupFutures = [];
     for (var group in groupsList) {
       String groupId = group['groupId'] ?? '';
       if (groupId.isEmpty) continue;
-      int unread = await _getGroupUnreadCount(groupId);
+      groupFutures.add(_getGroupUnreadCount(groupId));
+    }
+    List<int> groupUnreads = await Future.wait(groupFutures);
+    for (int unread in groupUnreads) {
       totalUnread += unread;
       groupsUnread += unread;
     }
 
-    // Favourites count (pinned chats mein unread)
-    int favCount = 0;
+    // Favourites count — PARALLEL
+    List<Future<int>> favFutures = [];
+    List<String> favChatIds = [];
     for (var chat in chatList) {
       String chatId = chat['chatId'] ?? '';
       if (_pinnedChats.contains(chatId)) {
-        int unread = await _getUnreadCount(chatId);
-        favCount += unread;
+        favChatIds.add(chatId);
+        favFutures.add(_getUnreadCount(chatId));
       }
     }
+    List<int> favUnreads = await Future.wait(favFutures);
+    int favCount = favUnreads.fold(0, (sum, val) => sum + val);
 
     if (mounted) {
       // 👇 SIRF TAB setState JAB COUNT ACTUALLY CHANGE HO
@@ -1163,13 +1182,17 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 });
               }
 
-              // 👇 UNREAD COUNTS UPDATE KARO (FLICKER FIX — DEBOUNCE)
+              // 👇 UNREAD COUNTS UPDATE KARO — BACKGROUND MEIN, UI BLOCK NAHI
               if (!_isUpdatingCounts) {
                 _isUpdatingCounts = true;
                 _unreadUpdateTimer?.cancel();
                 _unreadUpdateTimer =
-                    Timer(const Duration(milliseconds: 300), () async {
-                  await _updateUnreadCounts(chatList, groupsList);
+                    Timer(const Duration(milliseconds: 500), () async {
+                  try {
+                    await _updateUnreadCounts(chatList, groupsList);
+                  } catch (e) {
+                    debugPrint('Unread update error: $e');
+                  }
                   _isUpdatingCounts = false;
                 });
               }
@@ -1688,7 +1711,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
     return GestureDetector(
       onTap: () {
-        setState(() => _selectedFilter = label);
+        // 👇 Instant switch — agar same tab pe tap kiya to kuch nahi hoga
+        if (_selectedFilter != label) {
+          setState(() => _selectedFilter = label);
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
