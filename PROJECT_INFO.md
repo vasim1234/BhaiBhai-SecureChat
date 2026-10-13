@@ -1,4 +1,5 @@
 
+```markdown
 # Bhai Bhai Secure Chat - Project Info
 
 ## 📱 App Overview
@@ -6,6 +7,8 @@
 **Bhai Bhai Secure Chat** ek modern, secure messaging app hai jo WhatsApp jaisi features deti hai. Ye Flutter mein bani hai aur Firebase backend use karti hai.
 
 **App ka Main Feature:** 24-hour ephemeral messaging — yani har message 24 ghante baad automatically delete ho jata hai.
+
+---
 
 ## ✅ Core Features (Jo Ab Tak Complete Hain)
 
@@ -36,14 +39,21 @@
 - ✅ Typing Indicator
 - ✅ Reply to Message
 - ✅ Message Edit/Delete
+- ✅ **Message Star (Favourite)** — long press → Star/Unstar
+- ✅ **Message Forward** — kisi bhi user ko forward
 - ✅ Photo Bhejna (Base64 format)
 - ✅ Image Caching
 - ✅ Fast Message Send (Instant UI)
 - ✅ Unread Badge (green circle count)
 - ✅ Chat List with 4 Filter Chips (All, Unread, Favourites, Groups)
-- ✅ Pin Chat
+- ✅ **Filter Chips pe Unread Count Badge** — har tab pe count dikhta hai
+- ✅ **Pin Chat**
 - ✅ Modern Chat Cards (rounded, shadow)
+- ✅ **Chat Wallpaper** — 8 preset colors + Gallery se photo
+- ✅ **Chat Mute** — notification band karo
 - ✅ Voice Message — code ready, mic test pending
+- ✅ YouTube/Instagram Link Preview (thumbnail + title)
+- ✅ Clickable Links in messages
 
 ### Social Features
 - ✅ Search Users (username se)
@@ -64,23 +74,34 @@
   - ✅ Change Group Name (sirf admin)
   - ✅ Change Group Bio (sirf admin)
   - ✅ Delete Group (sirf admin)
-- ✅ Add Members (admin)
+  - ✅ Add Members (admin)
+  - ✅ Remove Members (admin)
+- ✅ Members List (admin badge 👑 ke saath)
+- ✅ **Group Chat mein Sender Avatar + Colored Name** (WhatsApp jaisa)
+- ✅ **Group Reply** — kisi bhi message pe reply
+- ✅ **Group Edit/Delete** — apne message pe
+- ✅ **Group Notification** — har member ko notification jata hai
+- ✅ **Group Unread Count** — green badge with number
+- ✅ **Group Read Mark** — group kholne pe unread 0 ho jata hai
 - ✅ Exit Group
 - ✅ Group Unread Badge
-- ✅ Members List (admin badge ke saath)
 - ✅ "GROUPS" section chat list mein
 - ✅ Group chat list with unread count
 
 ### Status Updates (Stories)
-- ✅ Text Status (6 colors mein)
+- ✅ Text Status (8 colors mein)
 - ✅ Photo Status (Base64 format)
 - ✅ 24-hour auto-delete
 - ✅ Full-screen viewer
 - ✅ Progress bars
 - ✅ Viewers tracking
+- ✅ **Viewed by List** — kaun-kaun ne dekha (bottom sheet mein)
 - ✅ "My Status" tile
-- ✅ "Recent Updates" (green ring)
+- ✅ "Recent Updates" (green ring for unseen)
 - ✅ Time ago ("Just now", "5m ago")
+- ✅ Reply to Status — status pe reply karo
+- ✅ Delete Status — apna status delete karo
+- ✅ **Status Forward** (coming soon)
 
 ### Hisaab Kitaab (Khata Book)
 - ✅ Khata List — bande ki list
@@ -101,16 +122,35 @@
 - ✅ Push Notifications (OneSignal)
 - ✅ App se notification (REST API)
 - ✅ Manual notification (OneSignal Dashboard)
+- ✅ **Group Notifications** — sabhi members ko parallel
+- ✅ **Chat Mute** — notification band karo
+- ✅ **Background Notifications** — UI block nahi hota
+
+### Performance Optimizations
+- ✅ **Fast Tab Switching** — instant switch, no loading
+- ✅ **Debounced Count Updates** — 500ms debounce
+- ✅ **3-Second Cache** — dobara query nahi
+- ✅ **Parallel Firebase Queries** — Future.wait() use
+- ✅ **Background Notification Send** — non-blocking
+- ✅ **Image Caching** — image re-render nahi
+- ✅ **Instant Message Send** — UI block nahi
+
+---
 
 ## 🚧 Features Jo Baaki Hain
 
 ### Priority 1
 - ⏳ Voice Message — code ready, mic test pending
-- ⏳ Chat List Search — search bar hai, filter logic pending
+- ⏳ Group Voice Message — group mein voice bhejo
 
 ### Priority 2
 - ⏳ Communities Tab — currently "jald aa raha hai"
-- ⏳ Link Share — Instagram/YouTube/Facebook link clickable + preview
+- ⏳ Chat List Search — search bar hai, filter logic pending
+- ⏳ Starred Messages Screen — starred messages ki list
+- ⏳ Muted Chats Screen — muted chats list
+- ⏳ Message Info — kisne kab padha (group)
+- ⏳ Message Reaction — ❤️😂👍
+- ⏳ Message Search — messages ke andar search
 
 ### Priority 3
 - ⏳ Voice/Video Calling (WebRTC + TURN server)
@@ -118,9 +158,12 @@
 - ⏳ Photo + Song Status (Firebase Storage)
 - ⏳ End-to-End Encryption
 - ⏳ Two-Factor Auth
-- ⏳ Message Forwarding
-- ⏳ Chat Wallpaper
 - ⏳ Chat Statistics
+- ⏳ Screenshot Notification
+- ⏳ Status Forward
+- ⏳ Reply Preview Tap — reply pe tap karke original pe jao
+
+---
 
 ## 🛠️ Technology Stack
 
@@ -161,7 +204,7 @@ dependencies:
   http: ^1.2.0
   onesignal_flutter: ^5.3.0
   flutter_sound: ^9.2.13
-  permission_handler: 12.0.0
+  permission_handler: ^12.0.0
   url_launcher: ^6.3.0
   pdf: ^3.11.1
   printing: ^5.13.1
@@ -181,6 +224,8 @@ lib/
 ├── khata_screen.dart          (Hisaab Kitaab - khata list)
 └── khata_detail_screen.dart   (Bande ka khata - ledger)
 ```
+
+---
 
 🎨 App Navigation Structure
 
@@ -203,15 +248,24 @@ Chats List Top-Right
 
 · 👥 Group Add — naya group banao
 
+Filter Chips (Top)
+
+· All — total unread count badge
+· Unread — unread chats count badge
+· Favourites — pinned chats unread count badge
+· Groups — groups unread count badge
+
 Profile Screen Settings
 
 Option Tap Karo Kya Hoga
-🛡️ Privacy Bottom sheet Last Seen, Profile Photo, Read Receipts, Blocked
-🔔 Notifications Bottom sheet 5 toggle switches
-⬆️ App Update Play Store khulega Update check
-🔗 App Share WhatsApp khulega Download link bhejo
-📱 iPhone App Dialog iOS jald aa raha hai
-🚪 Logout Sign out 
+🛡️ Privacy Tap Bottom sheet
+🔔 Notifications Tap Bottom sheet
+⬆️ App Update Tap Play Store khulega
+🔗 App Share Tap WhatsApp khulega
+📱 iPhone App Tap Dialog
+🚪 Logout Tap Sign out
+
+---
 
 🔥 Firestore Database Structure
 
@@ -251,11 +305,16 @@ chats/{messageId}
     "senderName": "User Name",
     "senderId": "uid"
   },
+  "linkUrl": "https://youtu.be/...",
+  "linkTitle": "Video Title",
+  "linkThumbnail": "https://img.youtube.com/...",
+  "linkType": "youtube|instagram|other",
   "timestamp": "timestamp",
   "expiresAt": "timestamp (24h baad)",
   "isEdited": false,
   "isDeleted": false,
-  "isRead": false
+  "isRead": false,
+  "isStarred": false
 }
 ```
 
@@ -315,8 +374,19 @@ group_messages/{messageId}
   "senderId": "uid1",
   "message": "Hello group",
   "imageBase64": "base64_string_or_null",
+  "replyTo": {
+    "message": "original message",
+    "senderName": "User Name",
+    "senderId": "uid"
+  },
+  "linkUrl": "https://...",
+  "linkTitle": "Title",
+  "linkThumbnail": "url",
+  "linkType": "youtube|instagram|other",
   "timestamp": "timestamp",
-  "expiresAt": "timestamp"
+  "expiresAt": "timestamp",
+  "isEdited": false,
+  "isDeleted": false
 }
 ```
 
@@ -374,6 +444,35 @@ typing/{chatId}
 }
 ```
 
+Sub-collections:
+
+users/{uid}/wallpapers/{chatId}
+
+```json
+{
+  "wallpaper": "F5F7FB|IMG:base64...",
+  "updatedAt": "timestamp"
+}
+```
+
+users/{uid}/muted_chats/{chatId}
+
+```json
+{
+  "mutedAt": "timestamp"
+}
+```
+
+users/{uid}/muted_groups/{groupId}
+
+```json
+{
+  "mutedAt": "timestamp"
+}
+```
+
+---
+
 🔐 Firestore Rules
 
 ```
@@ -404,6 +503,8 @@ service cloud.firestore {
   }
 }
 ```
+
+---
 
 🔥 Firestore Indexes
 
@@ -439,6 +540,8 @@ hisab Collection
 · khataId — Ascending
 · timestamp — Descending
 
+---
+
 📲 OneSignal Notifications
 
 OneSignal App ID
@@ -457,7 +560,15 @@ Notification Kaise Kaam Karti Hai
 
 1. User login karta hai → OneSignal.login(uid) call hota hai
 2. Message bhejta hai → _sendNotification() function HTTP request bhejta hai
-3. OneSignal receiver ke device par notification bhejta hai
+3. Personal chat → receiver ko notification
+4. Group chat → sabhi members ko parallel notification
+5. OneSignal receiver ke device par notification bhejta hai
+
+Mute System
+
+· Chat mute → users/{uid}/muted_chats/{chatId} doc
+· Group mute → users/{uid}/muted_groups/{groupId} doc
+· Notification bhejne se pehle mute check hota hai
 
 Important Files
 
@@ -466,103 +577,151 @@ Important Files
 · LoginScreen — OneSignal.login()
 · ProfileScreen — OneSignal.logout()
 
+---
+
 🐛 Known Issues / Fixes
 
-Issue 1: Photo Bhejne Par Firebase Storage Error
+Major Fixes (Latest Update)
 
-Fix: Firebase Storage hata diya, Base64 use kar rahe hain.
+Fix 1: Tab Switch pe Flicker/Loading
 
-Issue 2: Read Receipts Real-Time Update Nahi Ho Rahe
+· Problem: Filter chips pe unread count update karne ke liye addPostFrameCallback infinite loop bana raha tha
+· Fix: _isUpdatingCounts flag + 500ms debounce Timer + 3-second cache
 
-Fix: _getMessages() mein includeMetadataChanges: true add kiya.
+Fix 2: Group Message Send Slow
 
-Issue 3: Images Flicker / Re-render
+· Problem: Group notification await kar raha tha, message send block ho raha tha
+· Fix: _sendGroupNotificationsInBackground() — background mein notification, message instantly send
 
-Fix: _imageCache map banaya.
+Fix 3: Tab Switch pe 1 Second Loading
 
-Issue 4: Chat List Mein Messages Nahi Aa Rahe
+· Problem: _updateUnreadCounts har rebuild pe chal raha tha
+· Fix: Future.wait() parallel queries + _lastCountUpdate cache (3 second)
 
-Fix: chats collection mein members array add kiya.
+Fix 4: Same Tab pe Tap Flicker
 
-Issue 5: Tab Switch Par Chat List Gayab Hona
+· Problem: Same tab pe tap karo to bhi setState call ho raha tha
+· Fix: if (_selectedFilter != label) check
 
-Fix: HomeScreen mein IndexedStack use kiya.
+Older Fixes
 
-Issue 6: avatarUrl Missing Hone Par Crash
+Fix 5: Photo Bhejne Par Firebase Storage Error
 
-Fix: containsKey('avatarUrl') se check kiya.
+· Firebase Storage hata diya, Base64 use kar rahe hain
 
-Issue 7: Message Send Karne Par Input Box Delay
+Fix 6: Read Receipts Real-Time Update Nahi Ho Rahe
 
-Fix: _msgController.clear() ko message save karne se pehle call kiya.
+· _getMessages() mein includeMetadataChanges: true add kiya
 
-Issue 8: OneSignal 401 Error
+Fix 7: Images Flicker / Re-render
 
-Fix: Nayi REST API Key banayi, GitHub Secret se inject kiya.
+· _imageCache map banaya
 
-Issue 9: Group Chat Messages Load Nahi Ho Rahe
+Fix 8: Chat List Mein Messages Nahi Aa Rahe
 
-Fix: group_messages collection pe composite index banaya.
+· chats collection mein members array add kiya
 
-Issue 10: record Package Build Fail
+Fix 9: Tab Switch Par Chat List Gayab Hona
 
-Fix: record hata diya, flutter_sound use kiya.
+· HomeScreen mein IndexedStack use kiya
 
-Issue 11: audioplayers Build Fail
+Fix 10: avatarUrl Missing Hone Par Crash
 
-Fix: audioplayers hata diya, flutter_sound use kiya.
+· containsKey('avatarUrl') se check kiya
 
-Issue 12: permission_handler Build Fail (v1 embedding)
+Fix 11: Message Send Karne Par Input Box Delay
 
-Fix: permission_handler: 11.0.1 → 12.0.0.
+· _msgController.clear() ko message save karne se pehle call kiya
 
-Issue 13: Voice Recording _CodecNotSupportedException
+Fix 12: OneSignal 401 Error
 
-Fix: Codec.aacADTS → Codec.aacMP4.
+· Nayi REST API Key banayi, GitHub Secret se inject kiya
 
-Issue 14: Voice Playback Audio Nahi Aa Rahi
+Fix 13: Group Chat Messages Load Nahi Ho Rahe
 
-Status: Mic hardware issue hai, dusre phone pe test pending.
+· group_messages collection pe composite index banaya
 
-Issue 15: Friend Request Screen Crash
+Fix 14: record Package Build Fail
 
-Fix: flutter_contacts hata diya, manual phone number entry.
+· record hata diya, flutter_sound use kiya
 
-Issue 16: Message Button Se Chat Nahi Khul Rahi
+Fix 15: audioplayers Build Fail
 
-Fix: ChatScreen alag chat_screen.dart file mein move kiya, aur Navigator.push use kiya.
+· audioplayers hata diya, flutter_sound use kiya
 
-Issue 17: Contacts Count Galat Dikha Raha
+Fix 16: permission_handler Build Fail (v1 embedding)
 
-Fix: _loadStats() — chats collection ki jagah friends collection se count kiya.
+· permission_handler: 11.0.1 → 12.0.0
 
-Issue 18: khate Index Missing
+Fix 17: Voice Recording _CodecNotSupportedException
 
-Fix: khate collection pe composite index banaya (userId ASC + createdAt DESC).
+· Codec.aacADTS → Codec.aacMP4
 
-Issue 19: hisab Index Missing
+Fix 18: Voice Playback Audio Nahi Aa Rahi
 
-Fix: hisab collection pe composite index banaya (khataId ASC + timestamp DESC).
+· Status: Mic hardware issue hai, dusre phone pe test pending
 
-Issue 20: friends Collection Mein Random UID
+Fix 19: Friend Request Screen Crash
 
-Fix: Purane documents delete karke, app se naya friend add kiya.
+· flutter_contacts hata diya, manual phone number entry
 
-Issue 21: ChatScreen + GroupChatScreen Duplicate
+Fix 20: Message Button Se Chat Nahi Khul Rahi
 
-Fix: chat_screen.dart mein move kiye, main.dart se delete kiya.
+· ChatScreen alag chat_screen.dart file mein move kiya
 
-Issue 22: khata_screen.dart Duplicate Import
+Fix 21: Contacts Count Galat Dikha Raha
 
-Fix: Duplicate import hata diya.
+· _loadStats() — chats collection ki jagah friends collection se count
 
-Issue 23: ChatScreen Codec Mismatch (Playback)
+Fix 22: khate Index Missing
 
-Fix: _playVoice() mein Codec.aacADTS → Codec.aacMP4.
+· khate collection pe composite index banaya
 
-Issue 24: Hisaab Tab Slow Khul Raha Tha
+Fix 23: hisab Index Missing
 
-Fix: FutureBuilder use kiya, StreamBuilder ki jagah.
+· hisab collection pe composite index banaya
+
+Fix 24: friends Collection Mein Random UID
+
+· Purane documents delete karke, app se naya friend add kiya
+
+Fix 25: ChatScreen + GroupChatScreen Duplicate
+
+· chat_screen.dart mein move kiye
+
+Fix 26: khata_screen.dart Duplicate Import
+
+· Duplicate import hata diya
+
+Fix 27: ChatScreen Codec Mismatch (Playback)
+
+· _playVoice() mein Codec.aacADTS → Codec.aacMP4
+
+Fix 28: Hisaab Tab Slow Khul Raha Tha
+
+· FutureBuilder use kiya
+
+Fix 29: linkify Package Build Error
+
+· linkify hata diya, manual regex use kiya
+
+Fix 30: Filter Chips pe Unread Count Nahi Dikhta
+
+· _updateUnreadCounts() function add kiya
+
+Fix 31: Group Unread Count Nahi Dikhta
+
+· lastRead timestamp system + _getGroupUnreadCount() function
+
+Fix 32: Group Notification Nahi Aata
+
+· _sendGroupNotification() function add kiya + background notification
+
+Fix 33: Group Message Send Slow
+
+· Notification background mein, message instant
+
+---
 
 🚀 Build & Deploy
 
@@ -622,6 +781,8 @@ GitHub Secrets Required
 · GOOGLE_SERVICES_JSON — Firebase config file ka content
 · ONESIGNAL_REST_API_KEY — OneSignal REST API Key
 
+---
+
 👨‍💻 Developer Notes
 
 Firebase Project
@@ -639,13 +800,27 @@ Important Functions
 · _setOnlineStatus(bool) — Online status
 · _setTypingStatus(bool) — Typing status
 · _buildCachedImage(base64String) — Cached image widget
-· _sendNotification(message) — OneSignal notification
+· _sendNotification(message) — OneSignal notification (personal)
+· _sendNotificationInBackground(message) — Background notification
+· _sendGroupNotification(...) — Group notification
+· _sendGroupNotificationsInBackground(...) — Parallel group notification
 · _getUnreadCount(chatId) — Unread messages count
 · _getGroupUnreadCount(groupId) — Group unread count
+· _updateUnreadCounts(chatList, groupsList) — Saare counts update
 · _saveStatus({type, content, bgColor}) — Status save
 · _markGroupAsRead() — Group read mark
 · _exportPDF() — PDF export (khata detail)
 · _sendViaWhatsApp() — WhatsApp share (khata detail)
+· _showViewersList(viewers) — Status viewers list
+· _showForwardPicker(message, data) — Forward picker
+· _forwardMessage(receiverUid, message, data) — Forward message
+· _showWallpaperPicker() — Wallpaper picker
+· _saveWallpaper(value) — Wallpaper save
+· _toggleStarMessage(docId, isStarred) — Star toggle
+· _toggleMute() — Chat mute toggle
+· _showGroupMessageOptions(...) — Group message options
+· _editGroupMessage(...) — Edit group message
+· _deleteGroupMessage(...) — Delete group message
 
 Code Conventions
 
@@ -653,6 +828,8 @@ Code Conventions
 · PascalCase for classes
 · camelCase for variables and functions
 · Private functions start with _
+
+---
 
 📝 Roadmap (Future Features)
 
@@ -676,31 +853,50 @@ Phase 1 (Completed ✅)
 · ☑ Status Updates (Stories)
 · ☑ Modern Login Screen
 · ☑ Modern Chat List
-· ☑ Filter Chips
+· ☑ Filter Chips with Counts
 · ☑ Hisaab Kitaab (Khata Book)
 · ☑ PDF Export + WhatsApp Send
-· ☑ chat_screen.dart — Alag file
 · ☑ Bottom nav: Chats, Updates, Calls, Profile
 · ☑ Profile stats: Contacts, Hisaab, Blocked
-· ☑ Functional Settings: Privacy, Notifications, App Update, App Share, iPhone App
+· ☑ Functional Settings
+· ☑ Chat List Search
+· ☑ Reply to Status
+· ☑ Delete Status
+· ☑ Viewed by List
+· ☑ Link Preview (YouTube/Instagram)
+· ☑ Clickable Links
+· ☑ Group Reply
+· ☑ Group Edit/Delete
+· ☑ Message Star
+· ☑ Chat Mute
+· ☑ Message Forwarding
+· ☑ Chat Wallpaper
+· ☑ Group Notifications
+· ☑ Group Unread Count
+· ☑ Performance Optimizations
 
 Phase 2 (Next)
 
 · ☐ Voice Message (mic test pending)
-· ☐ Chat List Search
+· ☐ Group Voice Message
 · ☐ Communities Tab
-· ☐ Link Share (Instagram/YouTube/Facebook)
+· ☐ Starred Messages Screen
+· ☐ Muted Chats Screen
+· ☐ Message Info (kisne padha)
+· ☐ Message Reaction
+· ☐ Message Search
+· ☐ Chat Statistics
 
 Phase 3 (Future)
 
 · ☐ Voice/Video Calling (WebRTC + TURN)
-· ☐ Video Status (Firebase Storage)
-· ☐ Photo + Song Status (Firebase Storage)
 · ☐ End-to-End Encryption
 · ☐ Two-Factor Auth
-· ☐ Message Forwarding
-· ☐ Chat Wallpaper
-· ☐ Chat Statistics
+· ☐ Screenshot Notification
+· ☐ Status Forward
+· ☐ Reply Preview Tap
+
+---
 
 🎯 Important Notes for New Developers
 
@@ -710,6 +906,36 @@ Phase 3 (Future)
 4. Firestore Indexes — group_messages, status, khate, hisab pe composite index
 5. OneSignal REST API Key — GitHub Secret mein
 6. GitHub Actions — har push pe APK automatically build
-7. ChatScreen — chat_screen.dart mein hai (main.dart mein nahi)
+7. ChatScreen — chat_screen.dart mein hai
 8. Hisaab Kitaab — khate + hisab collections
 9. PROJECT_INFO.md — sensitive info hide ki hui hai
+10. Link Preview — linkify package hata diya, manual regex use
+11. Group Notification — background mein, parallel
+12. Performance — debounce + cache + parallel queries
+
+```
+
+---
+
+## ✅ Ab ye karo:
+
+1. **`PROJECT_INFO.md`** file kholo GitHub pe
+2. **Pencil icon (✏️)** dabao
+3. **Poori nayi content paste karo** upar wali
+4. **Commit changes** dabao
+
+---
+
+## 🎯 Kya-kya update hua?
+
+| Section | Kya Naya |
+|---------|----------|
+| **Core Features** | Message Star, Forward, Wallpaper, Mute, Group Reply, Group Edit/Delete, Group Notification, Group Unread Count, Link Preview, Clickable Links, Filter Chips Counts |
+| **Performance** | Debounce, Cache, Parallel Queries, Background Notifications |
+| **Firestore Structure** | Naye sub-collections (wallpapers, muted_chats, muted_groups), naye fields (isStarred, linkUrl, linkTitle, etc.) |
+| **Known Issues** | 33 fixes documented |
+| **Important Functions** | 15+ naye functions add kiye |
+| **Roadmap** | Saare naye features completed mark kiye |
+| **Developer Notes** | 12 important notes |
+
+---
