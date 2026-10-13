@@ -1142,7 +1142,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ============ TOGGLE STAR ============
   Future<void> _toggleStarMessage(String docId, bool isStarred) async {
     await FirebaseFirestore.instance
         .collection('chats')
@@ -2254,6 +2253,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final Map<String, String?> _senderAvatarCache = {};
   final Map<String, Color> _senderColorCache = {};
 
+  static const String ONESIGNAL_APP_ID =
+      '05bee600-4a45-44e5-b35e-5328544c25c1';
+  static const String ONESIGNAL_REST_API_KEY = String.fromEnvironment(
+    'ONESIGNAL_REST_API_KEY',
+    defaultValue: '',
+  );
+
   final List<Color> _senderColors = [
     const Color(0xFFE91E63),
     const Color(0xFF9C27B0),
@@ -2271,6 +2277,21 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void initState() {
     super.initState();
     _loadGroupPhoto();
+    _markGroupAsRead();
+  }
+
+  // ============ GROUP READ MARK ============
+  Future<void> _markGroupAsRead() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .set({
+        'lastRead': {currentUserId: FieldValue.serverTimestamp()},
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Mark group read error: $e');
+    }
   }
 
   Future<void> _loadGroupPhoto() async {
@@ -2427,6 +2448,45 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'message': 'Ye message delete kar diya gaya hai',
       'imageBase64': null,
     });
+  }
+
+  // ============ GROUP NOTIFICATION ============
+  Future<void> _sendGroupNotification({
+    required String memberId,
+    required String groupName,
+    required String senderName,
+    required String message,
+    required bool hasImage,
+  }) async {
+    try {
+      String body;
+      if (message.isNotEmpty) {
+        body = '$senderName: $message';
+      } else if (hasImage) {
+        body = '$senderName: 📷 Photo';
+      } else {
+        body = '$senderName: Naya message';
+      }
+
+      await http.post(
+        Uri.parse('https://onesignal.com/api/v1/notifications'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': 'Basic $ONESIGNAL_REST_API_KEY',
+        },
+        body: jsonEncode({
+          'app_id': ONESIGNAL_APP_ID,
+          'include_aliases': {
+            'external_id': [memberId],
+          },
+          'target_channel': 'push',
+          'headings': {'en': groupName},
+          'contents': {'en': body},
+        }),
+      );
+    } catch (e) {
+      debugPrint('Group notif error: $e');
+    }
   }
 
   Future<void> _openLink(String url) async {
@@ -2722,6 +2782,55 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'isEdited': false,
       'isDeleted': false,
     });
+
+    // 👇 GROUP NOTIFICATION BHEJO
+    try {
+      DocumentSnapshot groupDoc = await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .get();
+
+      if (groupDoc.exists) {
+        List<String> members =
+            List<String>.from(groupDoc['members'] ?? []);
+        String groupName = groupDoc['name'] ?? 'Group';
+
+        DocumentSnapshot senderDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+        String senderName = senderDoc.exists
+            ? (senderDoc['username'] ?? 'User')
+            : 'User';
+
+        for (String memberId in members) {
+          if (memberId == currentUserId) continue;
+
+          try {
+            DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(memberId)
+                .collection('muted_groups')
+                .doc(widget.groupId)
+                .get();
+
+            if (mutedDoc.exists) continue;
+
+            await _sendGroupNotification(
+              memberId: memberId,
+              groupName: groupName,
+              senderName: senderName,
+              message: messageText,
+              hasImage: imageBase64 != null,
+            );
+          } catch (e) {
+            debugPrint('Error sending notif to $memberId: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Group notification error: $e');
+    }
 
     _msgController.clear();
     if (mounted) {
