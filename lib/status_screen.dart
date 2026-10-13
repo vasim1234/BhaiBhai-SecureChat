@@ -20,7 +20,6 @@ class StatusScreen extends StatefulWidget {
 class _StatusScreenState extends State<StatusScreen> {
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // ============ MY STATUS OPTIONS (Modern Bottom Sheet) ============
   void _showMyStatusOptions() {
     showModalBottomSheet(
       context: context,
@@ -56,7 +55,6 @@ class _StatusScreenState extends State<StatusScreen> {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      // TEXT CARD
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -103,7 +101,6 @@ class _StatusScreenState extends State<StatusScreen> {
                         ),
                       ),
                       const SizedBox(width: 14),
-                      // PHOTO CARD
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -161,7 +158,6 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  // ============ TEXT STATUS (WhatsApp style Modern Dialog) ============
   Future<void> _addTextStatus() async {
     final TextEditingController controller = TextEditingController();
     String selectedColor = '667EEA';
@@ -194,7 +190,6 @@ class _StatusScreenState extends State<StatusScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // HEADER
                       Row(
                         children: [
                           Container(
@@ -222,8 +217,6 @@ class _StatusScreenState extends State<StatusScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-
-                      // LIVE PREVIEW BOX
                       Container(
                         height: 180,
                         width: double.infinity,
@@ -269,8 +262,6 @@ class _StatusScreenState extends State<StatusScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // TEXT FIELD
                       Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFFF5F7FB),
@@ -298,8 +289,6 @@ class _StatusScreenState extends State<StatusScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-
-                      // COLOR PICKER
                       const Text(
                         'Background Color',
                         style: TextStyle(
@@ -357,8 +346,6 @@ class _StatusScreenState extends State<StatusScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // BUTTONS
                       Row(
                         children: [
                           Expanded(
@@ -435,7 +422,6 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  // ============ PHOTO STATUS ============
   Future<void> _addPhotoStatus() async {
     try {
       final ImagePicker picker = ImagePicker();
@@ -508,7 +494,6 @@ class _StatusScreenState extends State<StatusScreen> {
     }
   }
 
-  // ============ SAVE STATUS TO FIRESTORE ============
   Future<void> _saveStatus({
     required String type,
     required String content,
@@ -538,7 +523,6 @@ class _StatusScreenState extends State<StatusScreen> {
     });
   }
 
-  // ============ OPEN STATUS VIEWER ============
   void _openStatusViewer(
       List<Map<String, dynamic>> userStatuses, int initialIndex) {
     Navigator.push(
@@ -668,7 +652,6 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  // ============ MY STATUS TILE ============
   Widget _buildMyStatusTile(List<Map<String, dynamic>> myStatuses) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance
@@ -777,7 +760,6 @@ class _StatusScreenState extends State<StatusScreen> {
     );
   }
 
-  // ============ OTHER USER STATUS TILE ============
   Widget _buildUserStatusTile(List<Map<String, dynamic>> userStatuses) {
     var firstStatus = userStatuses.first;
     String username = firstStatus['username'] ?? 'User';
@@ -903,7 +885,83 @@ class _StatusViewerState extends State<StatusViewer> {
     }
   }
 
-  // ============ SEND REPLY ============
+  // ============ VIEWERS LIST ============
+  void _showViewersList(List<dynamic> viewers) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                '${viewers.length} Viewers',
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              if (viewers.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(30),
+                  child: Text('Abhi tak kisi ne nahi dekha'),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: viewers.length,
+                    itemBuilder: (context, index) {
+                      String viewerId = viewers[index].toString();
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(viewerId)
+                            .get(),
+                        builder: (context, snap) {
+                          String username = 'User';
+                          String? avatarUrl;
+                          if (snap.hasData && snap.data!.exists) {
+                            username =
+                                snap.data!['username'] ?? 'User';
+                            avatarUrl = snap.data!['avatarUrl'];
+                          }
+                          return ListTile(
+                            leading: AvatarWidget(
+                              avatarUrl: avatarUrl,
+                              username: username,
+                              size: 45,
+                            ),
+                            title: Text(username,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _sendReplyToStatus(Map<String, dynamic> status) async {
     String message = _replyController.text.trim();
     if (message.isEmpty) return;
@@ -961,7 +1019,6 @@ class _StatusViewerState extends State<StatusViewer> {
     }
   }
 
-  // ============ DELETE STATUS ============
   Future<void> _deleteStatus(String docId) async {
     try {
       await FirebaseFirestore.instance
@@ -1077,7 +1134,6 @@ class _StatusViewerState extends State<StatusViewer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ===== CONTENT =====
           if (type == 'image')
             SizedBox(
               width: double.infinity,
@@ -1122,7 +1178,6 @@ class _StatusViewerState extends State<StatusViewer> {
               ),
             ),
 
-          // ===== TAP AREAS =====
           Row(
             children: [
               Expanded(
@@ -1140,11 +1195,9 @@ class _StatusViewerState extends State<StatusViewer> {
             ],
           ),
 
-          // ===== TOP BAR =====
           SafeArea(
             child: Column(
               children: [
-                // Progress bars
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 8),
@@ -1165,7 +1218,6 @@ class _StatusViewerState extends State<StatusViewer> {
                     }),
                   ),
                 ),
-                // User info
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
@@ -1199,7 +1251,6 @@ class _StatusViewerState extends State<StatusViewer> {
                           ],
                         ),
                       ),
-                      // 3-dot menu (sirf apne status pe)
                       if (isMyStatus)
                         IconButton(
                           icon: const Icon(Icons.more_vert,
@@ -1217,38 +1268,42 @@ class _StatusViewerState extends State<StatusViewer> {
             ),
           ),
 
-          // ===== VIEWERS COUNT (only for my status) =====
           if (isMyStatus)
             Positioned(
               bottom: 30,
               left: 0,
               right: 0,
               child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.visibility,
-                          color: Colors.white, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${(status['viewers'] ?? []).length} viewers',
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 13),
-                      ),
-                    ],
+                child: GestureDetector(
+                  onTap: () => _showViewersList(status['viewers'] ?? []),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.visibility,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${(status['viewers'] ?? []).length} viewers',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_up,
+                            color: Colors.white, size: 18),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
 
-          // ===== REPLY BAR (sirf dusre ke status pe) =====
           if (!isMyStatus)
             Positioned(
               bottom: 20,
