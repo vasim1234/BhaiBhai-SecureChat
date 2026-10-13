@@ -886,6 +886,45 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     }
   }
 
+  // ============ GROUP UNREAD COUNT ============
+  Future<int> _getGroupUnreadCount(String groupId) async {
+    try {
+      DocumentSnapshot groupDoc = await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(groupId)
+          .get();
+
+      if (!groupDoc.exists) return 0;
+
+      Map<String, dynamic> groupData =
+          groupDoc.data() as Map<String, dynamic>;
+      Map<String, dynamic> lastReadMap =
+          (groupData['lastRead'] ?? {}) as Map<String, dynamic>;
+
+      Timestamp? lastRead = lastReadMap[currentUserId];
+
+      Query query = FirebaseFirestore.instance
+          .collection('group_messages')
+          .where('groupId', isEqualTo: groupId);
+
+      if (lastRead != null) {
+        query = query.where('timestamp', isGreaterThan: lastRead);
+      }
+
+      QuerySnapshot unreadMessages = await query.get();
+
+      int count = unreadMessages.docs.where((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return data['senderId'] != currentUserId;
+      }).length;
+
+      return count;
+    } catch (e) {
+      debugPrint('Group unread error: $e');
+      return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1063,14 +1102,12 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
               // ============ SEARCH FILTER ============
               if (_searchQuery.isNotEmpty) {
-                // Groups filter — naam se
                 groupsList = groupsList.where((group) {
                   String name =
                       (group['name'] ?? '').toString().toLowerCase();
                   return name.contains(_searchQuery);
                 }).toList();
 
-                // Chats filter — message se (aur username niche buildChatTile mein check hoga)
                 chatList = chatList.where((chat) {
                   String lastMessage =
                       (chat['message'] ?? '').toString().toLowerCase();
@@ -1079,8 +1116,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               }
 
               // ============ FILTER LOGIC ============
-
-              // 1. GROUPS
               if (_selectedFilter == 'Groups') {
                 if (groupsList.isEmpty) {
                   return _emptyState(
@@ -1100,7 +1135,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // 2. ALL
               if (_selectedFilter == 'All') {
                 if (chatList.isEmpty) {
                   return _emptyState(
@@ -1120,7 +1154,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // 3. UNREAD
               if (_selectedFilter == 'Unread') {
                 return FutureBuilder<List<Map<String, dynamic>>>(
                   future: _filterUnreadChats(chatList),
@@ -1147,7 +1180,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // 4. FAVOURITES
               if (_selectedFilter == 'Favourites') {
                 List<Map<String, dynamic>> favList = chatList
                     .where((c) =>
@@ -1167,7 +1199,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 );
               }
 
-              // Fallback
               return const SizedBox.shrink();
             },
           );
@@ -1329,21 +1360,49 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'Group',
-                    style: TextStyle(
-                      color: Color(0xFF8B5CF6),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                // 👇 UNREAD COUNT YA "GROUP" BADGE
+                FutureBuilder<int>(
+                  future: _getGroupUnreadCount(groupId),
+                  builder: (context, unreadSnap) {
+                    int unreadCount = unreadSnap.data ?? 0;
+                    if (unreadCount > 0) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        constraints: const BoxConstraints(minWidth: 22),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25D366),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    } else {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'Group',
+                          style: TextStyle(
+                            color: Color(0xFF8B5CF6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -1392,7 +1451,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           }
         }
 
-        // 👇 SEARCH: username se bhi filter karo
         if (_searchQuery.isNotEmpty &&
             !username.toLowerCase().contains(_searchQuery) &&
             !lastMessage.toLowerCase().contains(_searchQuery)) {
@@ -1649,6 +1707,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         'members': members,
         'createdBy': currentUserId,
         'createdAt': FieldValue.serverTimestamp(),
+        'lastRead': {currentUserId: FieldValue.serverTimestamp()},
       });
 
       if (mounted) {
