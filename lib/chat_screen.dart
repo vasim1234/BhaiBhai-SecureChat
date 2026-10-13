@@ -2294,62 +2294,67 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
-                        onTapDown: (_isBlocked ||
-                                !_areFriends ||
-                                _msgController.text
-                                    .trim()
-                                    .isNotEmpty)
-                            ? null
-                            : (_) => _startRecording(),
-                        onTapUp: (_isBlocked ||
-                                !_areFriends ||
-                                _msgController.text
-                                    .trim()
-                                    .isNotEmpty)
-                            ? null
-                            : (_) => _stopRecording(send: true),
-                        onTapCancel: (_isBlocked ||
-                                !_areFriends ||
-                                _msgController.text
-                                    .trim()
-                                    .isNotEmpty)
-                            ? null
-                            : () => _cancelRecording(),
-                        onTap: (_isBlocked ||
-                                !_areFriends ||
-                                _msgController.text.trim().isEmpty)
-                            ? null
-                            : () async {
-                                await _sendMessage(
-                                    replyTo: _replyToData);
-                                setState(
-                                    () => _replyToData = null);
-                              },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: (_isBlocked || !_areFriends)
-                                ? null
-                                : const LinearGradient(
-                                    colors: [
-                                      Color(0xFF667EEA),
-                                      Color(0xFF764BA2)
-                                    ],
-                                  ),
-                            color: (_isBlocked || !_areFriends)
-                                ? Colors.grey
-                                : null,
-                          ),
-                          child:
-                              _msgController.text.trim().isEmpty
-                                  ? const Icon(Icons.mic,
-                                      color: Colors.white)
-                                  : const Icon(Icons.send,
-                                      color: Colors.white),
-                        ),
-                      ),
+                      // 👇 TEXT KHALI AUR ALLOWED → LONG PRESS VOICE
+(_msgController.text.trim().isEmpty &&
+        !_isBlocked &&
+        _areFriends)
+    ? GestureDetector(
+        onLongPressStart: (_) => _startRecording(),
+        onLongPressEnd: (_) =>
+            _stopRecording(send: true),
+        onLongPressCancel: () => _cancelRecording(),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF667EEA),
+                Color(0xFF764BA2)
+              ],
+            ),
+          ),
+          child: const Icon(Icons.mic,
+              color: Colors.white),
+        ),
+      )
+    // 👇 TEXT HAI → TAP SEND
+    // 👇 BLOCKED / NOT FRIEND → GREY BUTTON
+    : GestureDetector(
+        onTap: (_isBlocked || !_areFriends)
+            ? null
+            : _msgController.text.trim().isEmpty
+                ? null
+                : () async {
+                    await _sendMessage(
+                        replyTo: _replyToData);
+                    setState(() =>
+                        _replyToData = null);
+                  },
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: (_isBlocked || !_areFriends)
+                ? null
+                : const LinearGradient(
+                    colors: [
+                      Color(0xFF667EEA),
+                      Color(0xFF764BA2)
+                    ],
+                  ),
+            color: (_isBlocked || !_areFriends)
+                ? Colors.grey
+                : null,
+          ),
+          child:
+              _msgController.text.trim().isEmpty
+                  ? const Icon(Icons.mic,
+                      color: Colors.white)
+                  : const Icon(Icons.send,
+                      color: Colors.white),
+        ),
+      ),
                     ],
                   ),
               ],
@@ -4017,39 +4022,48 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
-                        onTapDown: _msgController.text.trim().isNotEmpty
-                            ? null
-                            : (_) => _startRecording(),
-                        onTapUp: _msgController.text.trim().isNotEmpty
-                            ? null
-                            : (_) => _stopRecording(send: true),
-                        onTapCancel: _msgController.text.trim().isNotEmpty
-                            ? null
-                            : () => _cancelRecording(),
-                        onTap: _msgController.text.trim().isEmpty
-                            ? null
-                            : () async {
-                                await _sendMessage();
-                              },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                Color(0xFF667EEA),
-                                Color(0xFF764BA2)
-                              ],
-                            ),
-                          ),
-                          child: _msgController.text.trim().isEmpty
-                              ? const Icon(Icons.mic,
-                                  color: Colors.white)
-                              : const Icon(Icons.send,
-                                  color: Colors.white),
-                        ),
-                      ),
+                      // 👇 TEXT KHALI HAI TO LONG PRESS SE VOICE
+_msgController.text.trim().isEmpty
+    ? GestureDetector(
+        onLongPressStart: (_) => _startRecording(),
+        onLongPressEnd: (_) =>
+            _stopRecording(send: true),
+        onLongPressCancel: () => _cancelRecording(),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF667EEA),
+                Color(0xFF764BA2)
+              ],
+            ),
+          ),
+          child: const Icon(Icons.mic,
+              color: Colors.white),
+        ),
+      )
+    // 👇 TEXT HAI TO TAP SE SEND
+    : GestureDetector(
+        onTap: () async {
+          await _sendMessage();
+        },
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF667EEA),
+                Color(0xFF764BA2)
+              ],
+            ),
+          ),
+          child: const Icon(Icons.send,
+              color: Colors.white),
+        ),
+      ),
                     ],
                   ),
               ],
