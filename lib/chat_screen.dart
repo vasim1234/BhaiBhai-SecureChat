@@ -48,6 +48,20 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isReceiverTyping = false;
   bool _isReceiverOnline = false;
 
+  // ============ WALLPAPER ============
+  String? _chatWallpaper;
+
+  final List<Map<String, String>> _presetWallpapers = [
+    {'name': 'Default', 'value': 'F5F7FB'},
+    {'name': 'Blue', 'value': 'E3F2FD'},
+    {'name': 'Green', 'value': 'E8F5E9'},
+    {'name': 'Pink', 'value': 'FCE4EC'},
+    {'name': 'Purple', 'value': 'F3E5F5'},
+    {'name': 'Yellow', 'value': 'FFF9C4'},
+    {'name': 'Grey', 'value': 'EEEEEE'},
+    {'name': 'Dark', 'value': '37474F'},
+  ];
+
   final Map<String, Uint8List> _imageCache = {};
 
   // ============ VOICE MESSAGE VARIABLES ============
@@ -86,6 +100,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _listenToOnlineStatus();
     _initRecorder();
     _initPlayer();
+    _loadWallpaper();
   }
 
   Future<void> _initRecorder() async {
@@ -115,6 +130,244 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_recorderInitialized) _audioRecorder.closeRecorder();
     if (_playerInitialized) _audioPlayer.closePlayer();
     super.dispose();
+  }
+
+  // ============ WALLPAPER ============
+  Future<void> _loadWallpaper() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .collection('wallpapers')
+          .doc(chatId)
+          .get();
+
+      if (doc.exists && mounted) {
+        setState(() {
+          _chatWallpaper = doc['wallpaper'];
+        });
+      }
+    } catch (e) {
+      debugPrint('Wallpaper load error: $e');
+    }
+  }
+
+  Future<void> _saveWallpaper(String value) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .collection('wallpapers')
+          .doc(chatId)
+          .set({
+        'wallpaper': value,
+        'updatedAt': FieldValue.serverTimestamp()
+      });
+
+      setState(() => _chatWallpaper = value);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wallpaper change ho gaya! ✅')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Save wallpaper error: $e');
+    }
+  }
+
+  void _showWallpaperPicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.wallpaper,
+                          color: Color(0xFF8B5CF6), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Chat Wallpaper',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Preset Wallpapers',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 70,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _presetWallpapers.length,
+                    itemBuilder: (context, index) {
+                      final wp = _presetWallpapers[index];
+                      final colorValue =
+                          int.parse('FF${wp['value']}', radix: 16);
+                      bool isSelected = _chatWallpaper == wp['value'];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _saveWallpaper(wp['value']!);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 12),
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Color(colorValue),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF667EEA)
+                                  : Colors.grey[300]!,
+                              width: isSelected ? 3 : 1,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check,
+                                  color: Color(0xFF667EEA))
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickWallpaperFromGallery();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF667EEA).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.photo_library,
+                            color: Color(0xFF667EEA)),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Gallery se photo choose karo',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF667EEA),
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right,
+                            color: Color(0xFF667EEA)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickWallpaperFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 60,
+      maxWidth: 1080,
+      maxHeight: 1080,
+    );
+
+    if (image == null) return;
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final targetPath =
+          '${dir.path}/wallpaper_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 40,
+        minWidth: 720,
+        minHeight: 720,
+      );
+
+      if (compressedFile == null) return;
+
+      final bytes = await compressedFile.readAsBytes();
+      String base64Image = base64Encode(bytes);
+
+      if (base64Image.length > 800000) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Photo bahut badi hai, chhoti try karein')),
+          );
+        }
+        return;
+      }
+
+      await _saveWallpaper('IMG:$base64Image');
+    } catch (e) {
+      debugPrint('Wallpaper pick error: $e');
+    }
+  }
+
+  Widget _buildWallpaperBackground() {
+    if (_chatWallpaper == null || _chatWallpaper == 'F5F7FB') {
+      return Container(color: const Color(0xFFF5F7FB));
+    }
+
+    if (_chatWallpaper!.startsWith('IMG:')) {
+      try {
+        final base64Str = _chatWallpaper!.substring(4);
+        return Positioned.fill(
+          child: Image.memory(
+            base64Decode(base64Str),
+            fit: BoxFit.cover,
+            opacity: const AlwaysStoppedAnimation(0.35),
+          ),
+        );
+      } catch (e) {
+        return Container(color: const Color(0xFFF5F7FB));
+      }
+    } else {
+      try {
+        final color = Color(int.parse('FF${_chatWallpaper}', radix: 16));
+        return Positioned.fill(child: Container(color: color));
+      } catch (e) {
+        return Container(color: const Color(0xFFF5F7FB));
+      }
+    }
   }
 
   // ============ OPEN LINK ============
@@ -865,6 +1118,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     });
                   },
                 ),
+              // 👇 FORWARD
+              ListTile(
+                leading:
+                    const Icon(Icons.forward, color: Color(0xFF10B981)),
+                title: const Text('Forward'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showForwardPicker(message, data);
+                },
+              ),
               if (isMe && message.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.edit, color: Colors.blue),
@@ -888,6 +1151,175 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       },
     );
+  }
+
+  // ============ FORWARD PICKER ============
+  void _showForwardPicker(String message, Map<String, dynamic> data) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'Forward to...',
+                  style:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                const Divider(height: 1),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('chats')
+                        .where('members', arrayContains: currentUserId)
+                        .snapshots(),
+                    builder: (context, chatSnap) {
+                      Map<String, Map<String, dynamic>> partners = {};
+                      if (chatSnap.hasData) {
+                        for (var doc in chatSnap.data!.docs) {
+                          var cd = doc.data() as Map<String, dynamic>;
+                          String cid = cd['chatId'] ?? '';
+                          List<String> uids = cid.split('_');
+                          String other = uids.firstWhere(
+                            (uid) => uid != currentUserId,
+                            orElse: () => '',
+                          );
+                          if (other.isNotEmpty &&
+                              other != widget.receiverUid) {
+                            partners[other] = cd;
+                          }
+                        }
+                      }
+
+                      if (partners.isEmpty) {
+                        return const Center(
+                            child: Text('Koi aur chat nahi hai'));
+                      }
+
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: partners.length,
+                        itemBuilder: (context, index) {
+                          String otherUid =
+                              partners.keys.elementAt(index);
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(otherUid)
+                                .get(),
+                            builder: (context, userSnap) {
+                              String username = 'User';
+                              String? avatarUrl;
+                              if (userSnap.hasData &&
+                                  userSnap.data!.exists) {
+                                username = userSnap.data!['username'] ??
+                                    'User';
+                                avatarUrl = userSnap.data!['avatarUrl'];
+                              }
+                              return ListTile(
+                                leading: AvatarWidget(
+                                  avatarUrl: avatarUrl,
+                                  username: username,
+                                  size: 45,
+                                ),
+                                title: Text(username,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600)),
+                                trailing: const Icon(Icons.send,
+                                    color: Color(0xFF10B981)),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _forwardMessage(
+                                      otherUid, message, data);
+                                },
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _forwardMessage(String receiverUid, String message,
+      Map<String, dynamic> data) async {
+    try {
+      List<String> uids = [currentUserId, receiverUid]..sort();
+      String newChatId = '${uids[0]}_${uids[1]}';
+
+      String forwardedText = message;
+      if (forwardedText.isEmpty) {
+        if (data['imageBase64'] != null) {
+          forwardedText = '📷 Forwarded photo';
+        } else if (data['voiceBase64'] != null) {
+          forwardedText = '🎤 Forwarded voice message';
+        } else if (data['linkUrl'] != null) {
+          forwardedText = data['linkUrl'];
+        }
+      }
+
+      await FirebaseFirestore.instance.collection('chats').add({
+        'chatId': newChatId,
+        'members': uids,
+        'senderId': currentUserId,
+        'receiverId': receiverUid,
+        'message': '↪️ Forwarded\n\n$forwardedText',
+        'imageBase64': data['imageBase64'],
+        'voiceBase64': data['voiceBase64'],
+        'linkUrl': data['linkUrl'],
+        'linkTitle': data['linkTitle'],
+        'linkThumbnail': data['linkThumbnail'],
+        'linkType': data['linkType'],
+        'timestamp': FieldValue.serverTimestamp(),
+        'expiresAt':
+            Timestamp.fromDate(DateTime.now().add(const Duration(hours: 24))),
+        'isEdited': false,
+        'isDeleted': false,
+        'isRead': false,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Message forward ho gaya! ✅'),
+            backgroundColor: Color(0xFF10B981),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Forward error: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _pickImage() async {
@@ -1174,8 +1606,19 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
               if (value == 'block') _toggleBlock();
+              if (value == 'wallpaper') _showWallpaperPicker();
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'wallpaper',
+                child: Row(
+                  children: [
+                    Icon(Icons.wallpaper, color: Color(0xFF8B5CF6)),
+                    SizedBox(width: 10),
+                    Text('Wallpaper'),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'block',
                 child: Row(
@@ -1239,214 +1682,252 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           if (_isUploading) const LinearProgressIndicator(),
+
+          // ============ CHAT AREA WITH WALLPAPER ============
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getMessages(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            child: Stack(
+              children: [
+                _buildWallpaperBackground(),
+                StreamBuilder<QuerySnapshot>(
+                  stream: _getMessages(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                          child: Text('Error: ${snapshot.error}'));
+                    }
+                    if (!snapshot.hasData) {
+                      return const Center(
+                          child: CircularProgressIndicator());
+                    }
 
-                var docs = snapshot.data!.docs.where((doc) {
-                  var data = doc.data() as Map<String, dynamic>;
-                  Timestamp expiresAt = data['expiresAt'];
-                  return expiresAt.toDate().isAfter(DateTime.now());
-                }).toList();
+                    var docs = snapshot.data!.docs.where((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      Timestamp expiresAt = data['expiresAt'];
+                      return expiresAt.toDate().isAfter(DateTime.now());
+                    }).toList();
 
-                if (docs.isEmpty) {
-                  return const Center(
-                      child:
-                          Text('Abhi koi message nahi hai. Hi bhejein!'));
-                }
+                    if (docs.isEmpty) {
+                      return const Center(
+                          child: Text(
+                              'Abhi koi message nahi hai. Hi bhejein!'));
+                    }
 
-                return ListView.builder(
-                  reverse: true,
-                  padding: const EdgeInsets.all(10),
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    var doc = docs[index];
-                    var data = doc.data() as Map<String, dynamic>;
-                    bool isMe = data['senderId'] == currentUserId;
-                    bool isDeleted = data['isDeleted'] ?? false;
-                    bool isEdited = data['isEdited'] ?? false;
-                    bool isRead = data['isRead'] ?? false;
-                    String? imageBase64 = data['imageBase64'];
-                    String? voiceBase64 = data['voiceBase64'];
-                    Map<String, dynamic>? replyTo = data['replyTo'];
-                    String? linkUrl = data['linkUrl'];
+                    return ListView.builder(
+                      reverse: true,
+                      padding: const EdgeInsets.all(10),
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        var doc = docs[index];
+                        var data = doc.data() as Map<String, dynamic>;
+                        bool isMe = data['senderId'] == currentUserId;
+                        bool isDeleted = data['isDeleted'] ?? false;
+                        bool isEdited = data['isEdited'] ?? false;
+                        bool isRead = data['isRead'] ?? false;
+                        String? imageBase64 = data['imageBase64'];
+                        String? voiceBase64 = data['voiceBase64'];
+                        Map<String, dynamic>? replyTo = data['replyTo'];
+                        String? linkUrl = data['linkUrl'];
 
-                    return GestureDetector(
-                      onLongPress: isDeleted
-                          ? null
-                          : () => _showMessageOptions(
-                              doc.id, data['message'] ?? '', isMe, data),
-                      child: Align(
-                        alignment: isMe
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 4, horizontal: 8),
-                          padding: const EdgeInsets.all(12),
-                          constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: isMe && !isDeleted
-                                ? const LinearGradient(
-                                    colors: [
-                                      Color(0xFF667EEA),
-                                      Color(0xFF764BA2)
-                                    ],
-                                  )
-                                : null,
-                            color: isDeleted
-                                ? Colors.grey[200]
-                                : (isMe ? null : Colors.white),
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(15),
-                              topRight: const Radius.circular(15),
-                              bottomLeft: Radius.circular(isMe ? 15 : 0),
-                              bottomRight: Radius.circular(isMe ? 0 : 15),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
+                        return GestureDetector(
+                          onLongPress: isDeleted
+                              ? null
+                              : () => _showMessageOptions(
+                                  doc.id,
+                                  data['message'] ?? '',
+                                  isMe,
+                                  data),
+                          child: Align(
+                            alignment: isMe
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                  vertical: 4, horizontal: 8),
+                              padding: const EdgeInsets.all(12),
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context)
+                                        .size
+                                        .width *
+                                    0.75,
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (replyTo != null)
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  margin: const EdgeInsets.only(bottom: 5),
-                                  decoration: BoxDecoration(
-                                    color: isMe
-                                        ? Colors.white.withOpacity(0.2)
-                                        : Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: isMe
-                                            ? Colors.white
-                                            : const Color(0xFF667EEA),
-                                        width: 3,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        replyTo['senderName'] ?? 'User',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: isMe
-                                              ? Colors.white
-                                              : const Color(0xFF667EEA),
-                                        ),
-                                      ),
-                                      Text(
-                                        replyTo['message'] ?? '',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isMe
-                                              ? Colors.white70
-                                              : Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              decoration: BoxDecoration(
+                                gradient: isMe && !isDeleted
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF667EEA),
+                                          Color(0xFF764BA2)
+                                        ],
+                                      )
+                                    : null,
+                                color: isDeleted
+                                    ? Colors.grey[200]
+                                    : (isMe
+                                        ? null
+                                        : Colors.white),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(15),
+                                  topRight: const Radius.circular(15),
+                                  bottomLeft:
+                                      Radius.circular(isMe ? 15 : 0),
+                                  bottomRight:
+                                      Radius.circular(isMe ? 0 : 15),
                                 ),
-
-                              // 👇 LINK PREVIEW
-                              if (linkUrl != null && !isDeleted)
-                                _buildLinkPreview(
-                                  url: linkUrl,
-                                  title: data['linkTitle'] ?? '',
-                                  thumbnail: data['linkThumbnail'],
-                                  type: data['linkType'] ?? 'other',
-                                  isMe: isMe,
-                                ),
-
-                              if (imageBase64 != null && !isDeleted)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: _buildCachedImage(imageBase64),
-                                ),
-                              if (voiceBase64 != null && !isDeleted)
-                                _buildVoicePlayer(doc.id, voiceBase64, isMe),
-
-                              // 👇 MESSAGE WITH CLICKABLE LINKS
-                              if (data['message'] != null &&
-                                  (data['message'] as String).isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 5),
-                                  child: _buildMessageWithLinks(
-                                    data['message'],
-                                    isMe,
-                                    isDeleted,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        Colors.black.withOpacity(0.05),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
                                   ),
-                                ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (isEdited && !isDeleted)
-                                    Text(
-                                      'edited • ',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: isMe
-                                            ? Colors.white70
-                                            : Colors.grey,
-                                      ),
-                                    ),
-                                  Text(
-                                    'Auto-delete in 24h',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isMe && !isDeleted
-                                          ? Colors.white70
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                  if (isMe && !isDeleted)
-                                    Padding(
-                                      padding:
-                                          const EdgeInsets.only(left: 5),
-                                      child: Icon(
-                                        isRead
-                                            ? Icons.done_all
-                                            : Icons.done,
-                                        size: 14,
-                                        color: isRead
-                                            ? Colors.lightBlue
-                                            : Colors.white70,
-                                      ),
-                                    ),
                                 ],
                               ),
-                            ],
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  if (replyTo != null)
+                                    Container(
+                                      padding:
+                                          const EdgeInsets.all(8),
+                                      margin: const EdgeInsets.only(
+                                          bottom: 5),
+                                      decoration: BoxDecoration(
+                                        color: isMe
+                                            ? Colors.white
+                                                .withOpacity(0.2)
+                                            : Colors.grey[200],
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: isMe
+                                                ? Colors.white
+                                                : const Color(
+                                                    0xFF667EEA),
+                                            width: 3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            replyTo['senderName'] ??
+                                                'User',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              color: isMe
+                                                  ? Colors.white
+                                                  : const Color(
+                                                      0xFF667EEA),
+                                            ),
+                                          ),
+                                          Text(
+                                            replyTo['message'] ?? '',
+                                            maxLines: 2,
+                                            overflow: TextOverflow
+                                                .ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isMe
+                                                  ? Colors.white70
+                                                  : Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  if (linkUrl != null && !isDeleted)
+                                    _buildLinkPreview(
+                                      url: linkUrl,
+                                      title:
+                                          data['linkTitle'] ?? '',
+                                      thumbnail:
+                                          data['linkThumbnail'],
+                                      type: data['linkType'] ??
+                                          'other',
+                                      isMe: isMe,
+                                    ),
+
+                                  if (imageBase64 != null &&
+                                      !isDeleted)
+                                    ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                      child: _buildCachedImage(
+                                          imageBase64),
+                                    ),
+                                  if (voiceBase64 != null &&
+                                      !isDeleted)
+                                    _buildVoicePlayer(
+                                        doc.id, voiceBase64, isMe),
+
+                                  if (data['message'] != null &&
+                                      (data['message'] as String)
+                                          .isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 5),
+                                      child: _buildMessageWithLinks(
+                                        data['message'],
+                                        isMe,
+                                        isDeleted,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isEdited && !isDeleted)
+                                        Text(
+                                          'edited • ',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isMe
+                                                ? Colors.white70
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      Text(
+                                        'Auto-delete in 24h',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isMe && !isDeleted
+                                              ? Colors.white70
+                                              : Colors.grey,
+                                        ),
+                                      ),
+                                      if (isMe && !isDeleted)
+                                        Padding(
+                                          padding: const EdgeInsets
+                                                  .only(
+                                              left: 5),
+                                          child: Icon(
+                                            isRead
+                                                ? Icons.done_all
+                                                : Icons.done,
+                                            size: 14,
+                                            color: isRead
+                                                ? Colors.lightBlue
+                                                : Colors.white70,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
-                );
-              },
+                ),
+              ],
             ),
           ),
           Container(
@@ -1472,7 +1953,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
                             children: [
                               Text(
                                 _replyToData!['senderName'] ?? '',
@@ -1487,7 +1969,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                    fontSize: 12, color: Colors.black54),
+                                    fontSize: 12,
+                                    color: Colors.black54),
                               ),
                             ],
                           ),
@@ -1534,13 +2017,15 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                         IconButton(
-                          icon:
-                              const Icon(Icons.close, color: Colors.red),
+                          icon: const Icon(Icons.close,
+                              color: Colors.red),
                           onPressed: _cancelRecording,
                         ),
                         IconButton(
-                          icon: const Icon(Icons.send, color: Colors.red),
-                          onPressed: () => _stopRecording(send: true),
+                          icon: const Icon(Icons.send,
+                              color: Colors.red),
+                          onPressed: () =>
+                              _stopRecording(send: true),
                         ),
                       ],
                     ),
@@ -1572,8 +2057,9 @@ class _ChatScreenState extends State<ChatScreen> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(25),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
+                            contentPadding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 10),
                             filled: true,
                             fillColor: const Color(0xFFF5F7FB),
                           ),
@@ -1583,17 +2069,23 @@ class _ChatScreenState extends State<ChatScreen> {
                       GestureDetector(
                         onTapDown: (_isBlocked ||
                                 !_areFriends ||
-                                _msgController.text.trim().isNotEmpty)
+                                _msgController.text
+                                    .trim()
+                                    .isNotEmpty)
                             ? null
                             : (_) => _startRecording(),
                         onTapUp: (_isBlocked ||
                                 !_areFriends ||
-                                _msgController.text.trim().isNotEmpty)
+                                _msgController.text
+                                    .trim()
+                                    .isNotEmpty)
                             ? null
                             : (_) => _stopRecording(send: true),
                         onTapCancel: (_isBlocked ||
                                 !_areFriends ||
-                                _msgController.text.trim().isNotEmpty)
+                                _msgController.text
+                                    .trim()
+                                    .isNotEmpty)
                             ? null
                             : () => _cancelRecording(),
                         onTap: (_isBlocked ||
@@ -1601,8 +2093,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                 _msgController.text.trim().isEmpty)
                             ? null
                             : () async {
-                                await _sendMessage(replyTo: _replyToData);
-                                setState(() => _replyToData = null);
+                                await _sendMessage(
+                                    replyTo: _replyToData);
+                                setState(
+                                    () => _replyToData = null);
                               },
                         child: Container(
                           padding: const EdgeInsets.all(12),
@@ -1620,9 +2114,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ? Colors.grey
                                 : null,
                           ),
-                          child: _msgController.text.trim().isEmpty
-                              ? const Icon(Icons.mic, color: Colors.white)
-                              : const Icon(Icons.send, color: Colors.white),
+                          child:
+                              _msgController.text.trim().isEmpty
+                                  ? const Icon(Icons.mic,
+                                      color: Colors.white)
+                                  : const Icon(Icons.send,
+                                      color: Colors.white),
                         ),
                       ),
                     ],
@@ -1713,7 +2210,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // ============ OPEN LINK ============
   Future<void> _openLink(String url) async {
     try {
       String finalUrl = url;
@@ -1730,7 +2226,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // ============ FETCH LINK PREVIEW ============
   Future<Map<String, dynamic>?> _fetchLinkPreview(String text) async {
     final urlRegex = RegExp(r'(https?://[^\s]+)', caseSensitive: false);
     final match = urlRegex.firstMatch(text);
@@ -1798,7 +2293,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // ============ BUILD MESSAGE WITH CLICKABLE LINKS (Manual Regex) ============
   Widget _buildMessageWithLinks(String text, bool isMe) {
     final urlRegex = RegExp(
       r'(https?://[^\s]+)',
@@ -1861,7 +2355,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     return RichText(text: TextSpan(children: spans));
   }
 
-  // ============ BUILD LINK PREVIEW ============
   Widget _buildLinkPreview({
     required String url,
     required String title,
@@ -1932,7 +2425,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         ? Colors.red
                         : type == 'instagram'
                             ? const Color(0xFFE1306C)
-                            : (isMe ? Colors.white70 : Colors.grey[600]),
+                            : (isMe
+                                ? Colors.white70
+                                : Colors.grey[600]),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -1961,7 +2456,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color: isMe ? Colors.white : Colors.black87,
+                            color: isMe
+                                ? Colors.white
+                                : Colors.black87,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1982,7 +2479,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     String messageText = _msgController.text.trim();
 
-    // 👇 LINK PREVIEW FETCH
     Map<String, dynamic>? linkPreview;
     if (messageText.isNotEmpty &&
         (messageText.contains('http://') ||
@@ -2117,7 +2613,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   shape: BoxShape.circle,
                   gradient: _groupPhoto == null
                       ? const LinearGradient(
-                          colors: [Color(0xFF8B5CF6), Color(0xFF667EEA)],
+                          colors: [
+                            Color(0xFF8B5CF6),
+                            Color(0xFF667EEA)
+                          ],
                         )
                       : null,
                 ),
@@ -2147,7 +2646,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               Expanded(
                 child: Text(
                   widget.groupName,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style:
+                      const TextStyle(color: Colors.white, fontSize: 16),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -2170,7 +2670,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                      child: CircularProgressIndicator());
                 }
 
                 var docs = snapshot.data!.docs.where((doc) {
@@ -2194,7 +2695,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   padding: const EdgeInsets.all(10),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    var data = docs[index].data() as Map<String, dynamic>;
+                    var data =
+                        docs[index].data() as Map<String, dynamic>;
                     bool isMe = data['senderId'] == currentUserId;
                     String senderId = data['senderId'];
                     String? imageBase64 = data['imageBase64'];
@@ -2203,7 +2705,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
                     String senderName =
                         _senderNameCache[senderId] ?? 'User';
-                    String? senderAvatar = _senderAvatarCache[senderId];
+                    String? senderAvatar =
+                        _senderAvatarCache[senderId];
                     Color senderColor = _senderColorCache[senderId] ??
                         const Color(0xFF667EEA);
 
@@ -2222,7 +2725,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => UserProfileScreen(
+                                    builder: (context) =>
+                                        UserProfileScreen(
                                       userId: senderId,
                                       username: senderName,
                                     ),
@@ -2242,7 +2746,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                               padding: const EdgeInsets.all(12),
                               constraints: BoxConstraints(
                                 maxWidth:
-                                    MediaQuery.of(context).size.width * 0.72,
+                                    MediaQuery.of(context).size.width *
+                                        0.72,
                               ),
                               decoration: BoxDecoration(
                                 gradient: isMe
@@ -2257,25 +2762,28 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(15),
                                   topRight: const Radius.circular(15),
-                                  bottomLeft: Radius.circular(isMe ? 15 : 0),
+                                  bottomLeft:
+                                      Radius.circular(isMe ? 15 : 0),
                                   bottomRight:
                                       Radius.circular(isMe ? 0 : 15),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color:
+                                        Colors.black.withOpacity(0.05),
                                     blurRadius: 5,
                                     offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
                                   if (!isMe)
                                     Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 4),
+                                      padding: const EdgeInsets.only(
+                                          bottom: 4),
                                       child: Text(
                                         senderName,
                                         style: TextStyle(
@@ -2286,41 +2794,47 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       ),
                                     ),
 
-                                  // 👇 LINK PREVIEW
                                   if (linkUrl != null)
                                     _buildLinkPreview(
                                       url: linkUrl,
-                                      title: data['linkTitle'] ?? '',
-                                      thumbnail: data['linkThumbnail'],
-                                      type: data['linkType'] ?? 'other',
+                                      title:
+                                          data['linkTitle'] ?? '',
+                                      thumbnail:
+                                          data['linkThumbnail'],
+                                      type: data['linkType'] ??
+                                          'other',
                                       isMe: isMe,
                                     ),
 
                                   if (imageBase64 != null)
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
                                       child: Image.memory(
                                         base64Decode(imageBase64),
                                         width: 200,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error,
+                                        errorBuilder: (context,
+                                                error,
                                                 stackTrace) =>
                                             const SizedBox(
                                           width: 200,
                                           height: 150,
                                           child: Center(
-                                              child: Icon(Icons.broken_image,
-                                                  color: Colors.grey)),
+                                              child: Icon(
+                                                  Icons.broken_image,
+                                                  color:
+                                                      Colors.grey)),
                                         ),
                                       ),
                                     ),
 
-                                  // 👇 MESSAGE WITH LINKS
                                   if (data['message'] != null &&
                                       (data['message'] as String)
                                           .isNotEmpty)
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 5),
+                                      padding: const EdgeInsets.only(
+                                          top: 5),
                                       child: _buildMessageWithLinks(
                                         data['message'],
                                         isMe,
@@ -2382,7 +2896,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 IconButton(
                   icon: const Icon(Icons.attach_file,
                       color: Color(0xFF667EEA)),
-                  onPressed: _isUploading ? null : _showAttachmentOptions,
+                  onPressed:
+                      _isUploading ? null : _showAttachmentOptions,
                 ),
                 Expanded(
                   child: TextField(
