@@ -1065,9 +1065,9 @@ class _ChatScreenState extends State<ChatScreen> {
         'isDeleted': false,
         'isRead': false,
         'isStarred': false,
+        'reactions': {},
       });
 
-      // 👇 NOTIFICATION BACKGROUND MEIN BHEJO (await nahi karo)
       _sendNotificationInBackground(
         messageText.isNotEmpty
             ? messageText
@@ -1082,7 +1082,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // 👇 BACKGROUND NOTIFICATION (mute check ke saath)
   Future<void> _sendNotificationInBackground(String message) async {
     try {
       DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
@@ -1169,6 +1168,83 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // ============ REACTION ============
+  void _showReactionPicker(String docId) {
+    final List<String> emojis = ['❤️', '😂', '👍', '😮', '😢', '🙏'];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: emojis.map((emoji) {
+              return GestureDetector(
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _addReaction(docId, emoji);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFF5F7FB),
+                  ),
+                  child: Text(
+                    emoji,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _addReaction(String docId, String emoji) async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(docId)
+          .get();
+
+      if (!doc.exists) return;
+
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      Map<String, dynamic> reactions =
+          Map<String, dynamic>.from(data['reactions'] ?? {});
+
+      if (reactions[currentUserId] == emoji) {
+        reactions.remove(currentUserId);
+      } else {
+        reactions[currentUserId] = emoji;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(docId)
+          .update({'reactions': reactions});
+    } catch (e) {
+      debugPrint('Reaction error: $e');
+    }
+  }
+
   void _showMessageOptions(
       String docId, String message, bool isMe, Map<String, dynamic> data) {
     showModalBottomSheet(
@@ -1207,6 +1283,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     });
                   },
                 ),
+              ListTile(
+                leading: const Icon(Icons.emoji_emotions,
+                    color: Color(0xFF8B5CF6)),
+                title: const Text('React'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showReactionPicker(docId);
+                },
+              ),
               ListTile(
                 leading: Icon(
                   (data['isStarred'] ?? false)
@@ -1391,6 +1476,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'isDeleted': false,
         'isRead': false,
         'isStarred': false,
+        'reactions': {},
       });
 
       if (mounted) {
@@ -1983,6 +2069,43 @@ class _ChatScreenState extends State<ChatScreen> {
                                         color: Color(0xFFF59E0B),
                                       ),
                                     ),
+                                  // 👇 REACTIONS
+                                  if (data['reactions'] != null &&
+                                      (data['reactions'] as Map).isNotEmpty &&
+                                      !isDeleted)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(top: 6),
+                                      child: Wrap(
+                                        spacing: 4,
+                                        children: (data['reactions']
+                                                as Map)
+                                            .values
+                                            .toSet()
+                                            .map<Widget>((emoji) {
+                                          return Container(
+                                            padding: const EdgeInsets
+                                                    .symmetric(
+                                                horizontal: 6,
+                                                vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: isMe
+                                                  ? Colors.white
+                                                      .withOpacity(0.25)
+                                                  : Colors.grey[200],
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      10),
+                                            ),
+                                            child: Text(
+                                              emoji.toString(),
+                                              style: const TextStyle(
+                                                  fontSize: 14),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
                                   const SizedBox(height: 4),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -2259,6 +2382,19 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   bool _isUploading = false;
   String? _groupPhoto;
   Map<String, dynamic>? _groupReplyToData;
+
+  // 👇 VOICE VARIABLES
+  final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
+  final FlutterSoundPlayer _audioPlayer = FlutterSoundPlayer();
+  bool _recorderInitialized = false;
+  bool _playerInitialized = false;
+  bool _isRecording = false;
+  Duration _recordDuration = Duration.zero;
+  Timer? _recordTimer;
+  final Map<String, bool> _isPlayingMap = {};
+  final Map<String, Duration> _playPositionMap = {};
+  final Map<String, Duration> _playDurationMap = {};
+
   final Map<String, String> _senderNameCache = {};
   final Map<String, String?> _senderAvatarCache = {};
   final Map<String, Color> _senderColorCache = {};
@@ -2288,6 +2424,37 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.initState();
     _loadGroupPhoto();
     _markGroupAsRead();
+    _initRecorder();
+    _initPlayer();
+  }
+
+  @override
+  void dispose() {
+    _recordTimer?.cancel();
+    if (_recorderInitialized) _audioRecorder.closeRecorder();
+    if (_playerInitialized) _audioPlayer.closePlayer();
+    super.dispose();
+  }
+
+  // ============ VOICE INIT ============
+  Future<void> _initRecorder() async {
+    if (_recorderInitialized) return;
+    try {
+      await _audioRecorder.openRecorder();
+      _recorderInitialized = true;
+    } catch (e) {
+      debugPrint('Recorder init error: $e');
+    }
+  }
+
+  Future<void> _initPlayer() async {
+    if (_playerInitialized) return;
+    try {
+      await _audioPlayer.openPlayer();
+      _playerInitialized = true;
+    } catch (e) {
+      debugPrint('Player init error: $e');
+    }
   }
 
   // ============ GROUP READ MARK ============
@@ -2338,6 +2505,164 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
+  // ============ VOICE RECORDING ============
+  Future<void> _startRecording() async {
+    setState(() {
+      _isRecording = true;
+      _recordDuration = Duration.zero;
+    });
+
+    try {
+      final status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        setState(() => _isRecording = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Mic permission denied')),
+          );
+        }
+        return;
+      }
+
+      await _initRecorder();
+      if (!_recorderInitialized) {
+        setState(() => _isRecording = false);
+        return;
+      }
+
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+      await _audioRecorder.startRecorder(
+        toFile: path,
+        codec: Codec.aacMP4,
+      );
+
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted && _isRecording) {
+          setState(() {
+            _recordDuration = Duration(seconds: timer.tick);
+          });
+          if (timer.tick >= 300) _stopRecording(send: true);
+        }
+      });
+    } catch (e) {
+      setState(() => _isRecording = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recording Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopRecording({bool send = false}) async {
+    try {
+      _recordTimer?.cancel();
+      final path = await _audioRecorder.stopRecorder();
+
+      setState(() => _isRecording = false);
+
+      if (path == null || !send) {
+        if (path != null) {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        }
+        setState(() => _recordDuration = Duration.zero);
+        return;
+      }
+
+      final file = File(path);
+      final fileSize = await file.length();
+
+      if (fileSize > 900000) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Voice bahut lambi hai')),
+          );
+        }
+        await file.delete();
+        setState(() => _recordDuration = Duration.zero);
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      final base64Audio = base64Encode(bytes);
+
+      await _sendMessage(voiceBase64: base64Audio);
+      await file.delete();
+
+      setState(() => _recordDuration = Duration.zero);
+    } catch (e) {
+      debugPrint('Stop recording error: $e');
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    await _stopRecording(send: false);
+  }
+
+  Future<void> _playVoice(String messageId, String base64Audio) async {
+    try {
+      if (_isPlayingMap[messageId] == true) {
+        await _audioPlayer.stopPlayer();
+        setState(() {
+          _isPlayingMap[messageId] = false;
+          _playPositionMap[messageId] = Duration.zero;
+        });
+        return;
+      }
+
+      await _audioPlayer.stopPlayer();
+      await _initPlayer();
+
+      final bytes = base64Decode(base64Audio);
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/play_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final file = File(path);
+      await file.writeAsBytes(bytes);
+
+      _audioPlayer.setSubscriptionDuration(const Duration(milliseconds: 100));
+
+      _audioPlayer.onProgress?.listen((e) {
+        if (mounted) {
+          setState(() {
+            _playPositionMap[messageId] = e.position;
+            _playDurationMap[messageId] = e.duration;
+          });
+        }
+      });
+
+      await _audioPlayer.startPlayer(
+        fromURI: path,
+        codec: Codec.aacMP4,
+        whenFinished: () {
+          if (mounted) {
+            setState(() {
+              _isPlayingMap[messageId] = false;
+              _playPositionMap[messageId] = Duration.zero;
+            });
+          }
+          file.delete();
+        },
+      );
+
+      setState(() => _isPlayingMap[messageId] = true);
+    } catch (e) {
+      debugPrint('Playback error: $e');
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.inMinutes)}:${two(d.inSeconds % 60)}';
+  }
+
   // ============ GROUP MESSAGE OPTIONS ============
   void _showGroupMessageOptions(
       String docId, String message, bool isMe, Map<String, dynamic> data) {
@@ -2377,6 +2702,15 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     });
                   },
                 ),
+              ListTile(
+                leading: const Icon(Icons.emoji_emotions,
+                    color: Color(0xFF8B5CF6)),
+                title: const Text('React'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showGroupReactionPicker(docId);
+                },
+              ),
               if (isMe && message.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.edit, color: Colors.blue),
@@ -2400,6 +2734,83 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         );
       },
     );
+  }
+
+  // ============ GROUP REACTION ============
+  void _showGroupReactionPicker(String docId) {
+    final List<String> emojis = ['❤️', '😂', '👍', '😮', '😢', '🙏'];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: emojis.map((emoji) {
+              return GestureDetector(
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _addGroupReaction(docId, emoji);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFF5F7FB),
+                  ),
+                  child: Text(
+                    emoji,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _addGroupReaction(String docId, String emoji) async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('group_messages')
+          .doc(docId)
+          .get();
+
+      if (!doc.exists) return;
+
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      Map<String, dynamic> reactions =
+          Map<String, dynamic>.from(data['reactions'] ?? {});
+
+      if (reactions[currentUserId] == emoji) {
+        reactions.remove(currentUserId);
+      } else {
+        reactions[currentUserId] = emoji;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('group_messages')
+          .doc(docId)
+          .update({'reactions': reactions});
+    } catch (e) {
+      debugPrint('Group reaction error: $e');
+    }
   }
 
   Future<void> _editGroupMessage(String docId, String oldMessage) async {
@@ -2457,6 +2868,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'isDeleted': true,
       'message': 'Ye message delete kar diya gaya hai',
       'imageBase64': null,
+      'voiceBase64': null,
     });
   }
 
@@ -2467,6 +2879,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     required String senderName,
     required String message,
     required bool hasImage,
+    required bool hasVoice,
   }) async {
     try {
       String body;
@@ -2474,6 +2887,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         body = '$senderName: $message';
       } else if (hasImage) {
         body = '$senderName: 📷 Photo';
+      } else if (hasVoice) {
+        body = '$senderName: 🎤 Voice message';
       } else {
         body = '$senderName: Naya message';
       }
@@ -2763,9 +3178,83 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
-  // ============ SEND MESSAGE (INSTANT + BACKGROUND NOTIF) ============
-  Future<void> _sendMessage({String? imageBase64}) async {
-    if (_msgController.text.trim().isEmpty && imageBase64 == null) return;
+  // ============ GROUP VOICE PLAYER ============
+  Widget _buildGroupVoicePlayer(
+      String messageId, String base64Audio, bool isMe) {
+    final isPlaying = _isPlayingMap[messageId] ?? false;
+    final position = _playPositionMap[messageId] ?? Duration.zero;
+    final duration = _playDurationMap[messageId] ?? Duration.zero;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isMe ? Colors.white.withOpacity(0.2) : Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => _playVoice(messageId, base64Audio),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white : const Color(0xFF667EEA),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isPlaying ? Icons.pause : Icons.play_arrow,
+                color: isMe ? const Color(0xFF667EEA) : Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: List.generate(20, (i) {
+                  final height = (i % 4) * 3.0 + 4.0;
+                  return Container(
+                    width: 2.5,
+                    height: height,
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    decoration: BoxDecoration(
+                      color: isMe
+                          ? Colors.white70
+                          : const Color(0xFF667EEA).withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isPlaying
+                    ? '${_formatDuration(position)} / ${_formatDuration(duration)}'
+                    : _formatDuration(duration),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe ? Colors.white70 : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============ SEND MESSAGE ============
+  Future<void> _sendMessage({
+    String? imageBase64,
+    String? voiceBase64,
+  }) async {
+    if (_msgController.text.trim().isEmpty &&
+        imageBase64 == null &&
+        voiceBase64 == null) return;
 
     String messageText = _msgController.text.trim();
 
@@ -2778,12 +3267,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     DateTime expiryTime = DateTime.now().add(const Duration(hours: 24));
 
-    // 👇 MESSAGE SAVE KARO (fast)
     await FirebaseFirestore.instance.collection('group_messages').add({
       'groupId': widget.groupId,
       'senderId': currentUserId,
       'message': messageText,
       'imageBase64': imageBase64,
+      'voiceBase64': voiceBase64,
       'linkUrl': linkPreview?['linkUrl'],
       'linkTitle': linkPreview?['linkTitle'],
       'linkThumbnail': linkPreview?['linkThumbnail'],
@@ -2793,13 +3282,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       'expiresAt': Timestamp.fromDate(expiryTime),
       'isEdited': false,
       'isDeleted': false,
+      'reactions': {},
     });
 
-    // 👇 NOTIFICATIONS BACKGROUND MEIN BHEJO (await NAHI karo)
     _sendGroupNotificationsInBackground(
       groupId: widget.groupId,
       messageText: messageText,
       hasImage: imageBase64 != null,
+      hasVoice: voiceBase64 != null,
     );
 
     _msgController.clear();
@@ -2808,11 +3298,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // 👇 BACKGROUND NOTIFICATION FUNCTION
   Future<void> _sendGroupNotificationsInBackground({
     required String groupId,
     required String messageText,
     required bool hasImage,
+    required bool hasVoice,
   }) async {
     try {
       DocumentSnapshot groupDoc = await FirebaseFirestore.instance
@@ -2832,7 +3322,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       String senderName =
           senderDoc.exists ? (senderDoc['username'] ?? 'User') : 'User';
 
-      // Sabhi members ko PARALLEL mein notification bhejo
       List<Future> notifFutures = [];
       for (String memberId in members) {
         if (memberId == currentUserId) continue;
@@ -2844,10 +3333,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           senderName: senderName,
           messageText: messageText,
           hasImage: hasImage,
+          hasVoice: hasVoice,
         ));
       }
 
-      // Sabhi notifications parallel mein — wait karo but UI block nahi
       await Future.wait(notifFutures);
     } catch (e) {
       debugPrint('Group notif background error: $e');
@@ -2861,9 +3350,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     required String senderName,
     required String messageText,
     required bool hasImage,
+    required bool hasVoice,
   }) async {
     try {
-      // Mute check
       DocumentSnapshot mutedDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(memberId)
@@ -2879,6 +3368,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         senderName: senderName,
         message: messageText,
         hasImage: hasImage,
+        hasVoice: hasVoice,
       );
     } catch (e) {
       debugPrint('Notif error to $memberId: $e');
@@ -3082,6 +3572,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     bool isMe = data['senderId'] == currentUserId;
                     String senderId = data['senderId'];
                     String? imageBase64 = data['imageBase64'];
+                    String? voiceBase64 = data['voiceBase64'];
                     Timestamp? msgTime = data['timestamp'];
                     String? linkUrl = data['linkUrl'];
                     bool isDeleted = data['isDeleted'] ?? false;
@@ -3285,6 +3776,15 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       ),
                                     ),
 
+                                  // 👇 VOICE
+                                  if (voiceBase64 != null &&
+                                      !isDeleted)
+                                    _buildGroupVoicePlayer(
+                                      doc.id,
+                                      voiceBase64,
+                                      isMe,
+                                    ),
+
                                   if (data['message'] != null &&
                                       (data['message'] as String)
                                           .isNotEmpty)
@@ -3294,6 +3794,43 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       child: _buildMessageWithLinks(
                                         data['message'],
                                         isMe,
+                                      ),
+                                    ),
+                                  // 👇 REACTIONS
+                                  if (data['reactions'] != null &&
+                                      (data['reactions'] as Map).isNotEmpty &&
+                                      !isDeleted)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(top: 6),
+                                      child: Wrap(
+                                        spacing: 4,
+                                        children: (data['reactions']
+                                                as Map)
+                                            .values
+                                            .toSet()
+                                            .map<Widget>((emoji) {
+                                          return Container(
+                                            padding: const EdgeInsets
+                                                    .symmetric(
+                                                horizontal: 6,
+                                                vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: isMe
+                                                  ? Colors.white
+                                                      .withOpacity(0.25)
+                                                  : Colors.grey[200],
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      10),
+                                            ),
+                                            child: Text(
+                                              emoji.toString(),
+                                              style: const TextStyle(
+                                                  fontSize: 14),
+                                            ),
+                                          );
+                                        }).toList(),
                                       ),
                                     ),
                                   const SizedBox(height: 4),
@@ -3409,44 +3946,112 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       ],
                     ),
                   ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.attach_file,
-                          color: Color(0xFF667EEA)),
-                      onPressed:
-                          _isUploading ? null : _showAttachmentOptions,
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _msgController,
-                        decoration: InputDecoration(
-                          hintText: 'Message likhein...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25),
+                if (_isRecording)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    color: Colors.red.withOpacity(0.1),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F7FB),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _formatDuration(_recordDuration),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Recording...',
+                            style: TextStyle(
+                                color: Colors.red, fontSize: 14),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              color: Colors.red),
+                          onPressed: _cancelRecording,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send,
+                              color: Colors.red),
+                          onPressed: () => _stopRecording(send: true),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.attach_file,
+                            color: Color(0xFF667EEA)),
+                        onPressed:
+                            _isUploading ? null : _showAttachmentOptions,
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _msgController,
+                          onChanged: (val) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Message likhein...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            filled: true,
+                            fillColor: const Color(0xFFF5F7FB),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTapDown: _msgController.text.trim().isNotEmpty
+                            ? null
+                            : (_) => _startRecording(),
+                        onTapUp: _msgController.text.trim().isNotEmpty
+                            ? null
+                            : (_) => _stopRecording(send: true),
+                        onTapCancel: _msgController.text.trim().isNotEmpty
+                            ? null
+                            : () => _cancelRecording(),
+                        onTap: _msgController.text.trim().isEmpty
+                            ? null
+                            : () async {
+                                await _sendMessage();
+                              },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF667EEA),
+                                Color(0xFF764BA2)
+                              ],
+                            ),
+                          ),
+                          child: _msgController.text.trim().isEmpty
+                              ? const Icon(Icons.mic,
+                                  color: Colors.white)
+                              : const Icon(Icons.send,
+                                  color: Colors.white),
                         ),
                       ),
-                      child: IconButton(
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        onPressed: () => _sendMessage(),
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
