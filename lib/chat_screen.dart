@@ -19,6 +19,7 @@ import 'friend_request.dart';
 import 'user_profile.dart';
 import 'avatar_builder.dart';
 import 'group_info.dart';
+import 'photo_viewer.dart';
 
 // ============ CHAT SCREEN ============
 class ChatScreen extends StatefulWidget {
@@ -1516,9 +1517,9 @@ class _ChatScreenState extends State<ChatScreen> {
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
-        quality: 50,
-        minWidth: 800,
-        minHeight: 800,
+        quality: 70,
+        minWidth: 1200,
+        minHeight: 1200,
       );
 
       if (compressedFile == null) {
@@ -1590,32 +1591,76 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildCachedImage(String base64String) {
+  Widget _buildCachedImage(String base64String, String docId) {
+    Uint8List? bytes;
+
     if (_imageCache.containsKey(base64String)) {
-      return Image.memory(
-        _imageCache[base64String]!,
-        width: 200,
-        fit: BoxFit.cover,
-        gaplessPlayback: true,
-      );
+      bytes = _imageCache[base64String];
+    } else {
+      try {
+        bytes = base64Decode(base64String);
+        _imageCache[base64String] = bytes!;
+      } catch (e) {
+        return const SizedBox(
+          width: 200,
+          height: 150,
+          child: Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+        );
+      }
     }
 
-    try {
-      final bytes = base64Decode(base64String);
-      _imageCache[base64String] = bytes;
-      return Image.memory(
-        bytes,
-        width: 200,
-        fit: BoxFit.cover,
-        gaplessPlayback: true,
-      );
-    } catch (e) {
-      return const SizedBox(
-        width: 200,
-        height: 150,
-        child: Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-      );
-    }
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PhotoViewerScreen(
+              base64Image: base64String,
+              messageId: docId,
+              chatId: chatId,
+              isGroup: false,
+              isMyMessage: false,
+            ),
+          ),
+        );
+      },
+      child: Stack(
+        children: [
+          Image.memory(
+            bytes!,
+            width: 200,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
+          // 👇 HD badge
+          Positioned(
+            bottom: 4,
+            right: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.hd, color: Colors.white, size: 10),
+                  SizedBox(width: 2),
+                  Text(
+                    'HD',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildVoicePlayer(String messageId, String base64Audio, bool isMe) {
@@ -2041,7 +2086,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       borderRadius:
                                           BorderRadius.circular(10),
                                       child: _buildCachedImage(
-                                          imageBase64),
+                                          imageBase64, doc.id),
                                     ),
                                   if (voiceBase64 != null &&
                                       !isDeleted)
@@ -2295,66 +2340,65 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       const SizedBox(width: 8),
                       // 👇 TEXT KHALI AUR ALLOWED → LONG PRESS VOICE
-(_msgController.text.trim().isEmpty &&
-        !_isBlocked &&
-        _areFriends)
-    ? GestureDetector(
-        onLongPressStart: (_) => _startRecording(),
-        onLongPressEnd: (_) =>
-            _stopRecording(send: true),
-        onLongPressCancel: () => _cancelRecording(),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF667EEA),
-                Color(0xFF764BA2)
-              ],
-            ),
-          ),
-          child: const Icon(Icons.mic,
-              color: Colors.white),
-        ),
-      )
-    // 👇 TEXT HAI → TAP SEND
-    // 👇 BLOCKED / NOT FRIEND → GREY BUTTON
-    : GestureDetector(
-        onTap: (_isBlocked || !_areFriends)
-            ? null
-            : _msgController.text.trim().isEmpty
-                ? null
-                : () async {
-                    await _sendMessage(
-                        replyTo: _replyToData);
-                    setState(() =>
-                        _replyToData = null);
-                  },
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: (_isBlocked || !_areFriends)
-                ? null
-                : const LinearGradient(
-                    colors: [
-                      Color(0xFF667EEA),
-                      Color(0xFF764BA2)
-                    ],
-                  ),
-            color: (_isBlocked || !_areFriends)
-                ? Colors.grey
-                : null,
-          ),
-          child:
-              _msgController.text.trim().isEmpty
-                  ? const Icon(Icons.mic,
-                      color: Colors.white)
-                  : const Icon(Icons.send,
-                      color: Colors.white),
-        ),
-      ),
+                      (_msgController.text.trim().isEmpty &&
+                              !_isBlocked &&
+                              _areFriends)
+                          ? GestureDetector(
+                              onLongPressStart: (_) => _startRecording(),
+                              onLongPressEnd: (_) =>
+                                  _stopRecording(send: true),
+                              onLongPressCancel: () => _cancelRecording(),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                  ),
+                                ),
+                                child: const Icon(Icons.mic,
+                                    color: Colors.white),
+                              ),
+                            )
+                          // 👇 TEXT HAI → TAP SEND
+                          : GestureDetector(
+                              onTap: (_isBlocked || !_areFriends)
+                                  ? null
+                                  : _msgController.text.trim().isEmpty
+                                      ? null
+                                      : () async {
+                                          await _sendMessage(
+                                              replyTo: _replyToData);
+                                          setState(() =>
+                                              _replyToData = null);
+                                        },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: (_isBlocked || !_areFriends)
+                                      ? null
+                                      : const LinearGradient(
+                                          colors: [
+                                            Color(0xFF667EEA),
+                                            Color(0xFF764BA2)
+                                          ],
+                                        ),
+                                  color: (_isBlocked || !_areFriends)
+                                      ? Colors.grey
+                                      : null,
+                                ),
+                                child:
+                                    _msgController.text.trim().isEmpty
+                                        ? const Icon(Icons.mic,
+                                            color: Colors.white)
+                                        : const Icon(Icons.send,
+                                            color: Colors.white),
+                              ),
+                            ),
                     ],
                   ),
               ],
@@ -3397,9 +3441,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         image.path,
         targetPath,
-        quality: 50,
-        minWidth: 800,
-        minHeight: 800,
+        quality: 70,
+        minWidth: 1200,
+        minHeight: 1200,
       );
       if (compressedFile == null) {
         setState(() => _isUploading = false);
@@ -3762,21 +3806,74 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                     ClipRRect(
                                       borderRadius:
                                           BorderRadius.circular(10),
-                                      child: Image.memory(
-                                        base64Decode(imageBase64),
-                                        width: 200,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context,
-                                                error,
-                                                stackTrace) =>
-                                            const SizedBox(
-                                          width: 200,
-                                          height: 150,
-                                          child: Center(
-                                              child: Icon(
-                                                  Icons.broken_image,
-                                                  color:
-                                                      Colors.grey)),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  PhotoViewerScreen(
+                                                base64Image: imageBase64,
+                                                messageId: doc.id,
+                                                chatId: widget.groupId,
+                                                isGroup: true,
+                                                isMyMessage: isMe,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Stack(
+                                          children: [
+                                            Image.memory(
+                                              base64Decode(imageBase64),
+                                              width: 200,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context,
+                                                      error,
+                                                      stackTrace) =>
+                                                  const SizedBox(
+                                                width: 200,
+                                                height: 150,
+                                                child: Center(
+                                                    child: Icon(
+                                                        Icons.broken_image,
+                                                        color: Colors.grey)),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 4,
+                                              right: 4,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black
+                                                      .withOpacity(0.5),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Row(
+                                                  children: [
+                                                    Icon(Icons.hd,
+                                                        color: Colors.white,
+                                                        size: 10),
+                                                    SizedBox(width: 2),
+                                                    Text(
+                                                      'HD',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 8,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -4023,47 +4120,47 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       ),
                       const SizedBox(width: 8),
                       // 👇 TEXT KHALI HAI TO LONG PRESS SE VOICE
-_msgController.text.trim().isEmpty
-    ? GestureDetector(
-        onLongPressStart: (_) => _startRecording(),
-        onLongPressEnd: (_) =>
-            _stopRecording(send: true),
-        onLongPressCancel: () => _cancelRecording(),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF667EEA),
-                Color(0xFF764BA2)
-              ],
-            ),
-          ),
-          child: const Icon(Icons.mic,
-              color: Colors.white),
-        ),
-      )
-    // 👇 TEXT HAI TO TAP SE SEND
-    : GestureDetector(
-        onTap: () async {
-          await _sendMessage();
-        },
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF667EEA),
-                Color(0xFF764BA2)
-              ],
-            ),
-          ),
-          child: const Icon(Icons.send,
-              color: Colors.white),
-        ),
-      ),
+                      _msgController.text.trim().isEmpty
+                          ? GestureDetector(
+                              onLongPressStart: (_) => _startRecording(),
+                              onLongPressEnd: (_) =>
+                                  _stopRecording(send: true),
+                              onLongPressCancel: () => _cancelRecording(),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                  ),
+                                ),
+                                child: const Icon(Icons.mic,
+                                    color: Colors.white),
+                              ),
+                            )
+                          // 👇 TEXT HAI TO TAP SE SEND
+                          : GestureDetector(
+                              onTap: () async {
+                                await _sendMessage();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                  ),
+                                ),
+                                child: const Icon(Icons.send,
+                                    color: Colors.white),
+                              ),
+                            ),
                     ],
                   ),
               ],
