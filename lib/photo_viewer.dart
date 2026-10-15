@@ -56,7 +56,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
 
     _loadImage();
 
-    // 👇 AUTO LOCAL SAVE + FIRESTORE DELETE (agar mera message nahi hai)
+    // 👇 AUTO LOCAL SAVE + FIRESTORE DELETE (sirf receiver ke liye)
+    // Sender ki photo delete NAHI hogi
     if (!widget.isMyMessage) {
       _saveLocallyAndDelete();
     }
@@ -73,7 +74,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
   void _loadImage() {
     try {
       _imageBytes = base64Decode(widget.base64Image);
-      // 500ms ka fake loading — smooth feel ke liye
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() => _isLoading = false);
@@ -88,7 +88,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     }
   }
 
-  // ============ LOCAL SAVE + FIRESTORE DELETE ============
+  // ============ LOCAL SAVE + FIRESTORE DELETE (RECEIVER ONLY) ============
   Future<void> _saveLocallyAndDelete() async {
     try {
       // 1. Local save
@@ -125,7 +125,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     setState(() => _isSaving = true);
 
     try {
-      // Android: image_gallery_saver_plus use karo
       final result = await ImageGallerySaverPlus.saveImage(
         _imageBytes,
         quality: 100,
@@ -184,10 +183,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
   // ============ DOUBLE TAP ZOOM ============
   void _handleDoubleTap() {
     if (_transformController.value.getMaxScaleOnAxis() > 1.0) {
-      // Zoom out
       _transformController.value = Matrix4.identity();
     } else {
-      // Zoom in 2x
       _transformController.value = Matrix4.identity()..scale(2.0);
     }
   }
@@ -198,7 +195,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ============ IMAGE AREA ============
+          // ============ IMAGE AREA (FULL SCREEN) ============
           Positioned.fill(
             child: _isLoading
                 ? const Center(
@@ -226,9 +223,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
                       opacity: _fadeAnimation,
                       child: InteractiveViewer(
                         transformationController: _transformController,
-                        minScale: 0.5,
+                        minScale: 1.0,
                         maxScale: 5.0,
-                        child: Center(
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width,
+                          height: MediaQuery.of(context).size.height,
                           child: Image.memory(
                             _imageBytes,
                             fit: BoxFit.contain,
@@ -282,7 +281,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  // Close button
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.5),
@@ -294,7 +292,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
                     ),
                   ),
                   const Spacer(),
-                  // HD Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
@@ -346,7 +343,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      // Download button
                       _buildActionButton(
                         icon: _isSaving
                             ? Icons.hourglass_top
@@ -355,7 +351,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
                         onTap: _isSaving ? null : _downloadToGallery,
                         color: const Color(0xFF25D366),
                       ),
-                      // Share button
                       _buildActionButton(
                         icon: Icons.share,
                         label: 'Share',
@@ -372,7 +367,6 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     );
   }
 
-  // ============ ACTION BUTTON WIDGET ============
   Widget _buildActionButton({
     required IconData icon,
     required String label,
