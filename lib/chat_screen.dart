@@ -1591,7 +1591,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildCachedImage(String base64String, String docId) {
+  Widget _buildCachedImage(String base64String, String docId, bool isMe) {
     Uint8List? bytes;
 
     if (_imageCache.containsKey(base64String)) {
@@ -1619,7 +1619,7 @@ class _ChatScreenState extends State<ChatScreen> {
               messageId: docId,
               chatId: chatId,
               isGroup: false,
-              isMyMessage: false,
+              isMyMessage: isMe,
             ),
           ),
         );
@@ -1632,7 +1632,6 @@ class _ChatScreenState extends State<ChatScreen> {
             fit: BoxFit.cover,
             gaplessPlayback: true,
           ),
-          // 👇 HD badge
           Positioned(
             bottom: 4,
             right: 4,
@@ -2086,7 +2085,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       borderRadius:
                                           BorderRadius.circular(10),
                                       child: _buildCachedImage(
-                                          imageBase64, doc.id),
+                                          imageBase64, doc.id, isMe),
                                     ),
                                   if (voiceBase64 != null &&
                                       !isDeleted)
@@ -2114,7 +2113,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                         color: Color(0xFFF59E0B),
                                       ),
                                     ),
-                                  // 👇 REACTIONS
                                   if (data['reactions'] != null &&
                                       (data['reactions'] as Map).isNotEmpty &&
                                       !isDeleted)
@@ -2339,7 +2337,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // 👇 TEXT KHALI AUR ALLOWED → LONG PRESS VOICE
                       (_msgController.text.trim().isEmpty &&
                               !_isBlocked &&
                               _areFriends)
@@ -2363,7 +2360,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                     color: Colors.white),
                               ),
                             )
-                          // 👇 TEXT HAI → TAP SEND
                           : GestureDetector(
                               onTap: (_isBlocked || !_areFriends)
                                   ? null
@@ -2432,7 +2428,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   String? _groupPhoto;
   Map<String, dynamic>? _groupReplyToData;
 
-  // 👇 VOICE VARIABLES
   final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
   final FlutterSoundPlayer _audioPlayer = FlutterSoundPlayer();
   bool _recorderInitialized = false;
@@ -2485,7 +2480,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.dispose();
   }
 
-  // ============ VOICE INIT ============
   Future<void> _initRecorder() async {
     if (_recorderInitialized) return;
     try {
@@ -2506,7 +2500,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // ============ GROUP READ MARK ============
   Future<void> _markGroupAsRead() async {
     try {
       await FirebaseFirestore.instance
@@ -2554,7 +2547,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
-  // ============ VOICE RECORDING ============
   Future<void> _startRecording() async {
     setState(() {
       _isRecording = true;
@@ -2712,7 +2704,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     return '${two(d.inMinutes)}:${two(d.inSeconds % 60)}';
   }
 
-  // ============ GROUP MESSAGE OPTIONS ============
   void _showGroupMessageOptions(
       String docId, String message, bool isMe, Map<String, dynamic> data) {
     showModalBottomSheet(
@@ -2785,7 +2776,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
-  // ============ GROUP REACTION ============
   void _showGroupReactionPicker(String docId) {
     final List<String> emojis = ['❤️', '😂', '👍', '😮', '😢', '🙏'];
 
@@ -2921,7 +2911,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     });
   }
 
-  // ============ GROUP NOTIFICATION ============
   Future<void> _sendGroupNotification({
     required String memberId,
     required String groupName,
@@ -3227,7 +3216,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
-  // ============ GROUP VOICE PLAYER ============
   Widget _buildGroupVoicePlayer(
       String messageId, String base64Audio, bool isMe) {
     final isPlaying = _isPlayingMap[messageId] ?? false;
@@ -3296,7 +3284,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
-  // ============ SEND MESSAGE ============
   Future<void> _sendMessage({
     String? imageBase64,
     String? voiceBase64,
@@ -3878,7 +3865,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                       ),
                                     ),
 
-                                  // 👇 VOICE
                                   if (voiceBase64 != null &&
                                       !isDeleted)
                                     _buildGroupVoicePlayer(
@@ -3898,7 +3884,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                         isMe,
                                       ),
                                     ),
-                                  // 👇 REACTIONS
                                   if (data['reactions'] != null &&
                                       (data['reactions'] as Map).isNotEmpty &&
                                       !isDeleted)
@@ -4119,7 +4104,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // 👇 TEXT KHALI HAI TO LONG PRESS SE VOICE
                       _msgController.text.trim().isEmpty
                           ? GestureDetector(
                               onLongPressStart: (_) => _startRecording(),
@@ -4141,7 +4125,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                     color: Colors.white),
                               ),
                             )
-                          // 👇 TEXT HAI TO TAP SE SEND
                           : GestureDetector(
                               onTap: () async {
                                 await _sendMessage();
